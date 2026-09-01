@@ -151,7 +151,7 @@ at once.
 
 Two inputs are tuned for this repo, both documented inline in `validate.yml`:
 `max-skill-lines: 215` (migration debt — four SKILL.md files arrived over the
-100-line limit and Phase 2 forbids editing them down; see
+100-line limit and Phase 2 forbids editing them down; tracked as #1, see
 [`CLAUDE.md`](CLAUDE.md) -> "Migration debt") and `allow-emoji-paths` for the
 one reference file that specifies the dotfiles ai-metrics footer.
 

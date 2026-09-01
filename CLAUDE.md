@@ -117,10 +117,10 @@ placement-and-naming migration and its NF-4 forbids changing skill behaviour on
 the way across, so the content was copied verbatim and the limit raised rather
 than the files being cut down.
 
-This is debt, not a new standard. A follow-up should refactor each `SKILL.md`
-into its own `references/` and bring the limit back to 100. Until then: do not
-raise 215 any further, and do not add lines to a `SKILL.md` that is already
-over 100.
+This is debt, not a new standard, and it is tracked as #1: refactor each
+`SKILL.md` into its own `references/` and bring the limit back to 100. Until
+then: do not raise 215 any further, and do not add lines to a `SKILL.md` that is
+already over 100.
 
 ## Emojis
 

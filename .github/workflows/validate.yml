@@ -29,7 +29,7 @@ jobs:
       # behaviour on the way across — so the content was copied verbatim and
       # the limit raised here instead of the files being cut down. This number
       # must come back down to 100 in a follow-up that refactors each SKILL.md
-      # into its own references/. Do not raise it further.
+      # into its own references/ (tracked as #1). Do not raise it further.
       max-skill-lines: 215
       # exception-merge-checklist/references/metrics-footer.md carries the
       # emoji glyphs of the dotfiles ai-metrics PR footer. That footer is the
