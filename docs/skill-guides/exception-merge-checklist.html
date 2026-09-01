@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>gh-verify:exception-merge-checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { interpolate-size: allow-keywords; }
+
+    /* ===== THEMES (class-based ONLY) ===== */
+    html.theme-dark {
+      --bg: #0A0A0A; --surface: #141414; --surface-hover: #1C1C1C;
+      --border: rgba(255,255,255,0.08);
+      --text: #EDEDED; --text-secondary: #8B8B8B;
+      --accent: #f59e0b; --accent-secondary: #3b82f6;
+      --positive: #10b981; --negative: #f43f5e; --warning: #f59e0b;
+      --code-bg: #101010; --code-text: #d6deeb; --rail: rgba(255,255,255,0.10);
+      --tint: rgba(245,158,11,0.12);
+    }
+    html.theme-light {
+      --bg: #FAFAF9; --surface: #FFFFFF; --surface-hover: #F5F5F4;
+      --border: rgba(0,0,0,0.09);
+      --text: #0f172a; --text-secondary: #64748b;
+      --accent: #d97706; --accent-secondary: #2563eb;
+      --positive: #059669; --negative: #e11d48; --warning: #d97706;
+      --code-bg: #0f172a; --code-text: #e2e8f0; --rail: rgba(0,0,0,0.10);
+      --tint: rgba(217,119,6,0.10);
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.65; -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+      transition: background 0.3s, color 0.3s;
+      scrollbar-gutter: stable;
+      word-break: keep-all; overflow-wrap: anywhere;
+    }
+    h1,h2,h3,h4,h5,h6 { color: var(--text); letter-spacing: -0.03em; line-height: 1.15; text-wrap: balance; }
+    h1 { font-weight: 800; }
+    h2 { font-weight: 700; }
+    p,li,td,th,span,label { color: var(--text); font-weight: 400; }
+    .text-secondary { color: var(--text-secondary); }
+    code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+
+    header.hero { padding: 76px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--accent); background: var(--tint);
+      border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; margin-bottom: 22px;
+    }
+    header.hero h1 { font-size: clamp(1.9rem, 5vw, 3.1rem); }
+    header.hero h1 .ns { color: var(--text-secondary); font-weight: 500; }
+    .lede {
+      margin-top: 22px; font-size: clamp(1rem, 2.2vw, 1.18rem); line-height: 1.7;
+      color: var(--text-secondary); max-width: 74ch;
+      border-left: 3px solid var(--accent); padding-left: 18px;
+    }
+
+    section { margin-bottom: 60px; }
+    .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
+    .sec-num {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--accent); border: 1px solid var(--border); background: var(--surface);
+      border-radius: 6px; padding: 4px 9px;
+    }
+    .sec-head h2 { font-size: clamp(1.5rem, 3.4vw, 2.05rem); }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 22px;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover { box-shadow: 0 0 0 1px var(--border), 0 10px 22px rgba(0,0,0,0.10); transform: translateY(-2px); }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card h3 { font-size: 1.02rem; font-weight: 650; margin-bottom: 8px; display: flex; gap: 9px; align-items: flex-start; }
+    .card p { font-size: 0.92rem; color: var(--text-secondary); }
+    code.i { color: var(--text); background: var(--tint); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 0.86em; }
+    .card p code, li code, td code, .lede code, .note-box code { color: var(--text); background: var(--tint); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 0.86em; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 8px; }
+    .dot.ok { background: var(--positive); }
+    .dot.no { background: var(--negative); }
+    .card.no { border-left: 3px solid var(--negative); }
+    .card.ok { border-left: 3px solid var(--positive); }
+
+    pre.usage {
+      background: var(--code-bg); color: var(--code-text);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px 22px; overflow-x: auto; font-size: 0.92rem; line-height: 1.75; margin-bottom: 18px;
+    }
+    pre.usage .cmd { color: #fcd34d; font-weight: 600; }
+    pre.usage .opt { color: #a5b4fc; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 22px; }
+    table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 0.9rem; }
+    thead th {
+      text-align: left; font-weight: 600; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-secondary); padding: 13px 18px; border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    tbody td { padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--surface-hover); }
+    td.k { white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: var(--accent); font-weight: 500; }
+    td.def { white-space: nowrap; color: var(--text-secondary); font-size: 0.85rem; }
+    .tbl-cap { font-size: 0.86rem; color: var(--text-secondary); margin: -8px 0 24px; }
+    .note-box {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent-secondary);
+      border-radius: 8px; padding: 15px 18px; font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 22px;
+    }
+    .note-box strong { color: var(--text); }
+
+    /* ===== CHECK ID CHIPS ===== */
+    .cid {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 38px; padding: 4px 8px; border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+    .cid.gate { background: rgba(59,130,246,0.14); color: var(--accent-secondary); }
+    .cid.reg { background: var(--tint); color: var(--accent); }
+    .band {
+      display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .band .bar { width: 26px; height: 3px; border-radius: 2px; }
+    .band.gate .bar { background: var(--accent-secondary); }
+    .band.reg .bar { background: var(--accent); }
+
+    .exit { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
+    .exit.e0 { background: rgba(16,185,129,0.16); color: var(--positive); }
+    .exit.e1 { background: rgba(244,63,94,0.16); color: var(--negative); }
+    .exit.e2 { background: rgba(245,158,11,0.16); color: var(--warning); }
+    .exit.e3 { background: rgba(139,92,246,0.18); color: #a78bfa; }
+    html.theme-light .exit.e3 { background: rgba(124,58,237,0.14); color: #7c3aed; }
+
+    ol.steps { list-style: none; counter-reset: s; position: relative; padding-left: 4px; }
+    ol.steps > li { counter-increment: s; position: relative; padding: 0 0 26px 56px; }
+    ol.steps > li::before {
+      content: counter(s);
+      position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.9rem;
+      background: var(--surface); border: 1px solid var(--border); color: var(--accent); z-index: 1;
+    }
+    ol.steps > li::after { content: ''; position: absolute; left: 17px; top: 34px; bottom: 0; width: 1px; background: var(--rail); }
+    ol.steps > li:last-child { padding-bottom: 0; }
+    ol.steps > li:last-child::after { display: none; }
+    ol.steps h3 { font-size: 1rem; font-weight: 650; margin-bottom: 6px; padding-top: 5px; }
+    ol.steps p { font-size: 0.92rem; color: var(--text-secondary); }
+    ol.steps li.pivot::before { background: var(--accent); color: #241500; border-color: var(--accent); }
+    .step-tag {
+      display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--negative); border: 1px solid var(--border); background: var(--surface);
+      border-radius: 5px; padding: 3px 7px; margin-left: 8px; vertical-align: 2px;
+    }
+
+    ul.notes { list-style: none; display: grid; gap: 12px; }
+    ul.notes li {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warning);
+      border-radius: 8px; padding: 15px 18px; font-size: 0.93rem; color: var(--text-secondary);
+    }
+    ul.notes li strong { color: var(--text); font-weight: 650; }
+    ul.notes li.hard { border-left-color: var(--negative); }
+
+    footer.foot { border-top: 1px solid var(--border); padding-top: 22px; font-size: 0.82rem; color: var(--text-secondary); }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .animate.delay-1 { animation-delay: 0.08s; }
+    .animate.delay-2 { animation-delay: 0.16s; }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .viz-menu { display: none !important; }
+      .reveal { display: revert; opacity: 1 !important; transform: none !important; }
+      .card, ol.steps > li, ul.notes li, .table-wrap { break-inside: avoid; border: 1px solid #ddd; box-shadow: none; }
+      pre.usage { background: #f4f4f5 !important; color: #111 !important; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+    @page { margin: 1in; }
+
+    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 9999; }
+    .viz-menu-toggle {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(12px); transition: all 0.2s;
+    }
+    .viz-menu-toggle:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown {
+      position: absolute; top: 52px; right: 0; min-width: 200px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px;
+      opacity: 0; visibility: hidden; transform: translateY(-8px);
+      transition: all 0.2s; backdrop-filter: blur(16px);
+    }
+    .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+    .viz-menu-dropdown button {
+      width: 100%; padding: 10px 14px; border: none; border-radius: 8px;
+      background: transparent; color: var(--text); font-size: 14px;
+      font-family: inherit; cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 10px; transition: background 0.15s;
+    }
+    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+
+    .skip-to-content {
+      position: absolute; top: -40px; left: 6px; background: var(--accent);
+      color: white; padding: 8px 12px; text-decoration: none;
+      border-radius: 4px; opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 10000;
+    }
+    .skip-to-content:focus { top: 6px; opacity: 1; pointer-events: auto; }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px 64px; }
+      header.hero { padding: 60px 0 32px; }
+      ol.steps > li { padding-left: 46px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
+
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
+      </svg>
+    </button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown">
+      <button onclick="cycleTheme()" aria-label="Toggle theme"><span id="themeIcon">&#9789;</span><span id="themeLabel">Dark</span></button>
+      <button onclick="downloadImage()" aria-label="Download PNG"><span>&#8681;</span><span>Download PNG</span></button>
+      <button onclick="window.print()" aria-label="Print or save as PDF"><span>&#9113;</span><span>Print / PDF</span></button>
+    </div>
+  </div>
+
+  <main id="main-content" role="main">
+    <div class="wrap">
+
+      <header class="hero">
+        <span class="eyebrow animate">gh-verify plugin &middot; skill guide</span>
+        <h1 class="animate delay-1"><span class="ns">gh-verify:</span>exception-merge-checklist</h1>
+        <p class="lede animate delay-2">
+          한 줄 요약 &mdash; 예외 트랙 손 머지 직전에 10항목 읽기 전용 점검을 돌려
+          PASS/WARN/FAIL/N/A 표와 Score &middot; Verdict &middot; Recovery Actions 로 된 리포트 한 장을 낸다.
+        </p>
+      </header>
+
+      <section data-reveal aria-labelledby="h-when">
+        <div class="sec-head"><span class="sec-num">01</span><h2 id="h-when">언제 쓰는가</h2></div>
+        <div class="grid">
+          <article class="card ok">
+            <h3><span class="dot ok"></span>예외 트랙 PR 의 사전 점검</h3>
+            <p>CI 는 초록이지만 추가 검토와 함께 손으로 머지하는 PR 을 머지하기 <strong>직전</strong>.</p>
+          </article>
+          <article class="card ok">
+            <h3><span class="dot ok"></span>숨은 회귀 탐지</h3>
+            <p>평범한 CI 게이트가 놓치는 것들 &mdash; rebase 중간 커밋 파손 &middot; OpenAPI lock drift &middot; YAML 들여쓰기 파손 &middot; 과범위 prettier write &middot; 새 프레임워크 호출(<code>cookies()</code> / <code>headers()</code> / <code>new NextRequest(</code>)에 대한 테스트 mock 누락.</p>
+          </article>
+          <article class="card ok">
+            <h3><span class="dot ok"></span>커밋은 다른 스킬</h3>
+            <p><code>--auto-fix</code> 가 스테이징한 것을 커밋하는 것은 <code>gh:commit</code> 의 몫이다.</p>
+          </article>
+        </div>
+
+        <h3 style="font-size:1.05rem;margin:26px 0 12px;">형제 스킬과의 경계</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>상황</th><th>스킬</th></tr></thead>
+            <tbody>
+              <tr><td>예외 트랙 PR 의 머지 직전 점검</td><td class="k">gh-verify:exception-merge-checklist</td></tr>
+              <tr><td>평범한 PR 리뷰&middot;승인 흐름</td><td class="k">gh:pr-approve</td></tr>
+              <tr><td>이미 승인된 PR 머지</td><td class="k">gh:pr-merge</td></tr>
+              <tr><td>머지 전 컨플릭트 해소</td><td class="k">gh:pr-resolve-conflict</td></tr>
+              <tr><td>장애/핫픽스의 승인 우회(감사 동반)</td><td class="k">gh:pr-merge-emergency</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-not">
+        <div class="sec-head"><span class="sec-num">02</span><h2 id="h-not">언제 쓰지 않는가</h2></div>
+        <div class="grid">
+          <article class="card no">
+            <h3><span class="dot no"></span>머지&middot;승인 수단으로</h3>
+            <p><code>Never merge, approve, push</code>. 머지도 승인도 하지 않는다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>PR 메타데이터 편집 목적</h3>
+            <p>PR 본문 &middot; 라벨 &middot; assignee 를 고치지 않는다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>커밋 수단으로</h3>
+            <p><code>--auto-fix</code> 여도 <code>git commit</code> 을 돌리지 않는다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>일부 검사만 골라 돌리려고</h3>
+            <p>C7&ndash;C10 은 opt-out 불가다(회귀 갭이 다시 열린다). C6 만 <code>--skip-bisect</code> 로 뺄 수 있다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>빌드 명령 자동 추측 기대</h3>
+            <p><code>--build-cmd</code> 없이 <code>bun run build</code> 가 없으면 C6 을 <code>N/A</code> 로 표시할 뿐 <code>npm test</code> 같은 것으로 갈아타지 않는다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-call">
+        <div class="sec-head"><span class="sec-num">03</span><h2 id="h-call">호출</h2></div>
+        <pre class="usage"><code><span class="cmd">/gh-verify:exception-merge-checklist</span> <span class="opt">[&lt;PR#&gt;] [--skip-bisect] [--auto-fix] [--build-cmd &lt;cmd&gt;]</span></code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>이름</th><th>기본값</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td class="k">1</td><td class="k">&lt;PR#&gt; 또는 -h/--help/help</td><td class="def">auto-detect</td><td>GitHub PR 번호. 생략하면 <code>gh pr view</code> 로 현재 브랜치에 붙은 PR 을 해석한다</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size:1.05rem;margin:26px 0 12px;">Flags</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Flag</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td class="k">--skip-bisect</td><td>C6(커밋별 빌드)을 건너뛴다. squash-merge 대상일 때 쓴다(중간 커밋이 버려지므로). C6 은 사유 한 줄과 함께 <code>N/A</code> 로 보고된다</td></tr>
+              <tr><td class="k">--auto-fix</td><td>리포트 뒤에 C8(<code>.openapi-lock</code> 재생성)과 C9(변경 파일 한정 <code>prettier --write</code>)의 결정적 수정만 실행하고 <code>git add</code> 로 스테이징한다. <strong>절대 커밋하지 않는다.</strong> 나머지 FAIL 은 사람 판단이 필요하다</td></tr>
+              <tr><td class="k">--build-cmd &lt;cmd&gt;</td><td>C6 의 커밋별 검증 명령을 덮어쓴다. 기본은 <code>bun run build</code>. 공백이 있으면 인용한다</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-checks">
+        <div class="sec-head"><span class="sec-num">04</span><h2 id="h-checks">점검 항목</h2></div>
+
+        <div class="band gate"><span class="bar"></span>Gating &mdash; C1&ndash;C5 &middot; 메타데이터 &middot; CI 상태</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>이름</th><th>통과 조건</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cid gate">C1</span></td><td class="k">linked SSOT issue</td><td>PR 본문에 <code>Closes #N</code>(또는 <code>Refs #N</code>)이 있고 그 이슈가 존재</td></tr>
+              <tr><td><span class="cid gate">C2</span></td><td class="k">parent issue</td><td>SSOT 이슈 본문이 부모를 링크(<code>Parent: #M</code> 또는 sub-issue 관계)</td></tr>
+              <tr><td><span class="cid gate">C3</span></td><td class="k">mergeable</td><td><code>gh pr view --json mergeable</code> 이 <code>MERGEABLE</code></td></tr>
+              <tr><td><span class="cid gate">C4</span></td><td class="k">all CI green</td><td>모든 <code>statusCheckRollup.conclusion</code> 이 <code>SUCCESS</code></td></tr>
+              <tr><td><span class="cid gate">C5</span></td><td class="k">review APPROVED</td><td><code>reviewDecision == APPROVED</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="band reg"><span class="bar"></span>Regression &mdash; C6&ndash;C10 &middot; 2026-05-16 PR #727 회고</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>이름</th><th>통과 조건</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cid reg">C6</span></td><td class="k">bisect-safe</td><td><code>git rebase --exec '&lt;build-cmd&gt;' &lt;base&gt;..HEAD</code> 가 모든 커밋에서 성공</td></tr>
+              <tr><td><span class="cid reg">C7</span></td><td class="k">openapi.yaml parses</td><td><code>openapi.yaml</code> 로 Prism mock 이 30초 안에 기동</td></tr>
+              <tr><td><span class="cid reg">C8</span></td><td class="k">.openapi-lock matches</td><td><code>sha256sum -c .openapi-lock</code> 이 0 으로 종료</td></tr>
+              <tr><td><span class="cid reg">C9</span></td><td class="k">prettier scope clean</td><td>PR 이 바꾼 md/json/yml/yaml 만 대상으로 <code>prettier --check</code> 통과</td></tr>
+              <tr><td><span class="cid reg">C10</span></td><td class="k">test mocks complete</td><td>diff 의 새 <code>cookies()</code> / <code>headers()</code> / <code>new NextRequest(</code> 호출마다 같은 PR 안에 대응 mock 존재</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">C1&ndash;C5 는 게이팅 검사(메타데이터&middot;CI 상태), C6&ndash;C10 은 2026-05-16 PR #727 회고에서 나온 회귀 탐지기다.</p>
+
+        <h3 style="font-size:1.05rem;margin:26px 0 12px;">Exit codes</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Code</th><th>의미</th></tr></thead>
+            <tbody>
+              <tr><td><span class="exit e0">0</span></td><td>전부 PASS 이거나 WARN 만 있음 &mdash; 머지해도 안전</td></tr>
+              <tr><td><span class="exit e1">1</span></td><td>FAIL 1건 이상 &mdash; 머지 안전하지 않음, Recovery Actions 참조</td></tr>
+              <tr><td><span class="exit e2">2</span></td><td>인자 오류(모르는 플래그, remote 없음, 잘못된 PR 번호)</td></tr>
+              <tr><td><span class="exit e3">3</span></td><td>현재 브랜치에 PR 이 없고 PR# 인자도 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-steps">
+        <div class="sec-head"><span class="sec-num">05</span><h2 id="h-steps">동작 단계</h2></div>
+        <ol class="steps">
+          <li>
+            <h3>Step 1 &mdash; 인자 파싱 + PR 해석</h3>
+            <p><code>START_TS</code> 를 즉시 기록하고, PR# 이 없으면 현재 브랜치에서 자동 감지한다(없으면 exit 3). <code>git remote get-url origin</code> 으로 <code>TARGET_REPO</code> 를 해석한다(remote 없으면 exit 2).</p>
+          </li>
+          <li class="pivot">
+            <h3>Step 2 &mdash; 10개 검사 실행<span class="step-tag">fail-fast 없음</span></h3>
+            <p>C1&ndash;C5 와 C7&ndash;C10 을 병렬로, C6 만 커밋을 순회하므로 직렬로 돌린다. <strong>fail-fast 없음</strong> &mdash; 한 번에 전체 그림이 나오도록 모든 검사를 끝까지 돌린다.</p>
+          </li>
+          <li>
+            <h3>Step 3 &mdash; 리포트 렌더</h3>
+            <p>PR 헤더, 두 개의 표(Gating C1&ndash;C5 / Regression C6&ndash;C10), Score 줄, Verdict 줄, 그리고 WARN&middot;FAIL 마다 한 불릿인 Recovery Actions 로 구성한다. 앞에 군더더기 산문을 붙이지 않는다.</p>
+          </li>
+          <li>
+            <h3>Step 4 &mdash; 선택적 auto-fix (<code>--auto-fix</code> 일 때만)</h3>
+            <p>C8 또는 C9 에 결정적 FAIL 이 있을 때만 수정하고 손댄 파일만 <code>git add</code> 한 뒤 멈춘다. 스테이징된 파일 목록과 <code>/gh-commit</code> 힌트를 출력한다.</p>
+          </li>
+          <li>
+            <h3>Step 5 &mdash; AI Metrics Footer</h3>
+            <p>푸터를 PR 본문 수정이 아니라 <strong>코멘트</strong>로 남긴다(다른 스킬의 단계별 메트릭 블록과 충돌하지 않도록). <code>GH_DISABLE_AI_METRICS=1</code> 이면 이 단계를 통째로 건너뛴다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section data-reveal aria-labelledby="h-caution">
+        <div class="sec-head"><span class="sec-num">06</span><h2 id="h-caution">주의사항</h2></div>
+        <ul class="notes">
+          <li class="hard"><strong>기본은 읽기 전용.</strong> 머지 &middot; 승인 &middot; push 를 하지 않고 PR 본문/라벨도 고치지 않는다. 변경은 <code>--auto-fix</code> 뿐이고 그마저 <code>git add</code> 까지다 &mdash; <strong>절대 <code>git commit</code> 하지 않는다.</strong> 커밋 메시지는 사람이 쓰도록 <code>/gh:commit</code> 을 따로 부른다.</li>
+          <li class="hard"><strong>fail-fast 하지 않는다.</strong> 10개 검사를 전부 돌려 한 번에 집계하는 것이 이 스킬의 요점이다.</li>
+          <li><strong>C6 만 <code>--skip-bisect</code> 로 뺄 수 있다.</strong> C7&ndash;C10 은 opt-out 불가 &mdash; 빼면 회귀 갭이 다시 열린다.</li>
+          <li><strong>빌드 명령을 조용히 바꾸지 않는다.</strong> <code>--build-cmd</code> 가 없고 <code>bun run build</code> 도 없으면 C6 을 사유와 함께 <code>N/A</code> 로 표시한다.</li>
+          <li>메트릭 푸터 외의 코멘트를 남기지 않는다.</li>
+        </ul>
+      </section>
+
+      <footer class="foot">
+        Source: <code>docs/skill-guides/exception-merge-checklist.md</code> &middot; gh-verify-skills
+      </footer>
+
+    </div>
+  </main>
+
+  <script>
+    function toggleMenu() {
+      var dropdown = document.getElementById('vizMenuDropdown');
+      if (dropdown) dropdown.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.viz-menu')) {
+        var dropdown = document.getElementById('vizMenuDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var dropdown = document.getElementById('vizMenuDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+      }
+    });
+
+    var savedTheme = localStorage.getItem('viz-theme');
+    var currentTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      document.documentElement.className = 'theme-' + t;
+      document.getElementById('themeIcon').innerHTML = t === 'dark' ? '&#9789;' : '&#9788;';
+      document.getElementById('themeLabel').textContent = t === 'dark' ? 'Dark' : 'Light';
+      localStorage.setItem('viz-theme', t);
+      currentTheme = t;
+    }
+    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+    applyTheme(currentTheme);
+
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('reveal'); });
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+    async function downloadImage() {
+      var menu = document.querySelector('.viz-menu');
+      menu.style.display = 'none';
+      try {
+        var url = await htmlToImage.toPng(document.body, { quality: 1, pixelRatio: 2, backgroundColor: getComputedStyle(document.body).backgroundColor, filter: function(n) { return !n.classList || !n.classList.contains('viz-menu'); } });
+        var a = document.createElement('a'); a.href = url;
+        a.download = document.title.replace(/[\s:]+/g, '-').toLowerCase() + '.png'; a.click();
+      } catch (e) { console.error('Download failed:', e); }
+      menu.style.display = '';
+    }
+  </script>
+</body>
+</html>

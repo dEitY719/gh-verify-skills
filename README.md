@@ -19,6 +19,17 @@ out.
 | `exception-merge-checklist` | `/gh-verify:exception-merge-checklist [<PR#>] [--skip-bisect] [--auto-fix]` | Ten read-only checks right before an exception-track hand-merge — broken rebase intermediates, lock drift, YAML damage, over-broad formatter writes, missing test mocks. `--auto-fix` stages, never commits. |
 | `post-merge-verify` | `/gh-verify:post-merge-verify <PR#> [remote]` | Dispatch only: closes the tab that implemented the PR, rebases main, and opens a fresh session running `live` or `merged` per the watched-repos registry. Verifies nothing itself. |
 
+### Visual guides and worked examples (GitHub Pages)
+
+- `review-all` — [visual guide](https://deity719.github.io/gh-verify-skills/skill-guides/review-all.html) · [usage example](https://deity719.github.io/gh-verify-skills/skill-output/review-all-usage.html) (PR number to gate label and replies)
+- `live` — [visual guide](https://deity719.github.io/gh-verify-skills/skill-guides/live.html) · [usage example](https://deity719.github.io/gh-verify-skills/skill-output/live-usage.html) (running app to verification report)
+- `merged` — [visual guide](https://deity719.github.io/gh-verify-skills/skill-guides/merged.html) · [usage example](https://deity719.github.io/gh-verify-skills/skill-output/merged-usage.html) (merge commit to fresh-clone report)
+- `exception-merge-checklist` — [visual guide](https://deity719.github.io/gh-verify-skills/skill-guides/exception-merge-checklist.html) · [usage example](https://deity719.github.io/gh-verify-skills/skill-output/exception-merge-checklist-usage.html) (PR number to ten-point audit)
+- `post-merge-verify` — [visual guide](https://deity719.github.io/gh-verify-skills/skill-guides/post-merge-verify.html) · [usage example](https://deity719.github.io/gh-verify-skills/skill-output/post-merge-verify-usage.html) (merged PR to verification session)
+
+Each page is generated from a Markdown source under
+[`docs/skill-guides/`](docs/skill-guides) and [`docs/skill-output/`](docs/skill-output).
+
 ### Picking between them
 
 The discriminator is **where in the PR's life you are standing**:
