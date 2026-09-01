@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>live 사용 결과</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { interpolate-size: allow-keywords; }
+
+    html.theme-dark {
+      --bg: #0A0A0A; --surface: #141414; --surface-hover: #1C1C1C;
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.16);
+      --text: #EDEDED; --text-secondary: #8A8A8A;
+      --accent: #3b82f6; --accent-secondary: #8b5cf6;
+      --positive: #10b981; --negative: #f43f5e; --warning: #f59e0b;
+      --code-bg: #0F0F0F; --rail: rgba(255,255,255,0.10);
+      --halt-bg: rgba(245,158,11,0.10); --halt-br: rgba(245,158,11,0.34);
+      --tint-neg: rgba(244,63,94,0.10); --tint-warn: rgba(245,158,11,0.10);
+    }
+    html.theme-light {
+      --bg: #FAFAF9; --surface: #FFFFFF; --surface-hover: #F5F5F4;
+      --border: rgba(0,0,0,0.09); --border-strong: rgba(0,0,0,0.18);
+      --text: #0f172a; --text-secondary: #5b6674;
+      --accent: #2563eb; --accent-secondary: #7c3aed;
+      --positive: #059669; --negative: #e11d48; --warning: #b45309;
+      --code-bg: #F4F4F3; --rail: rgba(0,0,0,0.12);
+      --halt-bg: rgba(180,83,9,0.08); --halt-br: rgba(180,83,9,0.30);
+      --tint-neg: rgba(225,29,72,0.07); --tint-warn: rgba(180,83,9,0.08);
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.7; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em;
+      transition: background 0.3s, color 0.3s; scrollbar-gutter: stable;
+      word-break: keep-all; overflow-wrap: anywhere;
+    }
+    h1,h2,h3,h4 { color: var(--text); letter-spacing: -0.03em; line-height: 1.15; text-wrap: balance; }
+    h1 { font-weight: 800; } h2 { font-weight: 700; } h3 { font-weight: 600; }
+    body, p, li, td, th, span, label { font-weight: 400; font-size: 1rem; }
+    .text-secondary { color: var(--text-secondary); }
+    code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    a { color: var(--accent); }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px 96px; }
+
+    header.hero { padding: 88px 0 44px; border-bottom: 1px solid var(--border); margin-bottom: 56px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 20px; }
+    .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    h1.title { font-size: clamp(2.6rem, 7vw, 4rem); margin-bottom: 24px; }
+    h1.title .cmd { color: var(--accent); }
+    .summary { font-size: clamp(1.0625rem, 2.4vw, 1.25rem); line-height: 1.7; color: var(--text); border-left: 3px solid var(--accent); padding: 4px 0 4px 20px; max-width: 74ch; }
+    .summary b { font-weight: 700; }
+
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 12px; margin: 40px 0 0; }
+    .pipe-node { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 16px; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 92px; }
+    .pipe-node .k { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+    .pipe-node .v { font-size: 0.9375rem; font-weight: 600; line-height: 1.45; }
+    .pipe-node.mid { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .pipe-node.mid .v { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; }
+    .verdicts { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+    .vd { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; padding: 2px 7px; border-radius: 5px; border: 1px solid currentColor; }
+    .vd.ok { color: var(--positive); } .vd.warn { color: var(--warning); } .vd.fail { color: var(--negative); }
+    .pipe-arrow { display: flex; align-items: center; color: var(--text-secondary); }
+    @media (max-width: 760px) { .pipeline { grid-template-columns: 1fr; } .pipe-arrow { justify-content: center; transform: rotate(90deg); height: 26px; } }
+
+    section { margin-bottom: 64px; }
+    .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; }
+    .sec-num { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; font-weight: 600; color: var(--accent); border: 1px solid var(--border-strong); border-radius: 6px; padding: 3px 9px; flex-shrink: 0; }
+    .sec-head h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); }
+
+    pre.code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; overflow-x: auto; font-size: 0.9375rem; line-height: 1.8; color: var(--text); white-space: pre; }
+    pre.code .flag { color: var(--text-secondary); }
+    pre.code .name { color: var(--accent); font-weight: 600; }
+    code.inl { background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 0.875em; color: var(--text); white-space: nowrap; }
+
+    .inputs { display: grid; gap: 14px; }
+    .in-row { display: grid; grid-template-columns: 168px 1fr; gap: 18px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; transition: box-shadow 0.2s ease; }
+    .in-row:hover { box-shadow: 0 0 0 1px var(--border-strong), 0 8px 20px rgba(0,0,0,0.10); }
+    .in-row .lbl { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); padding-top: 3px; }
+    .in-row.req { border-color: var(--halt-br); }
+    @media (max-width: 620px) { .in-row { grid-template-columns: 1fr; gap: 8px; } }
+
+    .halt { border: 1px solid var(--halt-br); background: var(--halt-bg); border-radius: 12px; padding: 26px 28px; margin-bottom: 26px; }
+    .halt-tag { display: inline-flex; align-items: center; gap: 9px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--warning); border: 1px solid var(--halt-br); border-radius: 6px; padding: 4px 10px; margin-bottom: 16px; background: var(--surface); }
+    .halt h3 { font-size: clamp(1.25rem, 3vw, 1.5rem); margin-bottom: 12px; }
+    .halt p { color: var(--text); max-width: 78ch; }
+
+    .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    caption { text-align: left; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); padding: 16px 20px 0; }
+    th, td { text-align: left; padding: 15px 20px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    thead th { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); background: var(--surface-hover); }
+    tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+    tbody th { font-weight: 600; }
+    tbody tr:hover td, tbody tr:hover th { background: var(--surface-hover); }
+    .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; padding: 2px 9px; border-radius: 5px; }
+    .pill.no { color: var(--negative); background: var(--tint-neg); border: 1px solid var(--negative); }
+
+    .notes { display: grid; gap: 16px; margin-top: 26px; }
+    .note { border-left: 3px solid var(--rail); padding: 2px 0 2px 20px; max-width: 80ch; transition: border-color 0.2s ease; }
+    .note:hover { border-left-color: var(--accent); }
+    .note strong { font-weight: 700; }
+    .note.contract { border-left-color: var(--negative); }
+
+    .sister { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin-top: 26px; transition: box-shadow 0.2s ease; flex-wrap: wrap; }
+    .sister:hover { box-shadow: 0 0 0 1px var(--border-strong), 0 8px 20px rgba(0,0,0,0.10); }
+    .sister svg { flex-shrink: 0; color: var(--accent); }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .animate.delay-1 { animation-delay: 0.08s; } .animate.delay-2 { animation-delay: 0.16s; } .animate.delay-3 { animation-delay: 0.24s; }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reveal { opacity: 1; transform: none; } }
+
+    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 9999; }
+    .viz-menu-toggle { width: 44px; height: 44px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px); transition: background 0.2s; }
+    .viz-menu-toggle:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown { position: absolute; top: 52px; right: 0; min-width: 210px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.22); opacity: 0; visibility: hidden; transform: translateY(-8px); transition: opacity 0.2s, visibility 0.2s, transform 0.2s; backdrop-filter: blur(16px); }
+    .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+    .viz-menu-dropdown button { width: 100%; padding: 10px 12px; border: none; border-radius: 8px; background: transparent; color: var(--text); font-size: 0.875rem; font-family: inherit; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 11px; transition: background 0.15s; }
+    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown button svg { flex-shrink: 0; opacity: 0.8; }
+
+    .skip-to-content { position: absolute; top: -60px; left: 6px; background: var(--accent); color: #fff; padding: 10px 16px; text-decoration: none; border-radius: 6px; z-index: 10000; transition: top 0.2s; }
+    .skip-to-content:focus { top: 6px; }
+
+    footer.foot { border-top: 1px solid var(--border); padding-top: 24px; color: var(--text-secondary); font-size: 0.875rem; }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      .viz-menu, .skip-to-content { display: none !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .in-row, .halt, .tbl-wrap, .sister { break-inside: avoid; border: 1px solid #ddd; box-shadow: none; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      header.hero { padding-top: 0; }
+    }
+    @page { margin: 1in; }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-to-content">본문으로 건너뛰기</a>
+
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="메뉴 열기" aria-haspopup="true" aria-expanded="false" id="vizMenuToggle">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg>
+    </button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown" role="menu">
+      <button onclick="cycleTheme()" role="menuitem" aria-label="테마 전환">
+        <svg id="themeIcon" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 11.5A7 7 0 0 1 8.5 3.5a7 7 0 1 0 8 8Z"/></svg>
+        <span id="themeLabel">Dark</span>
+      </button>
+      <button onclick="downloadImage()" role="menuitem" aria-label="PNG 내려받기">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M3.5 14v2a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-2"/></svg>
+        <span>Download PNG</span>
+      </button>
+      <button onclick="window.print()" role="menuitem" aria-label="인쇄 또는 PDF 저장">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8V3h8v5M6 15H4.5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H14M6 12h8v5H6z"/></svg>
+        <span>Print / PDF</span>
+      </button>
+    </div>
+  </div>
+
+  <main id="main-content" role="main">
+    <div class="wrap">
+
+      <header class="hero">
+        <div class="eyebrow animate"><span class="dot"></span><span>gh-verify · skill output</span></div>
+        <h1 class="title animate delay-1"><span class="cmd">live</span> 사용 결과</h1>
+        <p class="summary animate delay-2">
+          <b>한 줄 요약</b> — 실행 중인 앱과 PR 번호를 받아 서빙 체크아웃이 target commit 임을 증명한 검증 리포트를 생성합니다.
+        </p>
+
+        <div class="pipeline animate delay-3" role="img" aria-label="파이프라인: 실행 중인 앱과 PR 번호를 gh-verify:live 가 처리해 OK / WARN / FAIL 리포트를 산출한다">
+          <div class="pipe-node"><span class="k">입력</span><span class="v">실행 중인 앱<br>+ PR 번호</span></div>
+          <div class="pipe-arrow" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8h22m-5-5 5 5-5 5"/></svg></div>
+          <div class="pipe-node mid"><span class="k">스킬</span><span class="v">/gh-verify:live</span></div>
+          <div class="pipe-arrow" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8h22m-5-5 5 5-5 5"/></svg></div>
+          <div class="pipe-node"><span class="k">산출</span><span class="verdicts"><span class="vd ok">[OK]</span><span class="vd warn">[WARN]</span><span class="vd fail">[FAIL]</span></span><span class="v">리포트</span></div>
+        </div>
+      </header>
+
+      <section data-reveal aria-labelledby="s1">
+        <div class="sec-head"><span class="sec-num">1</span><h2 id="s1">실행한 명령</h2></div>
+        <pre class="code"><span class="name">/gh-verify:live</span> &lt;PR#&gt; <span class="flag">[--url &lt;base&gt;] [--no-issue] [--no-comment]</span></pre>
+      </section>
+
+      <section data-reveal aria-labelledby="s2">
+        <div class="sec-head"><span class="sec-num">2</span><h2 id="s2">입력</h2></div>
+        <div class="inputs">
+          <div class="in-row">
+            <span class="lbl">대상 PR</span>
+            <span><code class="inl">dEitY719/dotfiles#1670</code></span>
+          </div>
+          <div class="in-row req">
+            <span class="lbl">필수 전제</span>
+            <span><strong>target commit 을 서빙 중인 개발 앱</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="s3">
+        <div class="sec-head"><span class="sec-num">3</span><h2 id="s3">결과</h2></div>
+
+        <div class="halt">
+          <div class="halt-tag">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 6v5m0 3h.01"/></svg>
+            전제 조건 미충족
+          </div>
+          <h3>실행하지 못했다 — 전제 조건 미충족.</h3>
+          <p>
+            이 스킬은 "이미 떠 있는 앱이 정말 그 커밋을 서빙하는가"를 먼저 단언하고,
+            그 단언이 실패하면 <strong>측정하지 않고 정지</strong>하는 계약이다. 아래는 그 전제가 없다는 실측이다.
+          </p>
+        </div>
+
+        <div class="tbl-wrap">
+          <table>
+            <caption>후보 repo 실측</caption>
+            <thead><tr><th scope="col">후보 repo</th><th scope="col">서빙 가능 여부</th><th scope="col">근거 (실측)</th></tr></thead>
+            <tbody>
+              <tr>
+                <th scope="row"><code class="inl">dEitY719/dotfiles</code></th>
+                <td><span class="pill no">불가</span></td>
+                <td>셸 설정 repo — 저장소 루트에 <code class="inl">package.json</code> 자체가 없다</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inl">dEitY719/gh-verify-skills</code></th>
+                <td><span class="pill no">불가</span></td>
+                <td><code class="inl">package.json</code> 에 <code class="inl">scripts</code> 키가 아예 없다 (스킬 마켓플레이스)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notes">
+          <p class="note">
+            두 repo 모두 띄울 앱이 없으므로 <code class="inl">live</code> 의 서빙 체크아웃 신원 증명은 성립하지 않는다.
+            이것이 이 repo 가 자매 스킬 <code class="inl">merged</code> 를 함께 묶어 두는 이유다 — 같은 머지 후 슬롯에서
+            앱이 없는 repo 는 신선한 클론 신원으로 증명한다.
+          </p>
+          <p class="note contract">
+            없는 앱에 대한 검증 결과를 지어내는 것은 이 스킬이 명시적으로 금지하는 실패 모드
+            (<strong>"측정하지 않은 통과를 보고하지 않는다"</strong>) 그 자체이므로, 수치를 채우지 않고 비워 둔다.
+          </p>
+        </div>
+
+        <div class="sister">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.54 3.54 0 0 0-5-5L9.75 5.25"/><path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.54 3.54 0 0 0 5 5l1.24-1.24"/></svg>
+          <span>실제 실행 기록은 <a href="merged-usage.md">merged-usage.md</a> 를 참고하라.</span>
+        </div>
+      </section>
+
+      <footer class="foot" data-reveal>
+        <p>출처 문서 <code class="inl">docs/skill-output/live-usage.md</code> · 이 페이지는 원문의 실측 내용을 그대로 옮긴 것이며 수치·판정을 추가하거나 변경하지 않았다.</p>
+      </footer>
+
+    </div>
+  </main>
+
+  <script>
+    var menuToggleBtn = document.getElementById('vizMenuToggle');
+    function toggleMenu() {
+      var d = document.getElementById('vizMenuDropdown');
+      if (!d) return;
+      d.classList.toggle('open');
+      if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', d.classList.contains('open') ? 'true' : 'false');
+    }
+    function closeMenu() {
+      var d = document.getElementById('vizMenuDropdown');
+      if (d) d.classList.remove('open');
+      if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'false');
+    }
+    document.addEventListener('click', function(e) { if (!e.target.closest('.viz-menu')) closeMenu(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMenu(); });
+
+    var savedTheme = null;
+    try { savedTheme = localStorage.getItem('viz-theme'); } catch (e) {}
+    var currentTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    var SUN = '<circle cx="10" cy="10" r="3.4"/><path d="M10 1.6v2M10 16.4v2M18.4 10h-2M3.6 10h-2M15.94 4.06l-1.4 1.4M5.46 14.54l-1.4 1.4M15.94 15.94l-1.4-1.4M5.46 5.46l-1.4-1.4"/>';
+    var MOON = '<path d="M16.5 11.5A7 7 0 0 1 8.5 3.5a7 7 0 1 0 8 8Z"/>';
+    function applyTheme(t) {
+      document.documentElement.className = 'theme-' + t;
+      var icon = document.getElementById('themeIcon');
+      var label = document.getElementById('themeLabel');
+      if (icon) icon.innerHTML = (t === 'dark') ? MOON : SUN;
+      if (label) label.textContent = (t === 'dark') ? 'Dark' : 'Light';
+      try { localStorage.setItem('viz-theme', t); } catch (e) {}
+      currentTheme = t;
+    }
+    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+    applyTheme(currentTheme);
+
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('reveal'); });
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+    async function downloadImage() {
+      var menu = document.querySelector('.viz-menu');
+      closeMenu();
+      menu.style.display = 'none';
+      try {
+        var bg = getComputedStyle(document.body).backgroundColor;
+        var url = await htmlToImage.toPng(document.body, { quality: 1, pixelRatio: 2, backgroundColor: bg });
+        var a = document.createElement('a');
+        a.href = url; a.download = 'live-usage.png'; a.click();
+      } catch (e) { console.error('Download failed:', e); }
+      menu.style.display = '';
+    }
+  </script>
+</body>
+</html>

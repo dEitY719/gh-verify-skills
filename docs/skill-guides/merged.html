@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>gh-verify:merged</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { interpolate-size: allow-keywords; }
+
+    /* ===== THEMES (class-based ONLY) ===== */
+    html.theme-dark {
+      --bg: #0A0A0A; --surface: #141414; --surface-hover: #1C1C1C;
+      --border: rgba(255,255,255,0.08);
+      --text: #EDEDED; --text-secondary: #8B8B8B;
+      --accent: #8b5cf6; --accent-secondary: #10b981;
+      --positive: #10b981; --negative: #f43f5e; --warning: #f59e0b;
+      --code-bg: #101010; --code-text: #d6deeb; --rail: rgba(255,255,255,0.10);
+      --tint: rgba(139,92,246,0.12);
+    }
+    html.theme-light {
+      --bg: #FAFAF9; --surface: #FFFFFF; --surface-hover: #F5F5F4;
+      --border: rgba(0,0,0,0.09);
+      --text: #0f172a; --text-secondary: #64748b;
+      --accent: #7c3aed; --accent-secondary: #059669;
+      --positive: #059669; --negative: #e11d48; --warning: #d97706;
+      --code-bg: #0f172a; --code-text: #e2e8f0; --rail: rgba(0,0,0,0.10);
+      --tint: rgba(124,58,237,0.08);
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.65; -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+      transition: background 0.3s, color 0.3s;
+      scrollbar-gutter: stable;
+      word-break: keep-all; overflow-wrap: anywhere;
+    }
+    h1,h2,h3,h4,h5,h6 { color: var(--text); letter-spacing: -0.03em; line-height: 1.15; text-wrap: balance; }
+    h1 { font-weight: 800; }
+    h2 { font-weight: 700; }
+    p,li,td,th,span,label { color: var(--text); font-weight: 400; }
+    .text-secondary { color: var(--text-secondary); }
+    code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+
+    header.hero { padding: 76px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--accent); background: var(--tint);
+      border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; margin-bottom: 22px;
+    }
+    header.hero h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); }
+    header.hero h1 .ns { color: var(--text-secondary); font-weight: 500; }
+    .lede {
+      margin-top: 22px; font-size: clamp(1rem, 2.2vw, 1.18rem); line-height: 1.7;
+      color: var(--text-secondary); max-width: 74ch;
+      border-left: 3px solid var(--accent); padding-left: 18px;
+    }
+
+    section { margin-bottom: 60px; }
+    .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
+    .sec-num {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--accent); border: 1px solid var(--border); background: var(--surface);
+      border-radius: 6px; padding: 4px 9px;
+    }
+    .sec-head h2 { font-size: clamp(1.5rem, 3.4vw, 2.05rem); }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 22px;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover { box-shadow: 0 0 0 1px var(--border), 0 10px 22px rgba(0,0,0,0.10); transform: translateY(-2px); }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card h3 { font-size: 1.02rem; font-weight: 650; margin-bottom: 8px; display: flex; gap: 9px; align-items: flex-start; }
+    .card p { font-size: 0.92rem; color: var(--text-secondary); }
+    .card p code, li code, td code, .lede code, .note-box code, .failclass code { color: var(--text); background: var(--tint); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 0.86em; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin-top: 8px; }
+    .dot.ok { background: var(--positive); }
+    .dot.no { background: var(--negative); }
+    .card.no { border-left: 3px solid var(--negative); }
+    .card.ok { border-left: 3px solid var(--positive); }
+
+    /* ===== FAILURE CLASS BANNER ===== */
+    .failclass {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--negative);
+      border-radius: 10px; padding: 24px; margin-bottom: 18px;
+    }
+    .failclass .label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--negative); display: block; margin-bottom: 10px;
+    }
+    .failclass p { font-size: 1rem; color: var(--text); }
+
+    /* ===== SPLIT (merged vs live) ===== */
+    .split { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 18px; }
+    .split .card { padding: 24px; }
+    .split .tag {
+      display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--border);
+    }
+    .split .a .tag { background: var(--tint); color: var(--accent); }
+    .split .b .tag { background: rgba(16,185,129,0.12); color: var(--accent-secondary); }
+    .split h3 { font-size: 1.1rem; margin-bottom: 8px; display: block; }
+    .split .a { border-top: 3px solid var(--accent); }
+    .split .b { border-top: 3px solid var(--accent-secondary); }
+
+    pre.usage {
+      background: var(--code-bg); color: var(--code-text);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px 22px; overflow-x: auto; font-size: 0.92rem; line-height: 1.75; margin-bottom: 18px;
+    }
+    pre.usage .cmd { color: #c4b5fd; font-weight: 600; }
+    pre.usage .opt { color: #a5b4fc; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-bottom: 22px; }
+    table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 0.9rem; }
+    thead th {
+      text-align: left; font-weight: 600; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-secondary); padding: 13px 18px; border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    tbody td { padding: 14px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--surface-hover); }
+    td.k { white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; color: var(--accent); font-weight: 500; }
+    td.def { white-space: nowrap; color: var(--text-secondary); font-size: 0.85rem; }
+    .tbl-cap { font-size: 0.86rem; color: var(--text-secondary); margin: -8px 0 24px; }
+    .note-box {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      border-radius: 8px; padding: 15px 18px; font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 22px;
+    }
+    .note-box strong { color: var(--text); }
+
+    .exit { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; }
+    .exit.e0 { background: rgba(16,185,129,0.16); color: var(--positive); }
+    .exit.e1 { background: rgba(244,63,94,0.16); color: var(--negative); }
+    .exit.e2 { background: rgba(245,158,11,0.16); color: var(--warning); }
+
+    ol.steps { list-style: none; counter-reset: s; position: relative; padding-left: 4px; }
+    ol.steps > li { counter-increment: s; position: relative; padding: 0 0 26px 56px; }
+    ol.steps > li::before {
+      content: counter(s);
+      position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.9rem;
+      background: var(--surface); border: 1px solid var(--border); color: var(--accent); z-index: 1;
+    }
+    ol.steps > li::after { content: ''; position: absolute; left: 17px; top: 34px; bottom: 0; width: 1px; background: var(--rail); }
+    ol.steps > li:last-child { padding-bottom: 0; }
+    ol.steps > li:last-child::after { display: none; }
+    ol.steps h3 { font-size: 1rem; font-weight: 650; margin-bottom: 6px; padding-top: 5px; }
+    ol.steps p { font-size: 0.92rem; color: var(--text-secondary); }
+    ol.steps li.pivot::before { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .step-tag {
+      display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--negative); border: 1px solid var(--border); background: var(--surface);
+      border-radius: 5px; padding: 3px 7px; margin-left: 8px; vertical-align: 2px;
+    }
+
+    ul.notes { list-style: none; display: grid; gap: 12px; }
+    ul.notes li {
+      background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warning);
+      border-radius: 8px; padding: 15px 18px; font-size: 0.93rem; color: var(--text-secondary);
+    }
+    ul.notes li strong { color: var(--text); font-weight: 650; }
+    ul.notes li.hard { border-left-color: var(--negative); }
+
+    footer.foot { border-top: 1px solid var(--border); padding-top: 22px; font-size: 0.82rem; color: var(--text-secondary); }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .animate.delay-1 { animation-delay: 0.08s; }
+    .animate.delay-2 { animation-delay: 0.16s; }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .viz-menu { display: none !important; }
+      .reveal { display: revert; opacity: 1 !important; transform: none !important; }
+      .card, ol.steps > li, ul.notes li, .table-wrap, .failclass { break-inside: avoid; border: 1px solid #ddd; box-shadow: none; }
+      pre.usage { background: #f4f4f5 !important; color: #111 !important; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+    @page { margin: 1in; }
+
+    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 9999; }
+    .viz-menu-toggle {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(12px); transition: all 0.2s;
+    }
+    .viz-menu-toggle:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown {
+      position: absolute; top: 52px; right: 0; min-width: 200px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px;
+      opacity: 0; visibility: hidden; transform: translateY(-8px);
+      transition: all 0.2s; backdrop-filter: blur(16px);
+    }
+    .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+    .viz-menu-dropdown button {
+      width: 100%; padding: 10px 14px; border: none; border-radius: 8px;
+      background: transparent; color: var(--text); font-size: 14px;
+      font-family: inherit; cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 10px; transition: background 0.15s;
+    }
+    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+
+    .skip-to-content {
+      position: absolute; top: -40px; left: 6px; background: var(--accent);
+      color: white; padding: 8px 12px; text-decoration: none;
+      border-radius: 4px; opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 10000;
+    }
+    .skip-to-content:focus { top: 6px; opacity: 1; pointer-events: auto; }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px 64px; }
+      header.hero { padding: 60px 0 32px; }
+      ol.steps > li { padding-left: 46px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
+
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/>
+      </svg>
+    </button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown">
+      <button onclick="cycleTheme()" aria-label="Toggle theme"><span id="themeIcon">&#9789;</span><span id="themeLabel">Dark</span></button>
+      <button onclick="downloadImage()" aria-label="Download PNG"><span>&#8681;</span><span>Download PNG</span></button>
+      <button onclick="window.print()" aria-label="Print or save as PDF"><span>&#9113;</span><span>Print / PDF</span></button>
+    </div>
+  </div>
+
+  <main id="main-content" role="main">
+    <div class="wrap">
+
+      <header class="hero">
+        <span class="eyebrow animate">gh-verify plugin &middot; skill guide</span>
+        <h1 class="animate delay-1"><span class="ns">gh-verify:</span>merged</h1>
+        <p class="lede animate delay-2">
+          한 줄 요약 &mdash; 머지 커밋의 신선한 클론 안에서만 PR 의 주장을 다시 돌려,
+          깨끗한 체크아웃이 주장대로 동작함을 증명하고 살아남은 발견만 신규 이슈로 남긴다.
+        </p>
+      </header>
+
+      <section data-reveal aria-labelledby="h-when">
+        <div class="sec-head"><span class="sec-num">01</span><h2 id="h-when">언제 쓰는가</h2></div>
+
+        <div class="failclass">
+          <span class="label">막으려는 실패 클래스는 하나다</span>
+          <p><strong>작업 worktree 에서는 초록인데 다른 모든 클론과 CI 에서는 그 검사가 존재하지도 않는 상태.</strong></p>
+        </div>
+
+        <div class="split">
+          <article class="card a">
+            <span class="tag">gh-verify:merged</span>
+            <h3>신선한 클론 신원</h3>
+            <p>누가 새로 clone 해도 그렇게 동작하는가.</p>
+          </article>
+          <article class="card b">
+            <span class="tag">gh-verify:live</span>
+            <h3>서빙 체크아웃 신원</h3>
+            <p>지금 서빙 중인 프로세스가 대상 커밋을 담고 있는가.</p>
+          </article>
+        </div>
+        <p class="tbl-cap">자매 스킬과의 경계는 <strong>무엇을 증명하느냐</strong>로 갈린다.</p>
+
+        <div class="grid">
+          <article class="card ok">
+            <h3><span class="dot ok"></span>띄울 앱이 없는 레포</h3>
+            <p>shell 스크립트 &middot; CLI &middot; 라이브러리에서 머지된 PR 을 재검증할 때. 머지 후 점검이 더러운 worktree 에서 돌아 untracked-artifact 버그를 숨기는 곳이 대상이다.</p>
+          </article>
+          <article class="card ok">
+            <h3><span class="dot ok"></span>배타적이지 않다</h3>
+            <p>이미 떠 있는 앱에 붙어 화면을 확인해야 한다면 <code>gh-verify:live</code> 다. 프론트엔드 PR 도 merged 로 유닛/빌드 재현성을, live 로 화면을 볼 수 있다.</p>
+          </article>
+          <article class="card ok">
+            <h3><span class="dot ok"></span>머지 전 게이트는 따로</h3>
+            <p>머지 <strong>전</strong> 정적 리뷰 게이트는 <code>gh-verify:review-all</code> 이다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-not">
+        <div class="sec-head"><span class="sec-num">02</span><h2 id="h-not">언제 쓰지 않는가</h2></div>
+        <div class="grid">
+          <article class="card no">
+            <h3><span class="dot no"></span>미머지 PR</h3>
+            <p><code>state != MERGED</code> 면 escape hatch 없이 정지한다(<code>--allow-unmerged</code> 같은 플래그는 없다). 머지 커밋이 없으면 "신선한 클론이 무엇을 담아야 하는지" 자체가 정의되지 않는다. 미머지 PR 브랜치 검증은 <code>gh-verify:live</code> 다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>앱을 띄워 화면을 봐야 하는 검증</h3>
+            <p>이 스킬은 앱을 띄우지 않는다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>코드 수정 목적</h3>
+            <p>원인이 보여도 고치지 않는다. 읽기 전용 경계다.</p>
+          </article>
+          <article class="card no">
+            <h3><span class="dot no"></span>작업 worktree 에서 "검증했다"</h3>
+            <p>작업 worktree 에서 테스트를 돌려 "검증했다"고 하는 것 &mdash; 이 스킬이 막으려는 실패 그 자체다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-call">
+        <div class="sec-head"><span class="sec-num">03</span><h2 id="h-call">호출</h2></div>
+        <pre class="usage"><code><span class="cmd">/gh-verify:merged</span> <span class="opt">[pr-number] [remote] [flags]</span></code></pre>
+        <div class="note-box">
+          두 positional 은 <strong>첫 글자로 구분</strong>한다 &mdash; 숫자로 시작하면 PR#(양의 정수여야 하며 아니면 exit 2), 아니면 remote 다.
+          <code>/gh-verify:merged upstream</code> 처럼 PR 자동 감지 + remote 지정이 가능하다.
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>이름</th><th>기본값</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td class="k">1</td><td class="k">PR number, 또는 -h/--help/help</td><td class="def">자동</td><td>생략 시 현재 브랜치 &rarr; 실패하면 현재 커밋을 포함하는 PR 을 역추적</td></tr>
+              <tr><td class="k">2</td><td class="k">remote name</td><td class="def"><code>origin</code></td><td>대상 레포를 해석할 git remote</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size:1.05rem;margin:26px 0 12px;">Flags</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Flag</th><th>기본값</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td class="k">--matrix auto|full</td><td class="def"><code>auto</code></td><td><code>auto</code> 는 PATH 정규화 축만 돌고 나머지는 후보로만 보고, <code>full</code> 은 유도된 축을 전부 실행</td></tr>
+              <tr><td class="k">--env &lt;csv&gt;</td><td class="def">없음</td><td>돌릴 환경 축을 직접 고정 (<code>path,locale,shell,eol</code>). <code>--matrix</code> 보다 우선</td></tr>
+              <tr><td class="k">--clone-dir &lt;path&gt;</td><td class="def"><code>mktemp -d</code></td><td>임시 클론 위치 고정. 지정하면 자동 정리하지 않는다</td></tr>
+              <tr><td class="k">--no-diff-check</td><td class="def">off</td><td>차등 검증(F-7)을 끈다. 끈 사실이 리포트 <code>Unproven:</code> 행에 남는다</td></tr>
+              <tr><td class="k">--dry-run</td><td class="def">off</td><td>이슈 본문을 작성해서 출력하되 등록하지 않는다</td></tr>
+              <tr><td class="k">--no-issue</td><td class="def">off</td><td>초안조차 쓰지 않고 리포트 행으로만 보고한다</td></tr>
+              <tr><td class="k">--no-comment</td><td class="def">off</td><td>리포트를 PR 코멘트로 게시하지 않는다 (기본은 게시)</td></tr>
+              <tr><td class="k">-h / --help / help</td><td class="def">&mdash;</td><td>도움말 출력 후 정지</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tbl-cap">
+          <code>--dry-run</code> 과 <code>--no-issue</code> 를 같이 주면 <code>--no-issue</code> 가 이긴다.
+          <code>--no-comment</code> 는 그 둘과 독립이다. 플래그는 모두 <code>--env X</code> 와 <code>--env=X</code> 두 형태를 받는다.
+        </p>
+
+        <h3 style="font-size:1.05rem;margin:26px 0 12px;">Exit codes</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Code</th><th>원인</th></tr></thead>
+            <tbody>
+              <tr><td><span class="exit e0">0</span></td><td>검증이 끝났다 &mdash; 발견이 0건이든 N건이든, 일부 축이 <code>unverified</code> 였든 포함</td></tr>
+              <tr><td><span class="exit e1">1</span></td><td>검증 전 단언 실패(머지 안 됨 &middot; <code>mergeCommit.oid</code> null &middot; 클론 실패 &middot; HEAD 불일치 &middot; 더러운 클론), <code>gh</code> 미인증</td></tr>
+              <tr><td><span class="exit e2">2</span></td><td>인자 오류: 숫자로 시작하는데 양의 정수가 아닌 PR#, <code>auto|full</code> 아닌 <code>--matrix</code>, 알 수 없는 <code>--env</code> 축, 값이 빈 플래그, 모르는 플래그, 남는 positional</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section data-reveal aria-labelledby="h-steps">
+        <div class="sec-head"><span class="sec-num">04</span><h2 id="h-steps">동작 단계</h2></div>
+        <ol class="steps">
+          <li>
+            <h3>Step 1 &mdash; 인자 파싱</h3>
+            <p><code>pr</code> <code>remote</code> <code>matrix</code> <code>env_axes</code> <code>clone_dir</code> <code>diff_check</code> <code>issue_mode</code> <code>post_comment</code> 를 캡처한다.</p>
+          </li>
+          <li>
+            <h3>Step 2 &mdash; 대상 해석</h3>
+            <p><code>gh pr view</code> 로 <code>state</code> <code>mergedAt</code> <code>mergeCommit</code> <code>baseRefName</code> <code>body</code> <code>files</code> <code>closingIssuesReferences</code> 를 <strong>1회만</strong> fetch 해 재사용하고, <code>state != MERGED</code> 이거나 <code>.mergeCommit.oid == null</code> 이면 정지한다.</p>
+          </li>
+          <li class="pivot">
+            <h3>Step 3 &mdash; 검증 전 단언: 신선한 클론과 그 무결성<span class="step-tag">실패면 정지</span></h3>
+            <p><code>mergeCommit.oid</code> 를 체크아웃한 클론을 임시 디렉터리에 만들고(<code>headRefOid</code> 금지), 이후 모든 실행은 그 클론 안에서만 한다. 클론 실패 &middot; HEAD 불일치 &middot; <code>git status --porcelain</code> 이 비어 있지 않음은 측정하지 않고 정지다. 이어서 클론과 작업 트리에서 실제로 실행되는 테스트 케이스의 이름&middot;개수를 비교해 한쪽에만 있는 케이스를 발견으로 올린다.</p>
+          </li>
+          <li>
+            <h3>Step 4 &mdash; 주장 목록과 검증 명령</h3>
+            <p>연결 이슈의 AC &rarr; PR <code>Test plan</code> 미체크 항목 &rarr; 커밋 메시지의 <code>검증:</code> 줄 &rarr; 질의 순으로 주장을 모으고, 프로젝트 자체 검증 명령을 사다리(<code>AGENTS.md</code>/<code>CLAUDE.md</code>/<code>README</code> &rarr; <code>tox.ini</code> &rarr; <code>pyproject.toml</code> &rarr; <code>package.json</code> <code>test</code> &rarr; <code>tests/*.bats</code> &rarr; <code>.claude/scripts/test-*.sh</code>)로 찾는다. 미탐지는 <code>Unverified:</code> 한 줄.</p>
+          </li>
+          <li>
+            <h3>Step 5 &mdash; 환경 변이 하 재실행</h3>
+            <p>기본 축은 PATH 정규화 1개 &mdash; 같은 검증을 <code>PATH=/usr/bin:/bin</code> 으로 다시 돌려 사용자 셸의 도구 치환을 배제한다. 결과가 갈리면 그 자체가 발견이다. locale&middot;셸&middot;줄 끝 축은 <code>--matrix full</code>&middot;<code>--env</code> 일 때만 실행한다.</p>
+          </li>
+          <li>
+            <h3>Step 6 &mdash; 차등 검증</h3>
+            <p>주장 1건마다 PR <strong>이전 상태</strong>로 같은 입력을 돌린다. 전&middot;후 결과가 같으면 <code>unproven</code> &mdash; 둘 다 통과하는 검사는 아무것도 증명하지 않는다. 기본 on 이고 <code>--no-diff-check</code> 로만 끈다.</p>
+          </li>
+          <li>
+            <h3>Step 7 &mdash; 자기 반증 후 이슈화</h3>
+            <p>후보마다 반증 가설 4종(하네스 오류 &middot; 환경 특수성 &middot; 의도된 동작 &middot; PR 과 무관한 기존 결함)을 세워 반증하고, 살아남은 것만 발견 1건 = 이슈 1건으로 <code>gh:issue-create</code> 에 넘긴다.</p>
+          </li>
+          <li>
+            <h3>Step 8 &mdash; 리포트와 PR 코멘트 게시</h3>
+            <p><code>Clone:</code> <code>Claims:</code> <code>Matrix:</code> <code>Unproven:</code> <code>Unverified:</code> <code>Rejected:</code> <code>Findings:</code> 를 모두 담고 마지막 줄은 항상 <code>Next:</code> 다. <code>[OK]</code>/<code>[WARN]</code> 이고 <code>post_comment=1</code> 일 때만 그 블록을 대상 PR 코멘트로 남기며, <code>[FAIL]</code> 은 <code>--no-comment</code> 와 무관하게 게시하지 않는다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section data-reveal aria-labelledby="h-caution">
+        <div class="sec-head"><span class="sec-num">05</span><h2 id="h-caution">주의사항</h2></div>
+        <ul class="notes">
+          <li class="hard"><strong>검증 전 단언(F-2/F-3) 중 하나라도 실패하면 측정하지 않고 정지한다.</strong> 환경 축 1개 실패는 정지가 아니라 그 축만 <code>unverified</code> 다. 측정하지 않은 통과를 보고하지 않는다.</li>
+          <li class="hard"><strong>검증은 임시 클론 안에서만</strong> &mdash; 사용자의 작업 트리&middot;인덱스&middot;스태시를 읽지도 쓰지도 않는다(F-3 비교용 읽기 전용 참조만 예외이며, 그 참조조차 파일을 쓰지 않는다).</li>
+          <li class="hard"><strong>소스는 읽기 전용 &mdash; 코드를 고치지 않는다.</strong> 발견은 <code>gh:issue-create</code> 로 신규 이슈로만 나가고, 커밋도 push 도 하지 않는다.</li>
+          <li>클론은 종료 시 정리하되 <code>[FAIL]</code> 이면 남기고 경로를 출력한다. <code>Bash(rm:*)</code> 같은 deny 규칙에 막히면 <strong>경로를 출력하고 사용자에게 맡긴다 &mdash; 우회 금지.</strong></li>
+          <li>자기 반증을 통과하지 못한 후보는 이슈로 만들지 않고, 아무것도 안 나오면 이슈를 만들지 않는다.</li>
+          <li>이슈는 dotfiles 가 아니라 <strong>대상 프로젝트 레포</strong>에 만들고, 생성 직전 그 레포를 출력한다.</li>
+        </ul>
+      </section>
+
+      <footer class="foot">
+        Source: <code>docs/skill-guides/merged.md</code> &middot; gh-verify-skills
+      </footer>
+
+    </div>
+  </main>
+
+  <script>
+    function toggleMenu() {
+      var dropdown = document.getElementById('vizMenuDropdown');
+      if (dropdown) dropdown.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.viz-menu')) {
+        var dropdown = document.getElementById('vizMenuDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var dropdown = document.getElementById('vizMenuDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+      }
+    });
+
+    var savedTheme = localStorage.getItem('viz-theme');
+    var currentTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      document.documentElement.className = 'theme-' + t;
+      document.getElementById('themeIcon').innerHTML = t === 'dark' ? '&#9789;' : '&#9788;';
+      document.getElementById('themeLabel').textContent = t === 'dark' ? 'Dark' : 'Light';
+      localStorage.setItem('viz-theme', t);
+      currentTheme = t;
+    }
+    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+    applyTheme(currentTheme);
+
+    document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('reveal'); });
+    var revealObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+    async function downloadImage() {
+      var menu = document.querySelector('.viz-menu');
+      menu.style.display = 'none';
+      try {
+        var url = await htmlToImage.toPng(document.body, { quality: 1, pixelRatio: 2, backgroundColor: getComputedStyle(document.body).backgroundColor, filter: function(n) { return !n.classList || !n.classList.contains('viz-menu'); } });
+        var a = document.createElement('a'); a.href = url;
+        a.download = document.title.replace(/[\s:]+/g, '-').toLowerCase() + '.png'; a.click();
+      } catch (e) { console.error('Download failed:', e); }
+      menu.style.display = '';
+    }
+  </script>
+</body>
+</html>
