@@ -1,0 +1,42 @@
+{
+  "name": "gh-verify",
+  "version": "0.1.0",
+  "description": "Verify a PR before and after it merges: fan out every reviewer in parallel, prove the running app or a fresh clone really is the target commit, audit an exception-track PR before a hand-merge, and dispatch the post-merge verification session.",
+  "author": {
+    "name": "dEitY719",
+    "url": "https://github.com/dEitY719"
+  },
+  "homepage": "https://github.com/dEitY719/gh-verify-skills",
+  "repository": "https://github.com/dEitY719/gh-verify-skills",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "plugin",
+    "marketplace",
+    "gh-verify",
+    "pull-request",
+    "code-review",
+    "verification"
+  ],
+  "skills": "./skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "GH Verify",
+    "shortDescription": "Gate a pull request before and after it merges",
+    "longDescription": "GH Verify bundles the five skills that stand between a pull request and a trusted merge. review-all fans every available reviewer out over one PR in parallel, aggregates their verdicts into a merge-gate label, and hands off to the reply pass. live proves the dev server you are looking at is actually serving the target commit, then drives the browser through the PR's claims. merged does the same job for repos with nothing to serve, re-running the checks inside a fresh clone of the merge commit so a dirty worktree cannot fake a pass. exception-merge-checklist runs a ten-point read-only audit right before a hand-merge. post-merge-verify closes the implementation tab, rebases main, and opens the verification session. Every one of them refuses to report a pass it did not measure.",
+    "developerName": "dEitY719",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Run every reviewer on PR 42 and reply to the comments.",
+      "Re-verify the PR we just merged from a clean clone."
+    ],
+    "websiteURL": "https://github.com/dEitY719/gh-verify-skills",
+    "brandColor": "#2563EB",
+    "screenshots": []
+  }
+}

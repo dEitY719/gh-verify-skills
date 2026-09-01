@@ -1,0 +1,94 @@
+[
+  {
+    "query": "머지된 PR #1402 를 여기 작업 폴더 말고 깨끗하게 새로 받은 곳에서 다시 확인해줘. 지금 트리 상태를 못 믿겠어",
+    "should_trigger": true
+  },
+  {
+    "query": "이 레포는 띄울 앱이 없어. 머지 커밋만 임시 디렉터리에 클론해서 테스트가 거기서도 똑같이 도는지 봐줘",
+    "should_trigger": true
+  },
+  {
+    "query": "/gh-verify:merged 1388 --matrix full",
+    "should_trigger": true,
+    "note": "slash-literal: renamed to gh-verify: in dotfiles #1410 Phase 2"
+  },
+  {
+    "query": "내 worktree 에서는 테스트가 다 초록인데 CI 에는 그 케이스가 아예 없는 것 같아. 깨끗한 체크아웃 기준으로 다시 검증하는 절차로 진행해줘",
+    "should_trigger": true
+  },
+  {
+    "query": "make a throwaway checkout of what actually landed on main and rerun the pr's checks there — my checkout here is full of leftover files i dont trust",
+    "should_trigger": true
+  },
+  {
+    "query": "머지 전 상태에서도 같은 검사가 통과하면 아무것도 증명 못 하는 거잖아. PR 전후로 나눠서 돌려줘",
+    "should_trigger": true
+  },
+  {
+    "query": "prove pr 210 behaves as claimed on a machine that has none of my local setup",
+    "should_trigger": true
+  },
+  {
+    "query": "내 셸에서 ugrep 이 grep 을 가리고 있어서 결과가 달라질까 봐 걱정돼. PATH 정리한 상태로 다시 돌려줘",
+    "should_trigger": true
+  },
+  {
+    "query": "this is a shell script repo, nothing to serve. run /gh-verify:merged on the merged pr and open issues for whatever fails",
+    "should_trigger": true,
+    "note": "slash-literal: renamed to gh-verify: in dotfiles #1410 Phase 2"
+  },
+  {
+    "query": "/devx-pr-verify-merged 16 --no-diff-check",
+    "should_trigger": true,
+    "note": "legacy slash-literal: the description still lists the pre-rename form, so it must keep triggering (dotfiles #1410 Phase 2)"
+  },
+  {
+    "query": "머지된 PR 65 검증하려는데 지금 켜둔 앱에 붙이지 말고 새로 받은 클론에서 확인해줘",
+    "should_trigger": true
+  },
+  {
+    "query": "지금 로컬에 dev 서버 띄워둔 상태야. 방금 머지된 PR #1402 가 그 앱에서 실제로 되는지 화면 몰아보면서 봐줘",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:live"
+  },
+  {
+    "query": "http://localhost:3000 에 앱이 돌고 있는데 그게 이번 머지 커밋을 서빙하는 게 맞는지부터 짚고, PR 주장대로 동작하는지까지 확인하는 절차로 가줘",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:live"
+  },
+  {
+    "query": "the app is already running, dont restart it. click through the screens this pr touched and tell me which of its claims actually hold",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:live"
+  },
+  {
+    "query": "verify pr 210 against the running dev app and raise whatever is broken as separate tickets",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:live"
+  },
+  {
+    "query": "화면은 잘 뜨는데 이 PR 이 진짜 반영된 건지 못 믿겠어. 지금 서빙 중인 체크아웃이 그 커밋 맞는지부터 증명해줘",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:live"
+  },
+  {
+    "query": "머지 전에 이 PR 여러 리뷰어한테 한 번에 돌려줘",
+    "should_trigger": false
+  },
+  {
+    "query": "pr 12 is out of date with main, no conflicts. rebase it onto the latest base",
+    "should_trigger": false
+  },
+  {
+    "query": "approve 끝난 PR 51 squash 로 머지해줘",
+    "should_trigger": false
+  },
+  {
+    "query": "clone this repo somewhere and set up the dev environment for me",
+    "should_trigger": false
+  },
+  {
+    "query": "테스트 전부 돌려서 결과만 알려줘",
+    "should_trigger": false
+  }
+]

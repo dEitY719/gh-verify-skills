@@ -1,0 +1,34 @@
+{
+  "name": "gh-verify",
+  "version": "0.1.0",
+  "description": "Gate a pull request: parallel reviewer fan-out, live-app and fresh-clone verification, pre-merge audit, post-merge dispatch.",
+  "author": {
+    "name": "dEitY719",
+    "url": "https://github.com/dEitY719"
+  },
+  "homepage": "https://github.com/dEitY719/gh-verify-skills",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "plugin",
+    "marketplace",
+    "gh-verify",
+    "pull-request",
+    "code-review",
+    "verification"
+  ],
+  "skills": "./skills/",
+  "skillInstructions": "Kimi Code tool mapping for the gh-verify skills.\n\nThe authoritative mapping is owned by the sibling repo dEitY719/harness-skills at `references/kimi-tools.md` (dotfiles #1410 F-5). Read it there when a skill names a tool you do not recognise; this repo deliberately keeps no copy. Summary:\n\n- \"Dispatch a subagent\" -> `Agent` with `subagent_type: \"coder\"` (implementation) or \"explore\" (read-only). Never pass `general-purpose`. `gh-verify:review-all` depends on this: its five Step 3 lanes are dispatched together in ONE turn and must run in parallel. A harness that serialises them still produces a correct verdict, only slower — but a harness that drops the fan-out silently reviews less than it reports.\n- \"Ask the user\" -> `AskUserQuestion`. `gh-verify:live` and `gh-verify:merged` both stop and wait for a real answer when the base URL, the API origin, or the claim list cannot be resolved. Guessing is a defect, not a convenience.\n- `TodoWrite` -> Kimi Code's `TodoList` tool.\n- Read / Write / Edit / Bash / Grep / Glob keep their exposed Kimi names. Search contents with `Grep`; match paths with `Glob`.\n- Every skill here shells out to `gh` and `git`. `gh auth status` must return 0 and the host must be pinned from the remote URL, not assumed to be github.com.\n- `gh-verify:live` and `gh-verify:merged` are read-only on source code: findings leave as new issues via `gh:issue-create`, never as edits. `gh-verify:exception-merge-checklist` mutates only as far as `git add` under `--auto-fix`, and never commits.\n- `gh-verify:review-all` is the only skill here that commits and pushes, and only the `/simplify` auto-fix pass it runs. It never approves a PR.\n- `gh-verify:post-merge-verify` drives the `herdr` CLI. Without `herdr` on PATH it is a silent no-op, which is the correct behaviour — do not substitute another terminal multiplexer.\n- Several skills source shell helpers from the upstream dotfiles checkout (`${SHELL_COMMON}/functions/*.sh`). Those helpers are not vendored here; on a machine without that checkout, follow the prose steps by hand rather than inventing a replacement.",
+  "interface": {
+    "displayName": "GH Verify",
+    "shortDescription": "Gate a pull request before and after it merges",
+    "longDescription": "GH Verify bundles the five skills that stand between a pull request and a trusted merge: review-all, live, merged, exception-merge-checklist, and post-merge-verify.",
+    "developerName": "dEitY719",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/dEitY719/gh-verify-skills"
+  }
+}

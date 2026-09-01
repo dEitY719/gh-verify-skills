@@ -1,0 +1,89 @@
+[
+  {
+    "query": "지금 로컬에 dev 서버 띄워둔 상태야. 방금 머지된 PR #1402 가 그 앱에서 실제로 되는지 화면 몰아보면서 봐줘",
+    "should_trigger": true
+  },
+  {
+    "query": "http://localhost:3000 에 앱이 돌고 있는데 그게 이번 머지 커밋을 서빙하는 게 맞는지부터 짚고, PR 주장대로 동작하는지까지 확인하는 절차로 가줘",
+    "should_trigger": true
+  },
+  {
+    "query": "/gh-verify:live 1388 --url http://localhost:5173",
+    "should_trigger": true,
+    "note": "slash-literal: renamed to gh-verify: in dotfiles #1410 Phase 2"
+  },
+  {
+    "query": "the app is already running, dont restart it. click through the screens this pr touched and tell me which of its claims actually hold",
+    "should_trigger": true
+  },
+  {
+    "query": "/devx-pr-verify-live 로 PR 에 적힌 Test plan 항목들 브라우저에서 하나씩 눌러 검증해줘. 뷰포트는 모바일도 같이",
+    "should_trigger": true,
+    "note": "legacy slash-literal: the description still lists the pre-rename form, so it must keep triggering (dotfiles #1410 Phase 2)"
+  },
+  {
+    "query": "아직 머지 안 된 PR 브랜치인데 지금 띄워둔 앱에 붙여서 미리 확인할 수 있어?",
+    "should_trigger": true
+  },
+  {
+    "query": "verify pr 210 against the running dev app and raise whatever is broken as separate tickets",
+    "should_trigger": true
+  },
+  {
+    "query": "화면은 잘 뜨는데 이 PR 이 진짜 반영된 건지 못 믿겠어. 지금 서빙 중인 체크아웃이 그 커밋 맞는지부터 증명해줘",
+    "should_trigger": true
+  },
+  {
+    "query": "로케일 ko 랑 en 둘 다에서 이 PR 의 화면 전환이 실제로 먹는지 실행 중인 앱에서 확인해줘",
+    "should_trigger": true
+  },
+  {
+    "query": "pr 65 changed the settings modal. drive it in the app thats up right now and tell me if an overlay is covering the target",
+    "should_trigger": true
+  },
+  {
+    "query": "머지된 PR #1402 를 여기 작업 폴더 말고 깨끗하게 새로 받은 곳에서 다시 확인해줘. 지금 트리 상태를 못 믿겠어",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:merged"
+  },
+  {
+    "query": "이 레포는 띄울 앱이 없어. 머지 커밋만 임시 디렉터리에 클론해서 테스트가 거기서도 똑같이 도는지 봐줘",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:merged"
+  },
+  {
+    "query": "내 worktree 에서는 테스트가 다 초록인데 CI 에는 그 케이스가 아예 없는 것 같아. 깨끗한 체크아웃 기준으로 다시 검증하는 절차로 진행해줘",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:merged"
+  },
+  {
+    "query": "make a throwaway checkout of what actually landed on main and rerun the pr's checks there — my checkout here is full of leftover files i dont trust",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:merged"
+  },
+  {
+    "query": "prove pr 210 behaves as claimed on a machine that has none of my local setup",
+    "should_trigger": false,
+    "note": "cross-pair: should_trigger:true for gh-verify:merged"
+  },
+  {
+    "query": "PR #1402 머지 전에 리뷰어들 전부 병렬로 돌려서 정적 리뷰 받아줘",
+    "should_trigger": false
+  },
+  {
+    "query": "ci is red on pr 88. read the failing job logs and fix the cause locally",
+    "should_trigger": false
+  },
+  {
+    "query": "이 프로젝트 dev 서버 어떻게 띄우는지 알려주고 그냥 실행만 해줘",
+    "should_trigger": false
+  },
+  {
+    "query": "방금 찾은 버그 이슈로 등록해줘",
+    "should_trigger": false
+  },
+  {
+    "query": "take a screenshot of the landing page and tell me if the spacing looks off",
+    "should_trigger": false
+  }
+]

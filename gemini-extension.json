@@ -1,0 +1,6 @@
+{
+  "name": "gh-verify",
+  "description": "Gate a PR before and after merge — reviewer fan-out, live and fresh-clone verification, pre-merge audit",
+  "version": "0.1.0",
+  "contextFileName": "GEMINI.md"
+}

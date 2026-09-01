@@ -1,0 +1,20 @@
+{
+  "name": "gh-verify-skills",
+  "description": "PR review and merge-verification skills — parallel reviewer fan-out, live-app and fresh-clone verification, pre-merge audit, post-merge dispatch",
+  "owner": {
+    "name": "dEitY719",
+    "url": "https://github.com/dEitY719"
+  },
+  "plugins": [
+    {
+      "name": "gh-verify",
+      "description": "Verify a PR before and after it merges: fan out every reviewer in parallel, prove the running app or a fresh clone really is the target commit, audit an exception-track PR before a hand-merge, and dispatch the post-merge verification session",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "dEitY719",
+        "url": "https://github.com/dEitY719"
+      }
+    }
+  ]
+}

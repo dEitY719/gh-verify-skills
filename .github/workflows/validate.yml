@@ -1,0 +1,40 @@
+name: validate
+
+# Validation is defined once, in `harness-skills`, and called from all fifteen
+# split-out skill repos (dotfiles #1410 D-10). Do not re-inline the checks here:
+# a copy is a fifteen-way drift risk, which is exactly what NF-2 forbids.
+#
+# To change what is checked, edit
+# dEitY719/harness-skills/.github/workflows/skill-check.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: dEitY719/harness-skills/.github/workflows/skill-check.yml@main
+    with:
+      plugin-name: gh-verify
+      # MIGRATION DEBT (dotfiles #1410 Phase 2 / #1659). Four of the five
+      # SKILL.md files arrived from dotfiles already over the 100-line
+      # progressive-disclosure limit: review-all 213, merged 112, live 111,
+      # post-merge-verify 111 (exception-merge-checklist is at 100). Phase 2 is
+      # a placement-and-naming migration — NF-4 forbids changing skill
+      # behaviour on the way across — so the content was copied verbatim and
+      # the limit raised here instead of the files being cut down. This number
+      # must come back down to 100 in a follow-up that refactors each SKILL.md
+      # into its own references/. Do not raise it further.
+      max-skill-lines: 215
+      # exception-merge-checklist/references/metrics-footer.md carries the
+      # emoji glyphs of the dotfiles ai-metrics PR footer. That footer is the
+      # single SSOT-approved emoji exception in the upstream repo (#317 F-2 /
+      # PR #320 / #367), and the reference file must show the real glyphs or it
+      # cannot specify the output. Nothing else in this repo may carry one.
+      # See CLAUDE.md -> "Emojis".
+      allow-emoji-paths: skills/exception-merge-checklist/references/

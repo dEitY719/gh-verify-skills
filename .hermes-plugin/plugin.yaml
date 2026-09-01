@@ -1,0 +1,4 @@
+name: gh-verify
+version: 0.1.0
+description: Skills that gate a PR — parallel reviewer fan-out, live and fresh-clone verification, pre-merge audit, post-merge dispatch
+author: dEitY719
