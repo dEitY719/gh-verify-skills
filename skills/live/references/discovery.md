@@ -191,7 +191,7 @@ dev 서버 PID 는 재기동으로 세션 중에 바뀐다. 실측: 같은 런 �
 # 비대화형 셸에서 조기 return 하면 헬퍼가 아예 정의되지 않는다.
 export DOTFILES_FORCE_INIT=1
 _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/gh_pr_review.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"
+[ -f "$_SC/functions/gh_pr_review.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }
 . "$_SC/functions/gh_pr_review.sh"
 TARGET_REPO=$(_gh_pr_review_resolve_target_repo "${remote:-origin}") || {
   echo "Cannot resolve remote '${remote:-origin}' to a repo" >&2; exit 1; }

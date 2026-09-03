@@ -129,7 +129,7 @@ safe 래퍼로 갈아탄 뒤에야 라벨이 붙었다.
 
 ```bash
 _HELPER="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_project_status.sh"
-[ -f "$_HELPER" ] || _HELPER="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common/functions/gh_project_status.sh"
+[ -f "$_HELPER" ] || { _HELPER="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common/functions/gh_project_status.sh"; export SHELL_COMMON="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; }
 if [ -r "$_HELPER" ]; then
     . "$_HELPER"
     if ! command -v _gh_project_status_sync >/dev/null 2>&1; then
