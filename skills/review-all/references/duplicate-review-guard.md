@@ -16,7 +16,9 @@ re-review from a second opinion.
 Once, before any lane is dispatched:
 
 ```sh
-. "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/devx_pr_review_all.sh"
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+[ -f "$_SC/functions/devx_pr_review_all.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"
+. "$_SC/functions/devx_pr_review_all.sh"
 
 head_sha=$(GH_HOST="$TARGET_HOST" gh pr view "$pr" --repo "$TARGET_REPO" \
     --json headRefOid --jq .headRefOid)

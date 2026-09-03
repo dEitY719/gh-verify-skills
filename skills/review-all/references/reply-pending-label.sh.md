@@ -30,8 +30,12 @@ export 하지 않으므로, 같은 `<remote>` URL 에서 여기서 한 번 뽑�
 가 **같은 URL 한 개**에서 나와야 서로 어긋나지 않는다 (#1403 / #1407).
 
 ```bash
-source "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_pr_edit_safe.sh"
-source "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_host.sh"
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+[ -f "$_SC/functions/gh_pr_edit_safe.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"
+source "$_SC/functions/gh_pr_edit_safe.sh"
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+[ -f "$_SC/functions/gh_host.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"
+source "$_SC/functions/gh_host.sh"
 
 # 0) host 고정 — repo 와 같은 remote URL 에서, 실패하면 setup-mode 기본값
 TARGET_HOST="${TARGET_HOST:-$(_gh_host_from_url "$(git remote get-url "$remote")" 2>/dev/null)}"
