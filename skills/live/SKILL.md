@@ -42,7 +42,7 @@ verbatim, then stop. No API calls, no browser.
 
 ## Step 1: Parse Args
 
-`_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/devx_pr_verify_live.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; source "$_SC/functions/devx_pr_verify_live.sh"` then `devx_pr_verify_live_parse "$@"` — 플래그 표는
+`_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/devx_pr_verify_live.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }; source "$_SC/functions/devx_pr_verify_live.sh"` then `devx_pr_verify_live_parse "$@"` — 플래그 표는
 `references/help.md`. On `help_requested=1` follow Help; on exit 2 print the stderr line and stop. Capture `pr`
 `remote` `url` `api_url` `start_cmd` `matrix` `viewports` `locales` `issue_mode` `allow_remote_host`
 `post_comment`. Record `START_TS=$(date +%s)`.
