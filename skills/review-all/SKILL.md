@@ -35,7 +35,7 @@ it verbatim, then stop. No API calls.
 ## Step 1: Parse Args
 
 Source and delegate to `devx_pr_review_all_parse`:
-`source "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/devx_pr_review_all.sh"` then
+`_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/devx_pr_review_all.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; source "$_SC/functions/devx_pr_review_all.sh"` then
 `devx_pr_review_all_parse "$@"`. On help, follow Help; on exit 2, print stderr
 and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`,
 and `START_TS`.
@@ -167,7 +167,9 @@ addressed, and the auto-fix commit is unreviewed by construction:
 
 ```bash
 if [ "$PUSHED" = "1" ]; then
-    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_pr_edit_safe.sh"
+    _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+    [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"
+    . "$_SC/functions/gh_pr_edit_safe.sh"
     if _vl_err=$(_gh_pr_drop_label "$pr" review-passed "$TARGET_REPO" "$TARGET_HOST" 2>&1); then
         echo "[OK] \`review-passed\` 무효화됨 — /simplify 커밋이 push 되어 이전 판정은 만료"
     else

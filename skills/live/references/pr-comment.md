@@ -50,6 +50,7 @@ REPORT_BODY_FILE=$(mktemp) && trap 'rm -f "$REPORT_BODY_FILE"' EXIT
 # ... Step 8 이 stdout 에 출력한 리포트 블록을 한 글자도 바꾸지 않고 "$REPORT_BODY_FILE" 에 그대로 옮겨 쓴다 ...
 
 _HELPER="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_pr_review.sh"
+[ -f "$_HELPER" ] || _HELPER="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common/functions/gh_pr_review.sh"
 if [ -r "$_HELPER" ]; then
     . "$_HELPER"
     if ! command -v _gh_pr_review_post_comment >/dev/null 2>&1; then
