@@ -73,24 +73,24 @@ still both read "not yet reviewed" and both fan out; see
 is accepted rather than closed with a lock file.
 
 The five lanes dispatch together in a single turn. agy/codex/opencode/hermes
-are comment-only; `/simplify` may mutate and commit. Each lane is soft-fail.
-A lane skipped by the guard because it was **already reviewed** is not the
-same as a lane skipped for a **missing CLI** — the former still has a valid
-verdict for this exact head and Step 3.5 must harvest it (see Step 3.5's
-"guard-skipped lanes" note below); only the latter contributes no verdict line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; . "$_SC/functions/dotfiles_setup_mode.sh"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
+are comment-only; `/simplify` may mutate and commit. Every lane is soft-fail,
+and ends in one of **three** outcomes. **Step 3 is the only place they are
+known**, so record them as you dispatch: `$LANES`, one `<ai>:ok|skip|fail` per
+**line** (never space-separated — Step 3.5 iterates it, and zsh does not
+word-split). `ok` — ran, verdict on the PR (a guard-skipped lane is `ok`: it already
+has one for this head, which is why the guard skipped it). `skip` — never
+dispatched (CLI absent, non-internal PC). `fail` — dispatched, exited non-zero:
+it **could not run**, which is not a `skip` and must never be reported as one
+(dEitY719/gh-verify-skills#14). Take a `fail`'s `<reason>` from the lane's
+**first stderr line**, newlines and control characters stripped, truncated to
+120 chars — Step 6 prints exactly one line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; . "$_SC/functions/dotfiles_setup_mode.sh"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
 
 - **agy** — if `command -v agy`, an Agent runs
-  `Skill(gh-pr:review, "--ai agy <pr> <remote>")`; absent or non-zero exit → SKIP/WARN.
-- **codex** — if `command -v codex`, an Agent runs
-  `Skill(gh-pr:review, "--ai codex <pr> <remote>")`; absent or non-zero exit → SKIP/WARN.
-- **opencode** — if `command -v opencode` and `_dotfiles_setup_mode` is
-  `internal`, an Agent runs
-  `Skill(gh-pr:review, "--ai opencode <pr> <remote>")`; absent, non-internal,
-  or non-zero exit → SKIP/WARN.
-- **hermes** — if `command -v hermes` and `_dotfiles_setup_mode` is
-  `internal`, an Agent runs
-  `Skill(gh-pr:review, "--ai hermes <pr> <remote>")`; absent, non-internal,
-  or non-zero exit → SKIP/WARN.
+  `Skill(gh-pr:review, "--ai agy <pr> <remote>")`; absent → SKIP, non-zero exit → FAIL.
+- **codex** — the same, with `--ai codex`.
+- **opencode**, **hermes** — the same, with `--ai opencode` / `--ai hermes`, but
+  each also requires `_dotfiles_setup_mode` = `internal`; absent or
+  non-internal → SKIP, non-zero exit → FAIL.
 - **auto-fix** — an Agent runs built-in `/simplify`; if `git status --porcelain`
   is non-empty, commit with `git commit -am "refactor(<scope>): simplify per /simplify"`.
 
@@ -99,10 +99,9 @@ Never add `/code-review --fix`; it is user-invocation-only (`references/constrai
 ## Step 3.5: Aggregate review verdicts and apply the merge-gate label
 
 Runs **after every Step 3 lane has returned and before Step 4's push.** That
-order is load-bearing, not cosmetic: the lanes tagged their comments with the
-PR's current **remote** head, and `/simplify` has at most committed *locally*
-by now. Reading the head sha after Step 4 pushes would read the new sha, every
-lane would miss, and the gate would silently label nothing forever.
+order is load-bearing: the lanes tagged their comments with the PR's current
+**remote** head, so reading the sha after the push reads the *new* one, every
+lane misses, and the gate silently labels nothing forever.
 
 Full runnable block, exit codes, and rationale: `references/review-verdict-label.md`.
 In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
@@ -117,11 +116,9 @@ In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
    `ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"`.
    Only markers written by this login count as a lane's verdict (dEitY719/dotfiles#1639) — see
    `references/review-verdict-label.md` → "Marker authorship".
-4. For **each lane that either ran fresh in Step 3 OR was skipped by the
-   duplicate-review guard** (i.e. every lane except one skipped for a
-   **missing CLI / non-internal PC** — `/simplify` never contributes either),
-   pipe `BODIES` through `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`
-   → `devx_pr_review_all_verdict`, and pipe that stream straight into
+4. Walk `$LANES` (`/simplify` never contributes). For an `ok` lane pipe
+   `BODIES` through `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`
+   → `devx_pr_review_all_verdict`; drop a `skip` entirely. Pipe the stream into
    `devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"`.
    **Since dEitY719/dotfiles#1636 that call only ever writes `review-blocked`.** An
    all-non-blocking round clears any stale `review-blocked` and stops there —
@@ -132,20 +129,20 @@ In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
    on the write path `gh-pr:reply` shares) and is inert on this skill's paths.
    **Why a guard-skipped lane must still be included (dEitY719/dotfiles#1613, agy+codex PR
    dEitY719/dotfiles#1623 BLOCKER):** the guard skipped it precisely because it already has a
-   verdict for `$head_sha` — dropping that lane from the stream would let a
-   partial re-run (e.g. only one lane force-re-reviewed) silently overwrite an
-   existing `review-blocked` verdict with `review-passed`, because the
-   aggregator only sees the lanes fed to it. Since `devx_pr_review_all_lane_block`
-   reads whatever marker already exists in `$BODIES` regardless of which
-   session or run posted it, including a guard-skipped lane costs nothing extra
-   — the same call that decided to skip it already proved the marker exists.
+   verdict for `$head_sha`; dropping it would let a partial re-run (only one
+   lane force-re-reviewed) silently overwrite an existing `review-blocked` with
+   `review-passed`, since the aggregator only sees the lanes fed to it. It costs
+   nothing extra — `devx_pr_review_all_lane_block` reads whatever marker already
+   exists in `$BODIES`, and the guard already proved this one exists.
+   **A `fail` lane has no block to harvest, so emit a literal `unknown` line
+   for it** (dEitY719/gh-verify-skills#14) — the PR then stays unlabelled
+   instead of being certified off the surviving lane alone.
    Never stage the verdicts in a variable and re-expand it — zsh does not
    word-split, and a two-lane PR would silently report one.
 
 Fetch `head_sha` and `BODIES` again here rather than reusing Step 3's
-duplicate-guard values (`ME` is stable and may be reused): no
-push has happened in between so `head_sha` is unchanged, but the lanes just
-posted new comments, and this step needs the **fresh** `BODIES`.
+duplicate-guard values (`ME` is stable and may be reused): no push has happened
+so `head_sha` is unchanged, but the lanes just posted new comments.
 
 The whole step is **soft-fail**: a labelling failure never blocks Steps 4-6,
 and an unlabelled PR reads downstream as "not verified", which
@@ -197,8 +194,10 @@ state to mark.
 ## Step 6: Report
 
 Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g.
-`[OK] PR #<pr> reviewed (agy:OK codex:SKIP opencode:OK hermes:SKIP simplify:committed) — reply: inline — verdict: review-passed`.
-The trailing clause is Step 3.5's outcome: `review-passed`, `review-blocked`, or `unlabelled`.
+`[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
+Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and
+downgrade the line to `[WARN]` when any lane failed. The trailing clause is
+Step 3.5's outcome: `review-blocked` or `unlabelled`.
 
 ## Constraints (full rationale: `references/constraints.md`)
 

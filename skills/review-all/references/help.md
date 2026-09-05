@@ -49,10 +49,12 @@ request-changes) — that is `gh-pr:approve`.
    `gh-pr:review --ai <name>` (streams findings + posts a PR comment) and run
    fully in parallel. opencode and hermes run only on internal PCs. `/simplify` mutates the working tree and commits its own
    changes (`refactor(<scope>): simplify per /simplify`). Each lane is
-   soft-fail.
+   soft-fail, ending `OK`, `SKIP` (never dispatched) or `FAIL` (dispatched,
+   exited non-zero).
 4. Aggregate the lanes' closing verdict lines into one merge-gate label —
-   `review-blocked` if any lane blocked, `review-passed` if every lane that
-   ran passed, no label at all otherwise — and write it to the PR. Runs
+   `review-blocked` if any lane blocked, no label at all otherwise. A `FAIL`ed
+   lane counts as an unestablished verdict, so a PR that lost a reviewer is
+   left unlabelled instead of certified off the survivors. Runs
    **before** the push, so the head sha still matches what the lanes
    reviewed. Soft-fail: a labelling failure never blocks the reply pass.
    Spec: `references/review-verdict-label.md`.
@@ -61,8 +63,9 @@ request-changes) — that is `gh-pr:approve`.
 6. Reply — inline `gh-pr:reply <pr> <remote>` (default), or deferred via
    `session:schedule` (`--defer-reply M`), or skipped (`--no-reply`). The
    `<remote>` is threaded so the reply pass resolves the same target repo.
-7. Print one `[OK]`/`[SKIP]`/`[WARN]` report line, ending with the verdict
-   clause, e.g. `… — reply: inline — verdict: review-passed`.
+7. Print one `[OK]`/`[SKIP]`/`[WARN]` report line, naming every lane's outcome
+   and ending with the verdict clause, e.g.
+   `(agy:FAIL(argv limit) codex:OK …) — reply: inline — verdict: unlabelled`.
 
 ## What the skill will NOT do
 
@@ -74,6 +77,9 @@ request-changes) — that is `gh-pr:approve`.
   v2.1.215, so no skill can invoke it. Run it yourself when you want it; agy,
   codex, and the closing `gh-pr:reply` pass cover the same ground here.
 - Hard-fail because a reviewer CLI is missing or errors — each lane is soft-fail.
+- **Hide** a lane that errored. A `FAIL`ed lane is named in the report as
+  `<ai>:FAIL(<reason>)` and blocks the verdict from being established
+  (dEitY719/gh-verify-skills#14).
 - Run a bare `git commit` — an editor prompt would hang the non-interactive shell.
 - Schedule sub-minute delays — `session:schedule` is minutes-only; for tight
   ordering use the deterministic inline reply.
