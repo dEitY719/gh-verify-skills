@@ -67,9 +67,8 @@ read that repo's `references/antigravity-tools.md` instead: `agy` shares
 - Several skills source shell helpers (`${SHELL_COMMON}/functions/*.sh`). They
   are vendored here under `lib/vendor/shell-common/`: an upstream `~/dotfiles`
   checkout is preferred when present (tier 1) and the vendored copy is the
-  fallback (tier 2). The resolution order is owned by
-  `dEitY719/harness-skills` at `references/plugin-root.md` — read it there;
-  this repo keeps no copy.
+  fallback (tier 2), per the resolution order in
+  `dEitY719/harness-skills/references/plugin-root.md`.
 
 ## Safety rules
 
