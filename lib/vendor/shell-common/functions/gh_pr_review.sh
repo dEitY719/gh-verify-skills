@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-05T14:00Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/gh_pr_review.sh
 # gh-pr-review — synchronous PR review delegation to an external AI CLI.
@@ -456,6 +456,7 @@ _gh_pr_review_run_ai() {
     local _rc=0
     local _prompt_content
     local _opencode_workdir
+    local _opencode_prompt
     # Issue #1506: opencode / hermes routinely run 8-10 minutes and had no
     # bounded exit path at all. Without this the only bound is whatever
     # ambient timeout the *caller* (a Bash tool call, a CI step) happens to
@@ -527,11 +528,21 @@ _gh_pr_review_run_ai() {
             }
         fi
         if [ "$_rc" -eq 0 ]; then
+            # opencode-guard auto-rejects, in non-interactive mode, any
+            # --file path outside --dir (issue #1763) — PROMPT_FILE always
+            # lives in a sibling /tmp dir, never under $_opencode_workdir, so
+            # copy it in first and point --file at the copy.
+            _opencode_prompt="$_opencode_workdir/prompt.md"
+            if ! cp "$prompt_file" "$_opencode_prompt" 2>"$_stderr_file"; then
+                _rc=1
+            fi
+        fi
+        if [ "$_rc" -eq 0 ]; then
             _gh_pr_review_timeout "$_slow_cli_timeout_sec" \
                 opencode run "$_ai_file_instruction" \
                 --model codemate/CodeLLMPro \
                 --dir "$_opencode_workdir" \
-                --file "$prompt_file" 2>"$_stderr_file" || _rc=$?
+                --file "$_opencode_prompt" 2>"$_stderr_file" || _rc=$?
         fi
         [ -n "$_opencode_workdir" ] && rm -rf "$_opencode_workdir"
         ;;
