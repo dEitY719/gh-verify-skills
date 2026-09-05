@@ -72,7 +72,7 @@ read that repo's `references/antigravity-tools.md` instead: `agy` shares
 ## Safety rules
 
 - **Source code is read-only.** `live` and `merged` never fix what they find —
-  findings leave as new issues through `gh:issue-create`, one finding per issue.
+  findings leave as new issues through `gh-issue:create`, one finding per issue.
 - **Never report a pass you did not measure.** Both verifiers stop before
   measuring if their pre-verification assertions fail, and both list what they
   could not reach (`Unverified:`, `Unproven:`) rather than omitting it.
