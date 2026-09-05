@@ -133,9 +133,9 @@ upstream dotfiles repo. **One exception:**
 emoji glyphs of the dotfiles ai-metrics PR footer. That footer is the single
 SSOT-approved emoji exception upstream (#317 F-2, PR #320, #367), and a
 reference file that specifies the footer's exact output has to show the real
-glyphs. `lib/vendor/` is exempt for the same reason one level down:
-`shell-common/functions/gh_pr_review.sh` prints that footer, so its verbatim
-upstream copy carries the glyphs too, and that tree is replaced wholesale by
+glyphs. `lib/vendor/shell-common/functions/gh_pr_review.sh` is exempt for the
+same reason one level down: it *prints* that footer, so its verbatim upstream
+copy carries the glyphs too, and that tree is replaced wholesale by
 dotfiles' own `scripts/sync-shell-common-vendor.sh` — which lives upstream, not
 in this repo — rather than edited here. `.shellcheckrc` exists for the same
 reason: upstream is shellcheck-clean because the dotfiles repo root carries
