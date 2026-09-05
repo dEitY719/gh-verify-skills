@@ -46,4 +46,4 @@ jobs:
       # (that script lives upstream, not here), never edited in this repo.
       allow-emoji-paths: |
         skills/exception-merge-checklist/references/
-        lib/vendor/
+        lib/vendor/shell-common/functions/gh_pr_review.sh

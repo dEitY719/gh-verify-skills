@@ -184,7 +184,10 @@ repo's first commit message.
 The `devx-pr-` / `gh-pr-` prefixes are dropped because the plugin namespace
 (`gh-verify:`) now supplies them. Every description still lists its old trigger
 forms, so `/devx-pr-verify-live` and friends keep working; the dotfiles
-originals also stay put until dEitY719/dotfiles#1410 Phase 4 removes them.
+originals also stay put until dEitY719/dotfiles#1410 Phase 4 removes them. One
+exception: `merged` carries `/gh-verify:merged` and `/devx:pr-verify-merged`
+but no longer the hyphen form `/devx-pr-verify-merged` — with all three its
+description measured 426 characters, a Check 16 FAIL (see #10, Section D).
 
 This is part of Phase 2 of the dotfiles #1410 migration; `packaging-skills` was
 Phase 0, and `harness-skills` / `notes-skills` are its Phase 1 siblings.
