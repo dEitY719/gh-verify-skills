@@ -36,7 +36,7 @@ it verbatim, then stop. No API calls.
 ## Step 1: Parse Args
 
 Source and delegate to `devx_pr_review_all_parse`:
-`_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/devx_pr_review_all.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }; source "$_SC/functions/devx_pr_review_all.sh"; source "$_SC/functions/dotfiles_setup_mode.sh"` — the second file is what puts `_dotfiles_setup_mode` (Step 3's opencode/hermes gate) in scope on a plugin-only install — then
+`_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/devx_pr_review_all.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }; source "$_SC/functions/devx_pr_review_all.sh"` then
 `devx_pr_review_all_parse "$@"`. On help, follow Help; on exit 2, print stderr
 and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`,
 and `START_TS`.
@@ -77,7 +77,7 @@ are comment-only; `/simplify` may mutate and commit. Each lane is soft-fail.
 A lane skipped by the guard because it was **already reviewed** is not the
 same as a lane skipped for a **missing CLI** — the former still has a valid
 verdict for this exact head and Step 3.5 must harvest it (see Step 3.5's
-"guard-skipped lanes" note below); only the latter contributes no verdict line.
+"guard-skipped lanes" note below); only the latter contributes no verdict line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }; . "$_SC/functions/dotfiles_setup_mode.sh"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
 
 - **agy** — if `command -v agy`, an Agent runs
   `Skill(gh-pr:review, "--ai agy <pr> <remote>")`; absent or non-zero exit → SKIP/WARN.
