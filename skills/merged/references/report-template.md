@@ -63,7 +63,7 @@ F-2/F-3 단언이 막으면 **측정하지 않고** 정지한다. 무엇이 왜 
 ```
 
 ```
-[WARN] PR #<N> merge-verified — 1 finding could not be filed (gh:issue-create failed)
+[WARN] PR #<N> merge-verified — 1 finding could not be filed (gh-issue:create failed)
   Findings: none — 본문을 아래에 그대로 출력했습니다 (복사해서 수동 등록하세요)
 ```
 

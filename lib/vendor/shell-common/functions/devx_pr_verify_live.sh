@@ -1,8 +1,7 @@
+#!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live.sh
 # Synced 2026-09-03T08:20Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
-
-#!/bin/sh
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_verify_live.sh
 # Pure arg parser for the devx:pr-verify-live skill. Mirrors the

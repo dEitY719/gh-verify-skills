@@ -77,7 +77,7 @@ once after 5 s). `CONFLICTING` is FAIL.
 gh pr view "$PR" --repo "$TARGET_REPO" --json mergeable --jq .mergeable
 ```
 
-**Recovery hint** — `/gh:pr-resolve-conflict <PR#>`
+**Recovery hint** — `/gh-resolve:conflict <PR#>`
 
 **Rationale** — Standard mergeability check; lumped in here so the
 single audit pass covers everything that would block the merge.
@@ -110,7 +110,7 @@ a regression that would otherwise be missed in the rush to merge.
 
 **Pass when** `reviewDecision == APPROVED`. Empty string on a repo
 with no branch protection on `baseRefName` → WARN (mirrors
-`gh:pr-merge`'s solo-repo logic). `REVIEW_REQUIRED` /
+`gh-pr:merge`'s solo-repo logic). `REVIEW_REQUIRED` /
 `CHANGES_REQUESTED` → FAIL.
 
 **Command**
@@ -124,9 +124,9 @@ gh api "repos/$TARGET_REPO/branches/$BASE/protection" >/dev/null 2>&1 \
 ```
 
 **Recovery hint** — name the missing reviewer(s) and suggest
-`/gh:pr-approve <PR#>` for an automated approve flow.
+`/gh-pr:approve <PR#>` for an automated approve flow.
 
-**Rationale** — Same gate `gh:pr-merge` uses; surfaced here so the
+**Rationale** — Same gate `gh-pr:merge` uses; surfaced here so the
 single audit shows all blockers in one pass.
 
 ---

@@ -1,25 +1,26 @@
 ---
 name: merged
-# Check 16 WARN-band exception (388 chars, limit 250) — measured, not preferred.
-# #1411 shrank this description and dropped two distinct things: the positive
+# Check 16 WARN-band exception (391 chars, limit 250) — measured, not preferred.
+# dEitY719/dotfiles#1411 shrank this description and dropped two distinct things: the positive
 # discriminator ("no running app", "dirty worktree") and the "Sister skill of
-# gh-verify:live" boundary. #1417's trigger eval measured each half
+# gh-verify:live" boundary. dEitY719/dotfiles#1417's trigger eval measured each half
 # separately on this skill's own eval set:
-#   before (pre-#1411)              90%  recall 8/10  reject 10/10
-#   after  (#1411, 244 chars)       75%  recall 7/10  reject  8/10   FAIL
-#   boundary restored only         75%  recall 5/10  reject 10/10   FAIL
-#   both restored (this, 388ch)     90%  recall 8/10  reject 10/10   PASS
-# The boundary sentence restores rejection; the positive discriminator restores
-# recall. Both are load-bearing, so this stays over 250 until a shorter wording
-# is measured to hold 90%. Procedure:
+#   before (pre-dEitY719/dotfiles#1411)         90%  recall 8/10  reject 10/10
+#   after  (dEitY719/dotfiles#1411, 244 chars)  75%  recall 7/10  reject  8/10   FAIL
+#   boundary restored only                      75%  recall 5/10  reject 10/10   FAIL
+#   both restored (388ch)                       90%  recall 8/10  reject 10/10   PASS
+# The boundary sentence restores rejection; the positive discriminator restores recall — both load-bearing, so
+# this stays over 250 until a shorter wording is measured to hold 90%. The shipped 391 = that 388-char wording
+# plus the `/gh-verify:merged` alias, minus `/devx-pr-verify-merged` and "post-merge" (untrimmed: 426 = FAIL). Procedure:
 # dotfiles claude/skills/skill-check/references/trigger-eval-procedure.md
 description: >-
   Re-verify a merged PR in a fresh clone of its merge commit, proving a clean
-  checkout behaves as claimed — for repos with no running app, where post-merge
-  checks otherwise run in a dirty worktree. Use for /gh-verify:merged, /devx:pr-verify-merged, /devx-pr-verify-merged,
+  checkout behaves as claimed — for repos with no running app, where
+  checks otherwise run in a dirty worktree. Use for /gh-verify:merged, /devx:pr-verify-merged,
   "머지된 PR 신선한 클론에서 재검증", "worktree 말고 clone 에서 검증해",
   "verify from a clean clone". Sister skill of gh-verify:live
   (live=serving-checkout, merged=fresh-clone).
+license: MIT
 allowed-tools: Bash, Read, Grep, Glob, Write, AskUserQuestion, Agent
 metadata:
   model_recommendation:
@@ -38,7 +39,7 @@ metadata:
 막으려는 실패 클래스는 **작업 worktree 에서는 초록인데 다른 모든 클론과 CI 에서는 그 검사가 존재하지도 않는 상태**
 하나다. 대상은 **띄울 앱이 없는 레포**(shell 스크립트 · CLI · 라이브러리) — 머지 후 점검이 더러운 worktree 에서
 돌아 untracked-artifact 버그를 숨기는 곳이다. 두 스킬의 6줄 공통 계약은
-`../live/references/verify-contract.md` — 이슈 본문·라벨·메트릭은 `gh:issue-create` 가 SSOT.
+`../live/references/verify-contract.md` — 이슈 본문·라벨·메트릭은 `gh-issue:create` 가 SSOT.
 
 ## Help
 
@@ -61,16 +62,15 @@ fetch 해 Step 6 까지 재사용하고, `state != MERGED` 또는 `.mergeCommit.
 
 ## Step 3: 검증 전 단언 — 신선한 클론과 그 무결성 (`references/clone-gate.md`)
 
-`mergeCommit.oid` 를 체크아웃한 클론을 임시 디렉터리에 만들고(**`headRefOid` 금지** — rebase/squash 가
-재작성한다), 이후 **모든 실행은 그 클론 안에서만** 한다. 클론 실패 · HEAD 불일치 · `git status
---porcelain` 이 비어 있지 않음은 **측정하지 않고 정지**다. 이어서 클론과 작업 트리에서 **실제로 실행되는
-테스트 케이스의 이름·개수를 비교**해 한쪽에만 있는 케이스를 발견으로 올린다 — 이 스킬의 존재 이유다.
+`mergeCommit.oid`(기준은 `../live/references/verify-contract.md` 2번) 를 체크아웃한 클론을 임시 디렉터리에 만들고, 이후
+**모든 실행은 그 클론 안에서만** 한다. 클론 실패 · HEAD 불일치 · `git status --porcelain` 이 비어 있지 않음은 **측정하지 않고
+정지**다. 이어서 클론과 작업 트리에서 **실제로 실행되는 테스트 케이스의 이름·개수를 비교**해 한쪽에만 있는 케이스를 발견으로 올린다 — 이 스킬의 존재 이유다.
 
 ## Step 4: 주장 목록과 검증 명령 (F-4 · F-5)
 
 주장 우선순위: 연결된 **이슈의 AC**(체크 무관) → PR `Test plan` 미체크 항목 → 커밋 메시지의 `검증:`
 줄 → `AskUserQuestion`. `- [x]` 를 통과로 보지 않고 **diff 에서 주장을 만들지 않는다**. 검증 명령은
-`gh:issue-implement` 와 같은 사다리: `AGENTS.md`/`CLAUDE.md`/`README` → `tox.ini` → `pyproject.toml`
+`gh-issue:implement` 와 같은 사다리: `AGENTS.md`/`CLAUDE.md`/`README` → `tox.ini` → `pyproject.toml`
 → `package.json` `test` → `tests/*.bats` → `.claude/scripts/test-*.sh`. 미탐지는 `Unverified:` 한 줄.
 
 ## Step 5: 환경 변이 하 재실행 (`references/env-matrix.md`)
@@ -89,7 +89,7 @@ rebase 는 `~1`, 다중커밋 rebase 는 `~N`)로 같은 입력을 돌린다. �
 ## Step 7: 자기 반증 후 이슈화 (F-8)
 
 후보 1건마다 반증 가설 4종(하네스 오류 · 환경 특수성 · 의도된 동작 · PR 과 무관한 기존 결함)을 먼저 세워
-반증하고, 살아남은 것만 발견 1건 = 이슈 1건으로 `Skill(gh:issue-create, "--assignee @me")` 에 넘기되 **생성 직전 대상 레포를
+반증하고, 살아남은 것만 발견 1건 = 이슈 1건으로 `Skill(gh-issue:create, "--assignee @me")` 에 넘기되 **생성 직전 대상 레포를
 출력**한다. `--dry-run` 은 본문만, `--no-issue` 는 초안도 안 쓰며, 생성 실패는 본문을 stdout 에 남기고 `[WARN]`.
 
 ## Step 8: 리포트와 PR 코멘트 게시 (`references/report-template.md`)
@@ -102,11 +102,11 @@ rebase 는 `~1`, 다중커밋 rebase 는 `~N`)로 같은 입력을 돌린다. �
 
 ## Constraints (전체 목록과 근거: `references/constraints.md`)
 
-- F-2/F-3 단언 중 하나라도 실패하면 **측정하지 않고 정지**한다. 환경 축 1개 실패는 정지가 아니다.
+- 환경 축 1개 실패는 정지가 아니다 — 계약 5번(측정 전 정지)의 유일한 예외다.
 - 검증은 임시 클론 안에서만 — 작업 트리·인덱스·스태시를 읽지도 쓰지도 않는다(F-3 비교용 읽기만 예외).
 - 클론은 종료 시 정리하되 `[FAIL]` 이면 남기고 경로를 출력한다. deny 규칙(`Bash(rm:*)`)에 막히면 **경로를 출력하고 사용자에게 맡긴다 — 우회 금지**.
-- **소스는 읽기 전용 — 코드를 고치지 않는다.** 발견은 `gh:issue-create` 로 신규 이슈로만 나간다. 자기 반증을 통과하지 못한 후보는 이슈로 만들지 않는다.
+- 자기 반증을 통과하지 못한 후보는 이슈로 만들지 않는다.
 
 ## Related Skills
 
-자매 스킬 `gh-verify:live` — 같은 머지 후 슬롯, 다른 증명 대상(merged=신선한 클론 신원, live=서빙 체크아웃 신원). 발견 등록은 `gh:issue-create`, 테스트 러너 탐지 사다리는 `gh:issue-implement`, 머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표와 플래그: `references/help.md`.
+자매 스킬 `gh-verify:live` — 같은 머지 후 슬롯, 다른 증명 대상(merged=신선한 클론 신원, live=서빙 체크아웃 신원). 발견 등록은 `gh-issue:create`, 테스트 러너 탐지 사다리는 `gh-issue:implement`, 머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표와 플래그: `references/help.md`.

@@ -80,7 +80,7 @@ squash 세 경우가 다 덮이고, `null` 일 때만(미머지 PR) `headRefOid`
 
 ## 이슈 본문은 재기술하지 않는다
 
-`gh:issue-create` 가 본문 골격 · 라벨 SSOT 판정 · ai-metrics 푸터의 SSOT 다. 여기에
+`gh-issue:create` 가 본문 골격 · 라벨 SSOT 판정 · ai-metrics 푸터의 SSOT 다. 여기에
 템플릿을 옮겨 적으면 그쪽이 바뀔 때 두 곳이 어긋난다. 이 스킬은 **게이트만** 책임진다.
 위임해도 남는 건 레포측 기계적 함정뿐이다(없는 라벨 · classic Projects 의 `--add-label`
 실패 · 보드 카드 동기화) — `findings.md` §6.

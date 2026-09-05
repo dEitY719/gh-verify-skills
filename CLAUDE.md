@@ -21,7 +21,7 @@ The skills were extracted from `dEitY719/dotfiles`
 (`claude/skills/{devx-pr-review-all,devx-pr-verify-live,devx-pr-verify-merged,devx-exception-merge-checklist,gh-pr-post-merge-verify}`)
 as a snapshot — see the first commit for the source SHA. The dotfiles copies
 remain in place for now; they are removed in a later phase of that repo's
-migration plan (#1410 Phase 4).
+migration plan (dEitY719/dotfiles#1410 Phase 4).
 
 ## Layout: root manifests, one flat `skills/`
 
@@ -81,11 +81,12 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
   dispatches five lanes — agy, codex, opencode, hermes, and a `/simplify`
   auto-fix pass — **in one turn**, and Step 3.5 aggregates their verdicts only
   after every lane has returned and before Step 4 pushes. Both the parallelism
-  and that ordering are load-bearing (dotfiles #1613, #1636, PR #1598); a
+  and that ordering are load-bearing (dEitY719/dotfiles#1613, dEitY719/dotfiles#1636,
+  PR dEitY719/dotfiles#1598); a
   rewrite that serialises the lanes or reorders those steps changes what the
   merge gate certifies.
 - **Honour each skill's safety contract.** `live` and `merged` are read-only on
-  source: findings leave as new issues via `gh:issue-create`, never as edits.
+  source: findings leave as new issues via `gh-issue:create`, never as edits.
   `exception-merge-checklist` mutates only as far as `git add` under
   `--auto-fix` and never commits. `post-merge-verify` never writes to GitHub.
   `review-all` never approves.
@@ -96,14 +97,17 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
 
 ## References to skills that live elsewhere
 
-These five skills name skills that are **not** in this repo — `gh:pr-reply`,
-`gh:pr-merge`, `gh:pr-merge-train`, `gh:issue-create`, `gh:issue-flow`,
-`gh:pr-review`, `gh:label-bootstrap`, `/simplify`, `/code-review`. Those names
-are deliberately left in their dotfiles spelling: their own repos do not exist
-yet, and #1410 Phase 3 rewires the cross-references once they do. Do not invent
-a namespace for them here.
+These five skills name skills that are **not** in this repo — `gh-pr:reply`,
+`gh-pr:merge`, `gh-pr:merge-train`, `gh-issue:create`, `gh-flow:issue`,
+`gh-pr:review`, `gh-setup:label-bootstrap`, `/simplify`, `/code-review`. All
+sixteen sibling repos exist, so **write each one in its own repo's namespace**
+— the spelling above, taken from that repo's `.claude-plugin/plugin.json`
+`name` plus its `skills/<dir>/`. There is no grace path: the siblings kept no
+dotfiles-era aliases of their own, so a stale `gh:`/`devx:` name resolves to
+nothing and simply fails. The exception is this repo's own pre-rename trigger
+phrases inside a `description:` — see "Rules for changing skills" above.
 
-The same goes for paths under `claude/skills/`, `shell-common/functions/`, and
+Paths under `claude/skills/`, `shell-common/functions/`, and
 `tests/bats/` — those point into `dEitY719/dotfiles` and are labelled as such.
 Only paths **inside** this repo were rewritten by the migration.
 
@@ -112,7 +116,7 @@ Only paths **inside** this repo were rewritten by the migration.
 CI's `max-skill-lines` is set to **215** in `validate.yml`, not the standard
 100. Four of the five skills arrived from dotfiles already over the limit —
 `review-all` 213, `merged` 112, `live` 111, `post-merge-verify` 111
-(`exception-merge-checklist` is at 100). Phase 2 of #1410 is a
+(`exception-merge-checklist` is at 100). Phase 2 of dEitY719/dotfiles#1410 is a
 placement-and-naming migration and its NF-4 forbids changing skill behaviour on
 the way across, so the content was copied verbatim and the limit raised rather
 than the files being cut down.
@@ -130,9 +134,12 @@ upstream dotfiles repo. **One exception:**
 emoji glyphs of the dotfiles ai-metrics PR footer. That footer is the single
 SSOT-approved emoji exception upstream (#317 F-2, PR #320, #367), and a
 reference file that specifies the footer's exact output has to show the real
-glyphs. CI's emoji gate is passed
-`allow-emoji-paths: skills/exception-merge-checklist/references/` for exactly
-that reason. Do not widen the allowlist; do not add emoji anywhere else.
+glyphs. `lib/vendor/` is exempt for the same reason one level down:
+`shell-common/functions/gh_pr_review.sh` prints that footer, so its verbatim
+upstream copy carries the glyphs too, and that tree is replaced wholesale by
+the sync script rather than edited here. CI's emoji gate is passed both
+prefixes in `allow-emoji-paths` for exactly those reasons. Do not widen the
+allowlist further; do not add emoji anywhere else.
 
 ## Version bumps
 
@@ -140,5 +147,5 @@ The version appears in seven manifests: `.claude-plugin/marketplace.json`,
 `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`,
 `.kimi-plugin/plugin.json`, `.hermes-plugin/plugin.yaml`,
 `gemini-extension.json`, and `package.json`. CI checks that they agree — bump
-all of them together. Versioning is independent per repo (#1410 D-9); this repo
+all of them together. Versioning is independent per repo (dEitY719/dotfiles#1410 D-9); this repo
 does not move in lockstep with its siblings.

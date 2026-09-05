@@ -84,7 +84,7 @@ fi
 
 ## 6. 금지
 
-- **`gh_pr_review.sh` 를 수정하지 않는다.** 헬퍼는 `gh:pr-review` 의 SSOT 다.
+- **`gh_pr_review.sh` 를 수정하지 않는다.** 헬퍼는 `gh-pr:review` 의 SSOT 다.
 - **`gh pr comment` 를 직접 부르는 코드를 어디에도 새로 쓰지 않는다.** 게시 경로는
   `_gh_pr_review_post_comment` 하나뿐이다 — 두 개가 되면 soft-fail 계약과 skip 경로
   (`GH_DISABLE_AI_METRICS=1`)가 한쪽에서만 지켜진다.

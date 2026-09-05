@@ -3,10 +3,10 @@
 Step 3 pastes this. It expects `PR_NUMBER`, `TARGET_REPO` and `TARGET_HOST`
 already bound (Step 2), and it is a no-op for any repo missing from
 `${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`
-— the same untracked registry `issue_watcher_cron.sh` reads (issue #1555).
+— the same untracked registry `issue_watcher_cron.sh` reads (issue dEitY719/dotfiles#1555).
 
-`gh:pr-merge` Step 5 does not paste a copy: it extracts the **first** `bash`
-fence below and sources it, so this file stays the single source (#1565). Keep
+`gh-pr:merge` Step 5 does not paste a copy: it extracts the **first** `bash`
+fence below and sources it, so this file stays the single source (dEitY719/dotfiles#1565). Keep
 the dispatch in that first fence — the later snippets are documentation.
 
 Executable mirror + regression suite:
@@ -15,10 +15,10 @@ dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` and
 
 ```bash
 # --- 0. F-1 gate. Unregistered repo => do nothing at all, no output. -------
-WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}" # untracked, array-schema, shared with issue_watcher_cron.sh (#1555)
+WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}" # untracked, array-schema, shared with issue_watcher_cron.sh (dEitY719/dotfiles#1555)
 VERIFY_SKILL=""
 # No jq → the registry cannot be read, so the feature is simply unavailable.
-# Silent, never a WARN: an absent tool is not a broken SSOT, and gh:pr-merge's
+# Silent, never a WARN: an absent tool is not a broken SSOT, and gh-pr:merge's
 # gate (which carries the same condition) must print nothing either way.
 if command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
     if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
@@ -60,7 +60,7 @@ pmv_json_first() {
 # is ever interpolated into the jq program text.
 pmv_error_code() { jq -r '.error.code // empty' 2>/dev/null || return 0; }
 
-# Settle wait after a herdr call that brings something up (#1571). One value
+# Settle wait after a herdr call that brings something up (dEitY719/dotfiles#1571). One value
 # for both of this repo's herdr races, because they are the same race seen
 # twice and splitting them is how a fix keeps missing a third site:
 #   `tab create` -> `agent start`  the pane answers before its shell is
@@ -68,24 +68,24 @@ pmv_error_code() { jq -r '.error.code // empty' 2>/dev/null || return 0; }
 #       (issue_watcher_cron.sh's _IW_START_RETRY_SLEEP comment documents it).
 #   `agent start` -> `agent prompt`  herdr answers `"agent_status":"idle"`
 #       straight away, but a freshly drawn claude TUI is idle while its
-#       key-input loop is still unattached, so the prompt is swallowed (#1560).
+#       key-input loop is still unattached, so the prompt is swallowed (dEitY719/dotfiles#1560).
 # Measured on herdr 0.7.5: ~5s fails every time, ~13s lands. 13 is the repo
 # standard — the twins are _IW_SETTLE_SECONDS / _IW_START_RETRY_SLEEP in
 # shell-common/tools/custom/issue_watcher_cron.sh and _PMT_SETTLE_SECONDS /
 # _PMT_START_RETRY_SLEEP in shell-common/tools/custom/pr_merge_train_cron.sh.
-# Change one, change all five: #1530/#1549 and #1560/#1571 are both the same
+# Change one, change all five: dEitY719/dotfiles#1530 / dEitY719/dotfiles#1549 and dEitY719/dotfiles#1560 / dEitY719/dotfiles#1571 are both the same
 # defect recurring because two of three dispatchers were fixed. The *number*
-# is what those five still share — since #1570 the two `_IW/_PMT_SETTLE_SECONDS`
+# is what those five still share — since dEitY719/dotfiles#1570 the two `_IW/_PMT_SETTLE_SECONDS`
 # spend it as a poll cap (each reads its pane's text via `herdr agent read` and
 # can leave early once it looks ready) while `pmv_settle` here stays a flat
 # sleep: this dispatcher opens a pane too ($NEW_PANE below), but nothing here
-# reads it back yet (codex, PR #1611 review). Whoever adds that read should
+# reads it back yet (codex, PR dEitY719/dotfiles#1611 review). Whoever adds that read should
 # convert `pmv_settle` the same way; until then it is deliberately the odd one
 # out, not a missed follow-up.
 #
 # The other two dispatchers also *retry* `agent start` on `agent_pane_busy`;
-# this one deliberately does not (#1571 D-3). A wait shrinks the race, a retry
-# survives it — the retry belongs here too, but as part of #1569's shared
+# this one deliberately does not (dEitY719/dotfiles#1571 D-3). A wait shrinks the race, a retry
+# survives it — the retry belongs here too, but as part of dEitY719/dotfiles#1569's shared
 # helper, not as a fourth hand-rolled copy that unification would undo.
 #
 # Overridable, and `0` disables it outright, so the bats suite never sleeps for
@@ -95,11 +95,16 @@ pmv_settle() { [ "$PMV_SETTLE_SECONDS" = "0" ] || sleep "$PMV_SETTLE_SECONDS"; }
 PMV_PROMPT_ATTEMPT_MAX="${PMV_PROMPT_ATTEMPT_MAX:-3}"
 # herdr agent names come from one SSOT, sourced — never re-implemented here.
 # Three call sites each carrying their own `tr -c 'A-Za-z0-9._-' '-'` copy is
-# what produced #1530: that set keeps uppercase and dots, both of which herdr's
+# what produced dEitY719/dotfiles#1530: that set keeps uppercase and dots, both of which herdr's
 # `^[a-z][a-z0-9_-]{0,31}$` refuses, so this dispatch never once started a
 # verification session. A missing helper skips the feature rather than
 # guessing a name.
-PMV_NAME_LIB="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common/functions/herdr_agent_name.sh"
+# `_SC` two-tier fallback, same as every other helper this plugin sources: with only
+# the plugin installed there is no $HOME/dotfiles, so fall back to the vendored copy
+# and export SHELL_COMMON so anything sourced after this resolves from the same root.
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+[ -f "$_SC/functions/herdr_agent_name.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }
+PMV_NAME_LIB="$_SC/functions/herdr_agent_name.sh"
 if [ ! -r "$PMV_NAME_LIB" ]; then
     printf '[WARN] gh-verify:post-merge-verify: %s not readable — verification skipped.\n' "$PMV_NAME_LIB"
     return 0 2>/dev/null || exit 0
@@ -136,7 +141,7 @@ pmv_escalate_prompt_stall() {
     fi
 }
 
-# "Is a herdr agent sitting on this path?" comes from one SSOT too (#1569), for
+# "Is a herdr agent sitting on this path?" comes from one SSOT too (dEitY719/dotfiles#1569), for
 # the same reason and with the same history: this block's `pmv_tab_for_cwd` and
 # `pmv_physical_path` were two of four hand-copied answers, and the fourth copy
 # had already drifted to a plain `.cwd` string equality that missed both a
@@ -145,7 +150,7 @@ pmv_escalate_prompt_stall() {
 # verbatim — 0 matched, 1 herdr could not be asked, 3 herdr answered and
 # nothing is on that path — because an empty answer from herdr is "unknown",
 # never "nothing running", and the caller below branches on that difference.
-PMV_LOOKUP_LIB="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common/functions/herdr_agent_lookup.sh"
+PMV_LOOKUP_LIB="$_SC/functions/herdr_agent_lookup.sh"
 if [ ! -r "$PMV_LOOKUP_LIB" ]; then
     printf '[WARN] gh-verify:post-merge-verify: %s not readable — verification skipped.\n' "$PMV_LOOKUP_LIB"
     return 0 2>/dev/null || exit 0
@@ -249,12 +254,12 @@ if [ -z "$WS_ID" ]; then
     return 0 2>/dev/null || exit 0
 fi
 
-# The verification session gets its OWN detached worktree (#1577). It used to
+# The verification session gets its OWN detached worktree (dEitY719/dotfiles#1577). It used to
 # open in $MAIN_ROOT, and that checkout is shared: humans and other AI sessions
 # check branches out in it, and step 3 right above *rebases* it — so on
 # back-to-back merges the N+1th dispatch moved the ground under the Nth
 # session. Tab `pr-1567` disappeared exactly that way. This is the isolation
-# `iw-*` tabs already have, in the shape gh:pr-merge-train's scratch worktree
+# `iw-*` tabs already have, in the shape gh-pr:merge-train's scratch worktree
 # uses (`references/train-loop.md` → "Detached scratch worktree").
 PMV_COMMON_DIR=$(git -C "$MAIN_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
 if [ -z "$PMV_COMMON_DIR" ]; then
@@ -264,7 +269,7 @@ if [ -z "$PMV_COMMON_DIR" ]; then
 fi
 # One directory per PR, so two verifications running at once never share one.
 PMV_SCRATCH="${PMV_COMMON_DIR}/pr-post-merge-verify/pr-${PR_NUMBER}"
-# Existence alone is not proof of a live worktree (agy/codex, PR #1605 review):
+# Existence alone is not proof of a live worktree (agy/codex, PR dEitY719/dotfiles#1605 review):
 # a directory git's own bookkeeping has forgotten — pruned, or hand-removed and
 # recreated as a plain folder — passes `-d` but is not a checkout `herdr tab
 # create` can safely open. Cross-check it against `worktree list` instead.
@@ -278,13 +283,13 @@ if [ -n "$PMV_SCRATCH_REGISTERED" ]; then
     # manual re-run over a tab that is still open) must be idempotent, not a
     # duplicate and not an error. There is deliberately NO teardown here — the
     # worktree's lifetime is the tab's, and who removes it when is left to a
-    # later tab-close rule rather than guessed at now (#1577).
+    # later tab-close rule rather than guessed at now (dEitY719/dotfiles#1577).
     printf '[INFO] gh-verify:post-merge-verify: reusing verification worktree %s.\n' "$PMV_SCRATCH"
 else
     # An unregistered directory at this path cannot be reused (git refuses to
     # `worktree add` over an existing, non-empty target) and cannot be trusted
     # as a checkout either — clear it before recreating, same as the
-    # stale-leftover guard in gh:pr-merge-train's own scratch worktree
+    # stale-leftover guard in gh-pr:merge-train's own scratch worktree
     # (`references/train-loop.md` → "Detached scratch worktree").
     [ -d "$PMV_SCRATCH" ] && rm -rf "$PMV_SCRATCH"
     mkdir -p "$(dirname "$PMV_SCRATCH")"
@@ -323,8 +328,8 @@ fi
 # --- 5. F-4: the agent ----------------------------------------------------
 # `mv-<repo>-pr-<N>`, at most 28 characters. Neither `$TARGET_HOST` nor the
 # owner is in the name: a host-qualified one does not fit herdr's 32-character
-# budget (the pre-#1530 form reached 37 and was refused on every merge). That
-# concession to #1403/#1407, and the condition that would end it, is
+# budget (the pre-dEitY719/dotfiles#1530 form reached 37 and was refused on every merge). That
+# concession to dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407, and the condition that would end it, is
 # documented at herdr_agent_name.
 if ! PMV_AGENT=$(herdr_agent_name mv "$TARGET_REPO" "pr-${PR_NUMBER}"); then
     printf '[WARN] gh-verify:post-merge-verify: cannot derive an agent name for %s — verification skipped.\n' "$TARGET_REPO"
@@ -337,7 +342,7 @@ fi
 pmv_settle
 # `--dangerously-skip-permissions` is required, not a convenience: nobody is at
 # the keyboard of this pane, so one permission prompt would park the
-# verification forever instead of failing it (same reason as #1393).
+# verification forever instead of failing it (same reason as dEitY719/dotfiles#1393).
 if ! START_JSON=$(herdr agent start "$PMV_AGENT" --kind claude --pane "$NEW_PANE" \
     -- --dangerously-skip-permissions 2>/dev/null); then
     # Race backstop: the name can be claimed between the probe and the start,
@@ -347,7 +352,7 @@ if ! START_JSON=$(herdr agent start "$PMV_AGENT" --kind claude --pane "$NEW_PANE
     if [ "$START_CODE" != "agent_name_taken" ]; then
         # The tab from step 4 is agent-less at this point — nothing lost by
         # closing it. Only this run's own tab, and only when its id is known
-        # (#1554): guessing which tab to close from a failed read would risk
+        # (dEitY719/dotfiles#1554): guessing which tab to close from a failed read would risk
         # closing someone else's.
         if [ -n "$NEW_TAB" ]; then
             if herdr tab close "$NEW_TAB" >/dev/null 2>&1; then
@@ -364,7 +369,7 @@ if ! START_JSON=$(herdr agent start "$PMV_AGENT" --kind claude --pane "$NEW_PANE
     # takes the prompt at once — no need to pay the settle wait below.
     printf '[WARN] gh-verify:post-merge-verify: agent %s already registered — prompting the existing session.\n' "$PMV_AGENT"
 else
-    # A just-started claude is idle but not yet listening (#1571) — this
+    # A just-started claude is idle but not yet listening (dEitY719/dotfiles#1571) — this
     # settle wait is what lets it start listening before the prompt lands.
     pmv_settle
 fi
@@ -403,7 +408,7 @@ fi
 printf 'post-merge verification dispatched\n'
 printf '  tab:    %s (label pr-%s)\n' "${NEW_TAB:--}" "$PR_NUMBER"
 # Reported because nothing removes it: the operator who closes the tab is the
-# one who can also drop this directory (#1577 leaves teardown unautomated).
+# one who can also drop this directory (dEitY719/dotfiles#1577 leaves teardown unautomated).
 printf '  cwd:    %s\n' "$PMV_SCRATCH"
 printf '  agent:  %s\n' "$PMV_AGENT"
 printf '  verify: %s\n' "$VERIFY_PROMPT"
@@ -415,19 +420,19 @@ printf '  attach: herdr agent attach %s\n' "$PMV_AGENT"
 | Variable | Bound by | Notes |
 |---|---|---|
 | `PR_NUMBER` | Step 1 | The merged PR |
-| `TARGET_REPO` / `TARGET_HOST` | Step 2 | One remote URL, #1403/#1407 |
+| `TARGET_REPO` / `TARGET_HOST` | Step 2 | One remote URL, dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407 |
 | `HEAD_BRANCH` | caller | The merged PR's head branch, used to find the impl worktree |
 | `BASE_BRANCH` | caller | The merged PR's base branch (`baseRefName`). Empty → the main checkout's current branch, and a detached HEAD stops the run |
 | `REMOTE` | Step 1, optional | The `[remote]` positional; default `origin`. `fetch`/`rebase` use it, never a hardcoded `origin` |
 | `PMV_PROMPT_TIMEOUT_MS` | env, optional | `herdr agent prompt --wait` cap, default 900000 (15 min) |
 | `PMV_PROMPT_ATTEMPT_MAX` | env, optional | Retry budget for `agent_prompt_stalled` / `timeout`, default 3 |
-| `PMV_SETTLE_SECONDS` | env, optional | Wait after each herdr call that brings something up, default 13; `0` disables both waits (#1571) |
+| `PMV_SETTLE_SECONDS` | env, optional | Wait after each herdr call that brings something up, default 13; `0` disables both waits (dEitY719/dotfiles#1571) |
 
 `--wait --until idle` waits for the dispatched session to settle, so the
 timeout is generous. Hitting it is a `[WARN]`, not a failure: the prompt has
 already landed, and the attach hint is still printed.
 
-`gh:pr-merge` already read both refs in its own Step 2 pre-flight and passes
+`gh-pr:merge` already read both refs in its own Step 2 pre-flight and passes
 them down. Standalone, recover them from the same PR — host-pinned and
 repo-scoped, the only GitHub call this skill makes and a read:
 

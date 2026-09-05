@@ -13,8 +13,8 @@
 - `/gh-verify:post-merge-verify 51 upstream` — same, against the `upstream` remote
 - `/gh-verify:post-merge-verify -h` / `--help` / `help` — print this help
 
-Normally you do not type this: `gh:pr-merge` calls it at the end of its
-Step 5. Run it by hand when a merge happened outside `gh:pr-merge`, or when a
+Normally you do not type this: `gh-pr:merge` calls it at the end of its
+Step 5. Run it by hand when a merge happened outside `gh-pr:merge`, or when a
 dispatch soft-failed and you want to retry it.
 
 ## What it does
@@ -36,7 +36,7 @@ dispatch soft-failed and you want to retry it.
 6. `git worktree add --detach <git-common-dir>/pr-post-merge-verify/pr-<N> <remote>/<base>`
    — the verification session's own directory, created if absent and reused if
    it is already there. It is **not** the main checkout: that one is shared
-   with humans and other sessions, and step 5 rebases it (#1577).
+   with humans and other sessions, and step 5 rebases it (dEitY719/dotfiles#1577).
 7. `herdr tab create --cwd <that worktree> --label pr-<N>`. The herdr
    *workspace* is still looked up from the main checkout — it only groups the
    tab, and a worktree created a second ago has no workspace of its own.
@@ -67,9 +67,9 @@ dispatch soft-failed and you want to retry it.
   API call is reading the PR's `headRefName`/`baseRefName`, and only when the
   caller did not already pass them down.
 - Fail its caller. Every other error is one `[WARN]` line and exit 0, so
-  `gh:pr-merge`'s report always prints.
+  `gh-pr:merge`'s report always prints.
 - Run from the unattended cron path (`pr_merge_train_cron.sh`) — explicitly
-  out of scope in issue #1511.
+  out of scope in issue dEitY719/dotfiles#1511.
 
 ## Exit behavior
 

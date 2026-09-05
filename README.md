@@ -90,7 +90,7 @@ Antigravity (`agy`) shares `~/.gemini`, so it inherits the install.
 These skills are written in Claude Code's vocabulary. The per-harness tool
 mappings and capability gaps are documented once, in
 [`dEitY719/harness-skills/references/`](https://github.com/dEitY719/harness-skills/tree/main/references)
-(#1410 F-5); read the one file for the harness you are on.
+(dEitY719/dotfiles#1410 F-5); read the one file for the harness you are on.
 
 | Skill | Claude Code | Codex | Kimi | Gemini / Antigravity | Hermes | OpenCode |
 |-------|:-----------:|:-----:|:----:|:--------------------:|:------:|:--------:|
@@ -152,7 +152,7 @@ a migration later.
 [`.github/workflows/validate.yml`](.github/workflows/validate.yml) calls the
 reusable workflow owned by
 [`dEitY719/harness-skills`](https://github.com/dEitY719/harness-skills/blob/main/.github/workflows/skill-check.yml)
-(#1410 D-10) — manifest parsing, required files, skill frontmatter,
+(dEitY719/dotfiles#1410 D-10) — manifest parsing, required files, skill frontmatter,
 progressive-disclosure line limits, the Codex description budget, version
 agreement, shellcheck, and an emoji gate.
 
@@ -184,7 +184,7 @@ repo's first commit message.
 The `devx-pr-` / `gh-pr-` prefixes are dropped because the plugin namespace
 (`gh-verify:`) now supplies them. Every description still lists its old trigger
 forms, so `/devx-pr-verify-live` and friends keep working; the dotfiles
-originals also stay put until #1410 Phase 4 removes them.
+originals also stay put until dEitY719/dotfiles#1410 Phase 4 removes them.
 
 This is part of Phase 2 of the dotfiles #1410 migration; `packaging-skills` was
 Phase 0, and `harness-skills` / `notes-skills` are its Phase 1 siblings.

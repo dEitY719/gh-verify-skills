@@ -1,4 +1,4 @@
-# Design notes (issue #1511)
+# Design notes (issue dEitY719/dotfiles#1511)
 
 ## Why an opt-in registry rather than "every repo"
 
@@ -7,32 +7,32 @@ for every merge in every checkout on the machine is not a default anyone
 would keep. `watched-repos.json` makes the blast radius a list you can read,
 and makes "turn it off" a one-line delete rather than an env var nobody
 remembers. An unregistered repo must therefore be **byte-identical** to the
-pre-#1511 behavior — no `[INFO]`, no herdr call, nothing.
+pre-dEitY719/dotfiles#1511 behavior — no `[INFO]`, no herdr call, nothing.
 
-## Why this closes the implementation tab, when #1508 only suggests it
+## Why this closes the implementation tab, when dEitY719/dotfiles#1508 only suggests it
 
-Issue #1508 covers the same `herdr agent list` cwd-matching detection but
+Issue dEitY719/dotfiles#1508 covers the same `herdr agent list` cwd-matching detection but
 stops at *suggesting* that a stale tab be closed. That is not in tension with
 closing it here, and the difference is what the two know:
 
-- #1508 detects a tab whose work status is **unknown** — the session may be
+- dEitY719/dotfiles#1508 detects a tab whose work status is **unknown** — the session may be
   mid-turn, may be waiting on the human, may be finished. Closing on that
   signal would kill live work, so it can only suggest.
 - This skill runs on a **specific event**: the PR that tab was opened to
   implement has just been merged and its branch deleted. The tab's reason to
   exist is provably gone. That is a strictly stronger precondition than
-  #1508's, so a stronger action follows from it.
+  dEitY719/dotfiles#1508's, so a stronger action follows from it.
 
 Neither supersedes the other, and neither is a prerequisite for the other.
 
-## Why the agent name does NOT carry the host (#1530)
+## Why the agent name does NOT carry the host (dEitY719/dotfiles#1530)
 
 The name is `mv-<repo>-pr-<N>`, built by `herdr_agent_name` in
 `shell-common/functions/herdr_agent_name.sh` — the SSOT this skill shares with
 `pr_merge_train_cron.sh` and `issue_watcher_cron.sh`.
 
 It used to be `pmv-<host>-<owner>-<repo>-<N>`, mirroring `_PMT_AGENT_PREFIX`
-on the #1403/#1407 argument that `owner/repo` is not unique across GitHub
+on the dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407 argument that `owner/repo` is not unique across GitHub
 servers. That argument is still true — but the name it produced was 37
 characters for this repo and carried a dot besides, and herdr accepts only
 `^[a-z][a-z0-9_-]{0,31}$`. So the host-qualified name did not identify
@@ -78,7 +78,7 @@ picking sides in a conflict stays the human's call, but leaving the user's
 main checkout parked mid-rebase would be a worse failure than the one being
 reported.
 
-## Why the verification session gets its own worktree (#1577)
+## Why the verification session gets its own worktree (dEitY719/dotfiles#1577)
 
 The tab used to open in `MAIN_ROOT`, and the reasoning was sound as far as it
 went: `gh-verify:merged` makes its own fresh clone, and the merged PR's
@@ -92,8 +92,8 @@ reflog showing an unrelated branch checkout and merge inside the verification
 window.
 
 So each PR gets `<git-common-dir>/pr-post-merge-verify/pr-<N>`, a detached
-scratch worktree in the shape `gh:pr-merge-train` already uses
-(`gh:pr-merge-train`'s `references/train-loop.md` (dotfiles dotfiles `claude/skills/gh-pr-merge-train/`) → "Detached scratch
+scratch worktree in the shape `gh-pr:merge-train` already uses
+(`gh-pr:merge-train`'s `references/train-loop.md` (dotfiles `claude/skills/gh-pr-merge-train/`) → "Detached scratch
 worktree"). `--detach` is what makes it collide-free: it holds a commit, not a
 branch name, so it never contests the base branch `MAIN_ROOT` has checked out.
 No second `fetch` is issued for it — step 3 has just fetched
