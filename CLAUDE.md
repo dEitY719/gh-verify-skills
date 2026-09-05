@@ -81,10 +81,9 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
   dispatches five lanes — agy, codex, opencode, hermes, and a `/simplify`
   auto-fix pass — **in one turn**, and Step 3.5 aggregates their verdicts only
   after every lane has returned and before Step 4 pushes. Both the parallelism
-  and that ordering are load-bearing (dEitY719/dotfiles#1613, dEitY719/dotfiles#1636,
-  PR dEitY719/dotfiles#1598); a
-  rewrite that serialises the lanes or reorders those steps changes what the
-  merge gate certifies.
+  and that ordering are load-bearing (dEitY719/dotfiles#1613,
+  dEitY719/dotfiles#1636, PR dEitY719/dotfiles#1598); a rewrite that serialises
+  the lanes or reorders those steps changes what the merge gate certifies.
 - **Honour each skill's safety contract.** `live` and `merged` are read-only on
   source: findings leave as new issues via `gh-issue:create`, never as edits.
   `exception-merge-checklist` mutates only as far as `git add` under
