@@ -3,13 +3,24 @@
 The SKILL.md body lists these as terse rules; the full rationale lives here.
 
 - **Every reviewer lane is soft-fail — never hard-fail.** A missing `agy`,
-  `codex`, `opencode`, or `hermes` CLI (`command -v` empty), a rate-limit, or any non-zero exit from
-  `gh-pr:review` marks only that lane `[SKIP]`/`[WARN]`; the other lanes and
-  the rest of the flow continue. `opencode` and `hermes` also skip softly unless
-  `_dotfiles_setup_mode` is `internal`. If all reviewer CLIs are unavailable,
-  `/simplify` still runs. `gh-pr:review` already does its own
+  `codex`, `opencode`, or `hermes` CLI (`command -v` empty), a rate-limit, or
+  any non-zero exit from `gh-pr:review` stops only that lane; the other lanes
+  and the rest of the flow continue. `opencode` and `hermes` also skip softly
+  unless `_dotfiles_setup_mode` is `internal`. If all reviewer CLIs are
+  unavailable, `/simplify` still runs. `gh-pr:review` already does its own
   `command -v`/OPEN/draft pre-flight, so do **not** duplicate those as
   hard-fails here — always wrap the lane softly.
+
+- **Soft-fail is not silence (dEitY719/gh-verify-skills#14).** A lane that was
+  never dispatched (`SKIP`) and a lane that was dispatched and exited non-zero
+  (`FAIL`) are different facts, and the second one is a *lost reviewer*. Report
+  a FAILed lane as `<ai>:FAIL(<reason>)` in Step 6 and feed it an `unknown`
+  verdict line in Step 3.5, so the PR is left unlabelled rather than certified
+  off whichever lanes survived. The failure this comes from: agy hit
+  `prompt 131746B > 131072B argv limit` on a 62-file PR, the flow absorbed it
+  as a skip, and the verdict gate reasoned from one reviewer while the report
+  presented two. Soft-fail means "the flow continues", never "the reader is not
+  told". (The argv ceiling itself is upstream — `dEitY719/dotfiles#1761`.)
 
 - **Never run a bare `git commit`.** In a non-interactive AI shell a bare
   commit opens an editor for the message and hangs. Always pass `-m` with a

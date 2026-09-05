@@ -366,7 +366,7 @@
           </li>
           <li class="pivot">
             <h3>Step 3 &mdash; 리뷰 + auto-fix 게이트<span class="step-tag">한 턴에 병렬</span></h3>
-            <p>먼저 중복 리뷰 가드로 현재 head sha 를 이미 리뷰한 레인을 건너뛴 뒤, 남은 레인과 auto-fix 패스를 <strong>한 턴에 병렬</strong> 디스패치한다 &mdash; agy &middot; codex &middot; opencode &middot; hermes 는 <code>gh:pr-review --ai &lt;name&gt;</code> 에 위임하는 코멘트 전용이고, <code>/simplify</code> 는 워킹 트리를 고쳐 스스로 커밋한다. 각 레인은 soft-fail 이다.</p>
+            <p>먼저 중복 리뷰 가드로 현재 head sha 를 이미 리뷰한 레인을 건너뛴 뒤, 남은 레인과 auto-fix 패스를 <strong>한 턴에 병렬</strong> 디스패치한다 &mdash; agy &middot; codex &middot; opencode &middot; hermes 는 <code>gh:pr-review --ai &lt;name&gt;</code> 에 위임하는 코멘트 전용이고, <code>/simplify</code> 는 워킹 트리를 고쳐 스스로 커밋한다. 각 레인은 soft-fail 이며, <code>OK</code> / <code>SKIP</code>(디스패치조차 안 됨) / <code>FAIL</code>(디스패치됐고 non-zero 로 죽음) 중 하나로 끝난다.</p>
           </li>
           <li class="pivot">
             <h3>Step 3.5 &mdash; 판정 집계와 머지 게이트 라벨<span class="step-tag">모든 레인 복귀 후 &middot; push 전</span></h3>
@@ -382,7 +382,7 @@
           </li>
           <li>
             <h3>Step 6 &mdash; 보고</h3>
-            <p><code>[OK]</code>/<code>[SKIP]</code>/<code>[WARN]</code> 한 줄을 출력하고, 끝에 Step 3.5 의 결과(<code>review-passed</code> / <code>review-blocked</code> / <code>unlabelled</code>)를 붙인다.</p>
+            <p><code>[OK]</code>/<code>[SKIP]</code>/<code>[WARN]</code> 한 줄을 출력하고, 끝에 Step 3.5 의 결과(<code>review-blocked</code> / <code>unlabelled</code>)를 붙인다. <code>FAIL</code> 레인이 하나라도 있으면 <code>[WARN]</code> 이다.</p>
           </li>
         </ol>
       </section>
@@ -392,7 +392,7 @@
         <ul class="notes">
           <li class="hard"><strong>승인하지 않는다.</strong> approve / request-changes 결정은 이 스킬 밖(<code>gh:pr-approve</code>)이다. 판정 라벨은 머지 트레인 게이트일 뿐 승인이 아니다.</li>
           <li class="hard"><strong>Step 3 의 병렬성과 Step 3.5 의 순서는 동작 계약이다.</strong> 다섯 레인은 한 턴에 함께 디스패치되고, 집계는 모든 레인 복귀 후&middot;push 전에 돈다. 순서를 바꾸면 라벨이 새 sha 를 읽어 게이트가 조용히 무력화된다.</li>
-          <li>리뷰어 레인은 전부 soft-fail &mdash; CLI 가 없거나 에러가 나도 hard-fail 하지 않는다.</li>
+          <li>리뷰어 레인은 전부 soft-fail &mdash; CLI 가 없거나 에러가 나도 hard-fail 하지 않는다. 다만 <strong>soft-fail 은 침묵이 아니다</strong>(gh-verify-skills#14): 죽은 레인은 보고 줄에 <code>&lt;ai&gt;:FAIL(&lt;reason&gt;)</code> 로 이름이 남고 판정 스트림에 <code>unknown</code> 을 넣어, 살아남은 레인만으로 PR 이 인증되는 대신 무라벨로 남는다.</li>
           <li><code>/code-review</code> 를 추가하지 않는다. bare <code>git commit</code> 을 돌리지 않는다(비인터랙티브 셸이 에디터에서 멈춘다).</li>
           <li><code>--defer-reply</code> 는 분 단위이며 보장이 아니다. 타이밍이 중요하면 결정적인 inline 답변을 쓴다.</li>
           <li>이 스킬은 <code>review-blocked</code> 의 <strong>유일한</strong> 기록자이고 <code>review-passed</code> 는 쓰지 않는다 &mdash; 그 라벨은 <code>gh:pr-reply</code> Step 6 의 몫이고, 둘 다 <code>gh:pr-merge-train</code> 만 읽는다.</li>

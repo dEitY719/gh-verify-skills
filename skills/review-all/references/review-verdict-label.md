@@ -290,7 +290,10 @@ Never stage the verdicts in a variable and re-expand it:
 ```sh
 AGG=$(
     for ai in agy codex opencode hermes; do
-        lane_ran "$ai" || continue          # a skipped lane contributes NOTHING
+        lane_dispatched "$ai" || continue   # never dispatched -> NOTHING
+        if lane_failed "$ai"; then          # dispatched, could not run
+            printf 'unknown\n'; continue
+        fi
         v=$(printf '%s\n' "$BODIES" |
             devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
             devx_pr_review_all_verdict)
@@ -314,19 +317,39 @@ directly only when you want the verdict *without* writing a label.
 |---|---|---|
 | any lane `blocking` | blocked | `review-blocked` |
 | ≥1 lane, all `lgtm`/`concerns` | passed | `review-passed` |
-| ≥1 lane, any `unknown` | verdict not established | *(empty)* |
+| ≥1 lane, any `unknown` (unparseable verdict, **or a lane that could not run**) | verdict not established | *(empty)* |
 | zero | nothing was checked | *(empty)* |
 
 `우려있음`/`CONCERNS` is a **pass** — a non-blocking opinion, which `gh-pr:reply`
 still answers. `unknown` is not, because a lane whose output stopped parsing is
 indistinguishable from a lane that never reached a verdict.
 
-**A lane that did not run contributes no line at all.** `command -v` empty, a
-non-internal PC, a non-zero exit — every `[SKIP]`/`[WARN]` row of the report —
-is absent from the stream, not an `unknown`. "Not checked" and "checked and
-passed" must never collapse into the same state. The `/simplify` lane never
-contributes; it produces no verdict. Blank lines are ignored, so a stray one
-cannot inflate `lanes=` into a false "verified".
+**A lane that was never dispatched contributes no line at all.** `command -v`
+empty, a non-internal PC — the `SKIP` rows of the report — are absent from the
+stream, not an `unknown`. "Not checked" and "checked and passed" must never
+collapse into the same state. The `/simplify` lane never contributes; it
+produces no verdict. Blank lines are ignored, so a stray one cannot inflate
+`lanes=` into a false "verified".
+
+**A lane that was dispatched and could not run contributes `unknown`**
+(dEitY719/gh-verify-skills#14). This is the third state, and it used to be
+folded into the second. The agy lane died on
+`prompt 131746B > 131072B argv limit` while reviewing
+`dEitY719/gh-issue-skills#13` (62 files); Step 3 soft-failed it, Step 3.5
+dropped it from the stream, and a PR that lost half its reviewers produced a
+`lanes=1` verdict that read exactly like a PR reviewed by one lane on purpose.
+`unknown` is the right token because it is already precisely what the
+aggregator means by it — *the lane ran but its verdict could not be
+established* — so no new vocabulary is needed: the round reports
+`[WARN] no reviewer lane produced a verdict … left unlabelled`, and unlabelled
+reads downstream as "not verified". Fail-closed, and visibly so.
+
+The distinction is only knowable **here**. `command -v agy` empty and
+`gh-pr:review --ai agy` exiting 1 both leave the PR with no `ai-review` block
+for that lane; nothing downstream can tell them apart. Collapsing both into one
+`[SKIP]` throws away the only place in the pipeline where the difference still
+exists — the same argument as "Why this lives in the producer" below, one level
+finer.
 
 ## Applying the label
 
@@ -336,7 +359,10 @@ verdicts in a variable and re-expand it (same zsh rule as the section above):
 
 ```sh
 for ai in agy codex opencode hermes; do
-    lane_ran "$ai" || continue          # a skipped lane contributes NOTHING
+    lane_dispatched "$ai" || continue   # never dispatched -> NOTHING
+    if lane_failed "$ai"; then          # dispatched, could not run
+        printf 'unknown\n'; continue
+    fi
     printf '%s\n' "$BODIES" |
         devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
         devx_pr_review_all_verdict
@@ -433,6 +459,29 @@ PR (PR dEitY719/dotfiles#1608 review, agy + codex BLOCKER: silently losing the m
 no trace of why). Since dEitY719/dotfiles#1636 that producer is `gh-pr:reply`
 (`_gh_pr_reply_apply_review_passed`), which prints the same wording.
 
+## Known gap: `review-blocked` says nothing about *why* (upstream)
+
+`review-blocked` has one meaning here — "a reviewer lane returned a blocking
+verdict" — but downstream it now covers two situations a reader cannot tell
+apart: a BLOCKER that was **declined and ignored**, and one that was
+**declined and escalated to a tracking issue**. Five rollout PRs on
+2026-09-05 (`gh-flow-skills#10`, `gh-issue-skills#14`, `gh-pr-skills#20`,
+`gh-resolve-skills#12`, `gh-verify-skills#15`) declined a `$PWD` BLOCKER with a
+pointer to `dEitY719/harness-skills#22` and all five correctly kept
+`review-blocked` — correct, and unreadable.
+
+**The fix is not in this repo.** The label's *withholding* decision belongs to
+`gh-pr:reply` Step 6 (`gh-pr-skills`, `references/review-passed-gate.md`), and
+the carrier would be the `pr-reply-origins` ledger, whose `<verdict>` field is
+a closed enum (`ACCEPT` / `ACCEPT-PARTIAL` / `DECLINE` / `QUESTION`) validated
+in vendored `shell-common/functions/gh_pr_reply_targeted_review.sh`, SSOT
+`dEitY719/dotfiles`. Recording "declined, tracked at `<issue>`" needs a token
+or a field there, and `lib/vendor/**` is never edited in this repo. Tracked as
+`dEitY719/gh-pr-skills#21`.
+
+It is the same shape of defect as the one above — the gate has a state it
+cannot represent — which is why it is recorded here rather than only there.
+
 ## Why this lives in the producer
 
 The alternative — having the merge train grep review comment bodies — couples
@@ -443,5 +492,6 @@ direction is the safe one.
 
 The decisive reason, though, is that **only the producer knows which lanes
 ran**. A consumer reading comment bodies cannot tell "lane skipped" from "lane
-ran and posted nothing" — and that distinction *is* the absence-is-not-a-pass
-invariant. It is not recoverable downstream at any level of parsing care.
+ran and posted nothing" from "lane was dispatched and died" — and that
+distinction *is* the absence-is-not-a-pass invariant. It is not recoverable
+downstream at any level of parsing care.

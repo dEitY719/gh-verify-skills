@@ -63,7 +63,8 @@
 3. **Step 3 — 리뷰 + auto-fix 게이트.** 먼저 중복 리뷰 가드로 현재 head sha 를 이미 리뷰한 레인을 건너뛴 뒤,
    남은 레인과 auto-fix 패스를 **한 턴에 병렬** 디스패치한다 — agy · codex · opencode · hermes 는
    `gh:pr-review --ai <name>` 에 위임하는 코멘트 전용이고, `/simplify` 는 워킹 트리를 고쳐 스스로 커밋한다.
-   각 레인은 soft-fail 이다.
+   각 레인은 soft-fail 이며, `OK` / `SKIP`(디스패치조차 안 됨) / `FAIL`(디스패치됐고 non-zero 로 죽음) 중
+   하나로 끝난다.
 4. **Step 3.5 — 판정 집계와 머지 게이트 라벨.** **모든 레인이 복귀한 뒤, Step 4 의 push 전에** 돈다. 레인들의
    마감 판정 줄을 모아 라벨을 쓰되, #1636 이후 이 스킬이 쓰는 라벨은 `review-blocked` 뿐이다. 전 레인 비차단이면
    묵은 `review-blocked` 만 지우고 멈춘다. soft-fail — 라벨 실패가 이후 단계를 막지 않는다.
@@ -72,7 +73,7 @@
 6. **Step 5 — 답변 패스.** `inline`(기본)은 `gh:pr-reply` 즉시 실행, `defer` 는 `reply-pending` 라벨을 먼저
    붙이고 `devx:schedule` 로 예약, `none` 은 생략.
 7. **Step 6 — 보고.** `[OK]`/`[SKIP]`/`[WARN]` 한 줄을 출력하고, 끝에 Step 3.5 의 결과
-   (`review-passed` / `review-blocked` / `unlabelled`)를 붙인다.
+   (`review-blocked` / `unlabelled`)를 붙인다. `FAIL` 레인이 하나라도 있으면 `[WARN]` 이다.
 
 ## 주의사항
 
@@ -80,7 +81,9 @@
   머지 트레인 게이트일 뿐 승인이 아니다.
 - **Step 3 의 병렬성과 Step 3.5 의 순서는 동작 계약이다.** 다섯 레인은 한 턴에 함께 디스패치되고, 집계는 모든
   레인 복귀 후·push 전에 돈다. 순서를 바꾸면 라벨이 새 sha 를 읽어 게이트가 조용히 무력화된다.
-- 리뷰어 레인은 전부 soft-fail — CLI 가 없거나 에러가 나도 hard-fail 하지 않는다.
+- 리뷰어 레인은 전부 soft-fail — CLI 가 없거나 에러가 나도 hard-fail 하지 않는다. 다만 **soft-fail 은
+  침묵이 아니다**(gh-verify-skills#14): 죽은 레인은 보고 줄에 `<ai>:FAIL(<reason>)` 로 이름이 남고 판정
+  스트림에 `unknown` 을 넣어, 살아남은 레인만으로 PR 이 인증되는 대신 무라벨로 남는다.
 - `/code-review` 를 추가하지 않는다. bare `git commit` 을 돌리지 않는다(비인터랙티브 셸이 에디터에서 멈춘다).
 - `--defer-reply` 는 분 단위이며 보장이 아니다. 타이밍이 중요하면 결정적인 inline 답변을 쓴다.
 - 이 스킬은 `review-blocked` 의 **유일한** 기록자이고 `review-passed` 는 쓰지 않는다 — 그 라벨은
