@@ -66,7 +66,7 @@ remote 만 지정**하는 호출이 가능하다. `12a` 는 숫자로 시작하�
 6. 프로젝트 자체 검증 명령을 사다리로 찾아 클론에서 실행한다.
 7. **환경을 바꿔 다시 돌린다** — 기본은 `PATH=/usr/bin:/bin` 정규화. 결과가 갈리면 발견이다.
 8. **차등 검증** — 같은 검사를 PR 이전 상태로 돌려 결과가 실제로 달라지는지 본다.
-9. 후보 발견마다 자기 반증을 세워 걸러내고, 살아남은 것만 `gh:issue-create` 로 넘긴다.
+9. 후보 발견마다 자기 반증을 세워 걸러내고, 살아남은 것만 `gh-issue:create` 로 넘긴다.
 10. `Clone:` `Claims:` `Matrix:` `Unproven:` `Unverified:` `Rejected:` `Findings:` 를 담은
     리포트를 출력하고, `[OK]`/`[WARN]` 이면 대상 PR 에 코멘트로 남긴다.
 
@@ -106,6 +106,6 @@ remote 만 지정**하는 호출이 가능하다. `12a` 는 숫자로 시작하�
 | 스킬 | 관계 |
 |---|---|
 | `gh-verify:live` | **sister skill**. 같은 머지 후 슬롯, 다른 증명 대상(서빙 체크아웃 동일성). 공통 계약은 `../live/references/verify-contract.md` 한 파일 |
-| `gh:issue-create` | 발견 1건마다 호출. 본문 골격 · 라벨 · ai-metrics 의 SSOT |
-| `gh:issue-implement` | 테스트 러너 탐지 사다리의 출처. 여기서 그대로 재사용한다 |
+| `gh-issue:create` | 발견 1건마다 호출. 본문 골격 · 라벨 · ai-metrics 의 SSOT |
+| `gh-issue:implement` | 테스트 러너 탐지 사다리의 출처. 여기서 그대로 재사용한다 |
 | `gh-verify:review-all` | 머지 **전** 정적 리뷰 게이트. 이쪽은 머지 **후** 재현성 검증 |

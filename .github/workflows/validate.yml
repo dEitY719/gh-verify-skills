@@ -37,4 +37,12 @@ jobs:
       # PR #320 / #367), and the reference file must show the real glyphs or it
       # cannot specify the output. Nothing else in this repo may carry one.
       # See CLAUDE.md -> "Emojis".
-      allow-emoji-paths: skills/exception-merge-checklist/references/
+      #
+      # `lib/vendor/` is exempt for the same reason one level down:
+      # shell-common/functions/gh_pr_review.sh *prints* that footer, so its
+      # verbatim upstream copy carries the same glyphs. Editing them here would
+      # fork the vendor and change what the footer renders as — the tree is
+      # replaced wholesale by scripts/sync-shell-common-vendor.sh, never edited.
+      allow-emoji-paths: |
+        skills/exception-merge-checklist/references/
+        lib/vendor/

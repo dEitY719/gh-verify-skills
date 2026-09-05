@@ -77,14 +77,14 @@ regression each one catches live in `references/checks.md`.
 | Situation | Skill |
 |-----------|-------|
 | Pre-merge sanity on an exception-track PR (hand-merge with extra scrutiny) | `gh-verify:exception-merge-checklist` |
-| Normal PR review and approve flow | `gh:pr-approve` |
-| Merge an already-approved PR | `gh:pr-merge` |
-| Resolve conflicts before merging | `gh:pr-resolve-conflict` |
-| Bypass approval for incident/hotfix with audit | `gh:pr-merge-emergency` |
+| Normal PR review and approve flow | `gh-pr:approve` |
+| Merge an already-approved PR | `gh-pr:merge` |
+| Resolve conflicts before merging | `gh-resolve:conflict` |
+| Bypass approval for incident/hotfix with audit | `gh-pr:merge-emergency` |
 
 ## Sister skill
 
-`/devx:pr-to-ssot-issue` is the planned entry-track counterpart —
+`/spec-flow:pr-to-ssot-issue` is the planned entry-track counterpart —
 turn a finished PR into an SSOT issue with the same metadata
 contract that C1 / C2 check. Tracked separately (not yet
 implemented at the time of this skill's introduction).

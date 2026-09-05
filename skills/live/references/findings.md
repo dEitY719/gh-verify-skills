@@ -1,7 +1,7 @@
 # 발견 → 이슈 (findings)
 
 SKILL.md 의 **발견 처리 단계**를 뒷받침한다 — 후보를 스스로 반증하고, 게이트를 통과한 것만
-`gh:issue-create` 에 넘긴다. 이 스킬은 **게이트만** 책임진다.
+`gh-issue:create` 에 넘긴다. 이 스킬은 **게이트만** 책임진다.
 
 ## 0. 발견 1건의 처리 순서
 
@@ -11,7 +11,7 @@ SKILL.md 의 **발견 처리 단계**를 뒷받침한다 — 후보를 스스로
   -> 2. 게이트 5개                 실패 -> [SKIP] 또는 rejected  (리포트 행)
   -> 3. 회귀/기존 결함 판정 + 반증된 근거 정정 포함 여부 결정
   -> 4. 대상 레포 해석 후 출력
-  -> 5. Skill(gh:issue-create, "--assignee @me") 호출  -> safe 라벨 -> 보드 카드 동기화
+  -> 5. Skill(gh-issue:create, "--assignee @me") 호출  -> safe 라벨 -> 보드 카드 동기화
 ```
 
 순서가 중요하다 — 반증이 게이트보다 **먼저**다. 게이트 4개를 전부 통과한 위양성 4건이
@@ -99,13 +99,13 @@ SKILL.md 의 **발견 처리 단계**를 뒷받침한다 — 후보를 스스로
 
 ---
 
-## 5. 등록은 `gh:issue-create` 에 위임한다
+## 5. 등록은 `gh-issue:create` 에 위임한다
 
-발견 1건마다 `Skill(gh:issue-create, "--assignee @me")` 를 호출한다.
+발견 1건마다 `Skill(gh-issue:create, "--assignee @me")` 를 호출한다.
 본문 골격 · 라벨 SSOT 판정 · ai-metrics 푸터는 **그 스킬이 SSOT** 다.
 
 **여기서 템플릿을 재기술하지 않는다** — 재기술하면 그쪽이 바뀔 때 두 곳이 어긋난다.
-원 §8 의 "TL;DR / 증상 / 재현 / 근본 원인 / …" 나열은 `gh:issue-create` 의
+원 §8 의 "TL;DR / 증상 / 재현 / 근본 원인 / …" 나열은 `gh-issue:create` 의
 `references/templates/fix.md` 를 옮겨 적은 것이었다.
 
 ---
@@ -141,7 +141,7 @@ if [ -r "$_HELPER" ]; then
 fi
 ```
 
-`--repo "$TARGET_REPO"` 가 load-bearing 이다 (#1405) — 빼먹으면 헬퍼가 `gh repo view`
+`--repo "$TARGET_REPO"` 가 load-bearing 이다 (dEitY719/dotfiles#1405) — 빼먹으면 헬퍼가 `gh repo view`
 (= `gh repo set-default` 가 고른 레포, 보통 dotfiles) 보드로 카드를 보낸다. 이 스킬은
 `origin` 이 아닐 수도 있는 대상 레포를 일부러 해소해 놓고 쓰므로 특히 위험하다.
 (종전의 `GH_REPO="$TARGET_REPO"` 프리픽스 형태도 여전히 동작한다 — 헬퍼가 `GH_REPO` 를
@@ -175,7 +175,7 @@ fi
 
 | 플래그 | 동작 |
 |---|---|
-| (없음) | 게이트 통과분을 `gh:issue-create` 로 등록 |
+| (없음) | 게이트 통과분을 `gh-issue:create` 로 등록 |
 | `--dry-run` | 본문 **초안을 작성해 출력**하되 등록하지 않음 |
 | `--no-issue` | **초안조차 쓰지 않고** 리포트 행으로만 보고 |
 | 둘 다 | `--no-issue` 승리 |

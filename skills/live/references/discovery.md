@@ -165,6 +165,19 @@ git -C "$SERVING_ROOT" status --porcelain
 docker-published 포트는 `ss -ltnp` 에 PID 가 안 잡힌다(docker-proxy). 이 경우, `devx_pr_verify_live_backend_identity.sh` 헬퍼를 통해 identity를 기계적으로 검증한다.
 입력: `--repo-root`, `--target-repo`, `--target-sha`, `--base-url`, `--backend-ports`, `--container-name`
 
+헬퍼는 다른 여섯 개와 **같은 2단 폴백**으로 소스한다 — 플러그인만 설치된 머신에는 `$HOME/dotfiles` 가 없고,
+그때 `SHELL_COMMON` 을 vendor 루트로 export 해야 헬퍼가 자기 `.py` 형제(`$SHELL_COMMON/functions/`)도 찾는다.
+
+```sh
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }
+. "$_SC/functions/devx_pr_verify_live_backend_identity.sh"
+devx_pr_verify_live_backend_identity --repo-root "$REPO_ROOT" --target-repo "$TARGET_REPO" \
+  --target-sha "$TARGET_SHA" --base-url "$BASE_URL" [--backend-ports "$PORTS"] [--container-name "$NAME"]
+```
+
+폴백 블록 없이 이름만 부르면 플러그인 설치본에서는 호출할 파일 자체가 없다 — 사다리가 아예 돌지 않는다.
+
 1. **A. host PID/cwd ancestry**: 호스트의 ss/lsof를 확인해 docker-proxy가 아닌 API 서버 프로세스가 존재하면 검증을 시도한다.
 2. **B. docker exec git ancestry**: docker ps로 포트에 매핑되는 컨테이너를 찾고, 컨테이너 내부에 마운트된 git 저장소의 merge-base ancestry를 검증한다.
 3. **C. 컨테이너 내부 파일/라우트 존재 검증**: git이 없는 컨테이너의 경우, PR 변경 사항에 해당하는 백엔드 파일들의 존재 여부와 추가된 라우트/코드 일부(grep)가 컨테이너 내부에 포함되어 있는지 검증한다. 성공 시 unverified 상태이지만 근거(evidence)를 함께 제시한다.

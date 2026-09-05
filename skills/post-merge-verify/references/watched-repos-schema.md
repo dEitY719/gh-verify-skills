@@ -1,11 +1,11 @@
-# watched-repos registry — schema (F-1, issue #1511, unified #1555)
+# watched-repos registry — schema (F-1, issue dEitY719/dotfiles#1511, unified dEitY719/dotfiles#1555)
 
 Location: `${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`
 — the same untracked file `issue_watcher_cron.sh` already reads, and the same
 env-var override rule (`IW_WATCHED_REPOS`). This registry is **not** part of
 the git repo: it lives outside `$DOTFILES_ROOT` and is not reviewed by any PR.
 
-Before #1555 this schema described a second, tracked SSOT file under
+Before dEitY719/dotfiles#1555 this schema described a second, tracked SSOT file under
 `docs/.ssot/` that only `gh-verify:post-merge-verify` read. That file is gone;
 every registered repo's `verify_skill` now lives as a field on the same
 array entry issue-watcher already reads.
@@ -56,7 +56,7 @@ prompt. Adding a third verification skill means adding it to the allowlist in
 all three places: `references/dispatch.sh.md`,
 dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh`, and this table.
 
-## Trust boundary changed by #1555
+## Trust boundary changed by dEitY719/dotfiles#1555
 
 Before this change, `verify_skill` lived in a **tracked** file — anyone
 setting it went through a PR review, which was a first line of defense
@@ -64,7 +64,7 @@ against a malicious value reaching the `--dangerously-skip-permissions`
 prompt. Unifying onto the untracked registry removes that line: the file is
 now user-editable with no review and no lint holding its shape. **The
 allowlist in `dispatch.sh.md` is the only remaining defense**, and per issue
-#1555's explicit decision it must not be loosened as part of this or any
+dEitY719/dotfiles#1555's explicit decision it must not be loosened as part of this or any
 adjacent change. A registry value outside the allowlist still gets exactly
 one `[WARN]` line and stops before any herdr mutation — unchanged behavior,
 now carrying more of the weight.
@@ -87,10 +87,10 @@ now carrying more of the weight.
 
 Removing `verify_skill` from an entry (or the entry outright) is the
 supported off switch for `gh-verify:post-merge-verify` — it restores exactly the
-pre-#1511 behavior for that repo, silently, without affecting issue-watcher's
+pre-dEitY719/dotfiles#1511 behavior for that repo, silently, without affecting issue-watcher's
 own use of the same entry.
 
-## Operator action after #1555
+## Operator action after dEitY719/dotfiles#1555
 
 This unification does not migrate data — the untracked file is outside the
 repo and no code should write to a user's home directory on its behalf. Any

@@ -4,9 +4,9 @@ Fan out **every available reviewer** on one PR in parallel — `agy` ∥
 `codex` ∥ `opencode` ∥ `hermes` second opinions ∥ a `/simplify` auto-fix pass (which commits its own
 changes) — then run a reply pass over the resulting review comments. A
 composition skill: it
-orchestrates several reviewers plus a reply, unlike `gh:pr-review` (a single
+orchestrates several reviewers plus a reply, unlike `gh-pr:review` (a single
 external AI, one aggregate comment). It submits **no decision** (approve /
-request-changes) — that is `gh:pr-approve`.
+request-changes) — that is `gh-pr:approve`.
 
 ## Arguments
 
@@ -19,7 +19,7 @@ request-changes) — that is `gh:pr-approve`.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--defer-reply M` / `--defer-reply=M` | off (inline) | Schedule `/gh-pr-reply` M **minutes** later via `devx:schedule` instead of replying inline. |
+| `--defer-reply M` / `--defer-reply=M` | off (inline) | Schedule `/gh-pr:reply` M **minutes** later via `session:schedule` instead of replying inline. |
 | `--no-reply` | off | Skip the reply step entirely. |
 | `--force-review` | off | Bypass the duplicate-review guard and re-run every reviewer lane (agy/codex/opencode/hermes) even if the current head sha was already reviewed. Does not affect `/simplify`, which always runs regardless of this flag. |
 | `-h` / `--help` / `help` | — | Print this help and stop. |
@@ -42,11 +42,11 @@ request-changes) — that is `gh:pr-approve`.
    check out the PR head branch if not already on it (so `/simplify` acts on
    the right tree).
 3. Review + auto-fix gate — first skip any reviewer lane that already posted a
-   review for the PR's current head sha (the duplicate-review guard, #1613;
+   review for the PR's current head sha (the duplicate-review guard, dEitY719/dotfiles#1613;
    `--force-review` bypasses it), then dispatch the remaining lanes plus the
    auto-fix pass as
    Agent subagents **in one turn**. agy/codex/opencode/hermes delegate to
-   `gh:pr-review --ai <name>` (streams findings + posts a PR comment) and run
+   `gh-pr:review --ai <name>` (streams findings + posts a PR comment) and run
    fully in parallel. opencode and hermes run only on internal PCs. `/simplify` mutates the working tree and commits its own
    changes (`refactor(<scope>): simplify per /simplify`). Each lane is
    soft-fail.
@@ -58,24 +58,24 @@ request-changes) — that is `gh:pr-approve`.
    Spec: `references/review-verdict-label.md`.
 5. Push the auto-fix commit (only if the working tree changed), always with
    an explicit `-m` message.
-6. Reply — inline `gh:pr-reply <pr> <remote>` (default), or deferred via
-   `devx:schedule` (`--defer-reply M`), or skipped (`--no-reply`). The
+6. Reply — inline `gh-pr:reply <pr> <remote>` (default), or deferred via
+   `session:schedule` (`--defer-reply M`), or skipped (`--no-reply`). The
    `<remote>` is threaded so the reply pass resolves the same target repo.
 7. Print one `[OK]`/`[SKIP]`/`[WARN]` report line, ending with the verdict
    clause, e.g. `… — reply: inline — verdict: review-passed`.
 
 ## What the skill will NOT do
 
-- Submit `gh pr review --approve` / `--request-changes` — that is `gh:pr-approve`.
+- Submit `gh pr review --approve` / `--request-changes` — that is `gh-pr:approve`.
   The verdict label it writes is a **merge-train gate**, not an approval: it
   never touches `reviewDecision`.
-- Merge anything. `gh:pr-merge-train` reads the label; this skill only writes it.
+- Merge anything. `gh-pr:merge-train` reads the label; this skill only writes it.
 - Run `/code-review --fix` — it is user-invocation-only since Claude Code
   v2.1.215, so no skill can invoke it. Run it yourself when you want it; agy,
-  codex, and the closing `gh:pr-reply` pass cover the same ground here.
+  codex, and the closing `gh-pr:reply` pass cover the same ground here.
 - Hard-fail because a reviewer CLI is missing or errors — each lane is soft-fail.
 - Run a bare `git commit` — an editor prompt would hang the non-interactive shell.
-- Schedule sub-minute delays — `devx:schedule` is minutes-only; for tight
+- Schedule sub-minute delays — `session:schedule` is minutes-only; for tight
   ordering use the deterministic inline reply.
 
 ## Exit codes

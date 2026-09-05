@@ -10,8 +10,8 @@ operates on a PR.
 Skip the comment entirely (no warning, no log) when either of:
 
 - `GH_DISABLE_AI_METRICS=1` (issue #399 contract — same env var
-  honored by `gh:issue-implement`, `gh:commit`, `gh:pr`,
-  `gh:pr-merge`, etc.)
+  honored by `gh-issue:implement`, `gh-pr:commit`, `gh-pr:create`,
+  `gh-pr:merge`, etc.)
 - The skill exited with code 2 (bad args) or 3 (no PR detected) —
   there is nothing to attach the comment to.
 
@@ -63,7 +63,7 @@ Two safety choices in the command below:
 - **`-F body=@FILE`** (capital `F`) reads the file directly. The
   lowercase `-f body=@FILE` is a known regression that posts the
   literal path string instead of the file contents (see dotfiles
-  MEMORY "gh:discussion-create body-file 회귀").
+  MEMORY "gh-issue:discussion-create body-file 회귀").
 
 ```sh
 BODY_FILE=$(mktemp) && trap 'rm -f "$BODY_FILE"' EXIT
@@ -83,7 +83,7 @@ metrics comment is observability for the team dashboard.
 
 ## Why a comment, not a body edit
 
-`gh:pr` writes the per-step metric block into the PR **body** via
+`gh-pr:create` writes the per-step metric block into the PR **body** via
 `gh pr edit --body-file`. This skill posts as a **comment** for
 three reasons:
 
@@ -94,7 +94,7 @@ three reasons:
    classic-projects silent-fail (issue #326 Bug B). A comment POST
    has no such trap.
 3. The PR body already carries multiple `<!-- ai-metrics:* -->`
-   blocks from earlier skills (`gh:pr`, `gh:pr-resolve-conflict`,
+   blocks from earlier skills (`gh-pr:create`, `gh-resolve:conflict`,
    etc.); a new block per audit run would either bloat the body
    or require an in-place replace flow that this skill does not
    need.

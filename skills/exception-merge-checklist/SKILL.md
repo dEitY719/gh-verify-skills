@@ -6,6 +6,7 @@ description: >-
   /gh-verify:exception-merge-checklist, /devx:exception-merge-checklist,
   /devx-exception-merge-checklist,
   "예외 트랙 머지 전 점검", "exception PR pre-merge audit".
+license: MIT
 allowed-tools: Bash, Read, Grep, Glob, Edit
 metadata:
   model_recommendation:
@@ -72,10 +73,9 @@ deterministic FAIL among C8 (`.openapi-lock` regenerate via
 reported, scoped to `*.md` / `*.json` / `*.yml` / `*.yaml` only).
 All other FAILs require human judgment and are never auto-fixed.
 
-After fixes, `git add` the touched files only and stop. **Never run
-`git commit`** — the user invokes `/gh:commit` separately so the
-commit message is human-authored. Print the staged file list and a
-hint pointing to `/gh-commit`.
+After fixes, `git add` the touched files only and stop. **Never run `git commit`** — the user invokes
+`/gh-pr:commit` separately so the commit message is human-authored. Print the staged file list and a hint
+pointing to `/gh-pr:commit`.
 
 ## Step 5: AI Metrics Footer
 
@@ -95,6 +95,6 @@ by other skills. `GH_DISABLE_AI_METRICS=1` skips this step entirely
 
 ## Related Skills
 
-`gh:pr-approve` (normal review/approve flow) · `gh:pr-merge` (merge an approved PR) ·
-`gh:pr-resolve-conflict` (conflicts before merging) · `gh:pr-merge-emergency`
-(incident bypass with audit) · `gh:commit` (commit what `--auto-fix` staged).
+`gh-pr:approve` (normal review/approve flow) · `gh-pr:merge` (merge an approved PR) ·
+`gh-resolve:conflict` (conflicts before merging) · `gh-pr:merge-emergency`
+(incident bypass with audit) · `gh-pr:commit` (commit what `--auto-fix` staged).

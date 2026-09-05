@@ -1,8 +1,7 @@
+#!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
 # Synced 2026-09-03T08:20Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
-
-#!/bin/sh
 # shellcheck shell=bash
 # shell-common/functions/gh_pr_review.sh
 # gh-pr-review — synchronous PR review delegation to an external AI CLI.
