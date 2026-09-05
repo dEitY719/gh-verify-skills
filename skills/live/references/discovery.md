@@ -165,12 +165,18 @@ git -C "$SERVING_ROOT" status --porcelain
 docker-published 포트는 `ss -ltnp` 에 PID 가 안 잡힌다(docker-proxy). 이 경우, `devx_pr_verify_live_backend_identity.sh` 헬퍼를 통해 identity를 기계적으로 검증한다.
 입력: `--repo-root`, `--target-repo`, `--target-sha`, `--base-url`, `--backend-ports`, `--container-name`
 
-헬퍼는 다른 여섯 개와 **같은 2단 폴백**으로 소스한다 — 플러그인만 설치된 머신에는 `$HOME/dotfiles` 가 없고,
+헬퍼는 다른 여섯 개와 **같은 폴백 사다리**(dotfiles -> vendored -> 정지)로 소스한다 — 플러그인만 설치된 머신에는 `$HOME/dotfiles` 가 없고,
 그때 `SHELL_COMMON` 을 vendor 루트로 export 해야 헬퍼가 자기 `.py` 형제(`$SHELL_COMMON/functions/`)도 찾는다.
 
 ```sh
 _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }
+[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
+[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] || {
+    printf '[gh-verify:live] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+        "$_SC" >&2
+    return 1 2>/dev/null || exit 1
+}
+export SHELL_COMMON="$_SC"
 . "$_SC/functions/devx_pr_verify_live_backend_identity.sh"
 devx_pr_verify_live_backend_identity --repo-root "$REPO_ROOT" --target-repo "$TARGET_REPO" \
   --target-sha "$TARGET_SHA" --base-url "$BASE_URL" [--backend-ports "$PORTS"] [--container-name "$NAME"]
@@ -204,7 +210,13 @@ dev 서버 PID 는 재기동으로 세션 중에 바뀐다. 실측: 같은 런 �
 # 비대화형 셸에서 조기 return 하면 헬퍼가 아예 정의되지 않는다.
 export DOTFILES_FORCE_INIT=1
 _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/gh_pr_review.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }
+[ -f "$_SC/functions/gh_pr_review.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
+[ -f "$_SC/functions/gh_pr_review.sh" ] || {
+    printf '[gh-verify:live] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+        "$_SC" >&2
+    return 1 2>/dev/null || exit 1
+}
+export SHELL_COMMON="$_SC"
 . "$_SC/functions/gh_pr_review.sh"
 TARGET_REPO=$(_gh_pr_review_resolve_target_repo "${remote:-origin}") || {
   echo "Cannot resolve remote '${remote:-origin}' to a repo" >&2; exit 1; }

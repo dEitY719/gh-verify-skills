@@ -99,16 +99,17 @@ PMV_PROMPT_ATTEMPT_MAX="${PMV_PROMPT_ATTEMPT_MAX:-3}"
 # `^[a-z][a-z0-9_-]{0,31}$` refuses, so this dispatch never once started a
 # verification session. A missing helper skips the feature rather than
 # guessing a name.
-# `_SC` two-tier fallback, same as every other helper this plugin sources: with only
+# `_SC` fallback ladder, same as every other helper this plugin sources: with only
 # the plugin installed there is no $HOME/dotfiles, so fall back to the vendored copy
 # and export SHELL_COMMON so anything sourced after this resolves from the same root.
 _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/herdr_agent_name.sh" ] || { _SC="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; export SHELL_COMMON="$_SC"; }
+[ -f "$_SC/functions/herdr_agent_name.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
 PMV_NAME_LIB="$_SC/functions/herdr_agent_name.sh"
 if [ ! -r "$PMV_NAME_LIB" ]; then
     printf '[WARN] gh-verify:post-merge-verify: %s not readable — verification skipped.\n' "$PMV_NAME_LIB"
     return 0 2>/dev/null || exit 0
 fi
+export SHELL_COMMON="$_SC"
 # shellcheck source=/dev/null
 . "$PMV_NAME_LIB"
 
