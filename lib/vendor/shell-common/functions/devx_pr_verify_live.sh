@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live.sh
-# Synced 2026-09-03T08:20Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_verify_live.sh
 # Pure arg parser for the devx:pr-verify-live skill. Mirrors the
@@ -69,6 +69,7 @@ devx_pr_verify_live_parse() {
     local post_comment=1
     local _remote_set=0
     local _pos_seen=0
+    local _pr_set=0
     local _url_set=0
     local _api_url_set=0
     local _start_set=0
@@ -177,15 +178,19 @@ devx_pr_verify_live_parse() {
             ;;
         *)
             # `[pr-number] [remote]` with an optional PR#. Discriminator:
-            # PR numbers start with a digit, git remote names conventionally
+            # PR numbers start with a digit (optionally `#`-prefixed, the
+            # common GitHub PR notation), git remote names conventionally
             # do not. A leading digit therefore always means "this is the
-            # PR#" — `12a` stays a loud PR# error instead of silently
-            # becoming a remote name.
+            # PR#" — `12a` / `#12a` stay a loud PR# error instead of
+            # silently becoming a remote name.
             if [ "$_pos_seen" -eq 0 ]; then
                 _pos_seen=1
                 case "$1" in
-                [0-9]*)
-                    pr="$1"
+                [0-9]* | '#'*)
+                    # Stripping `#` is a no-op on a bare digit string, so
+                    # one arm covers `123` and `#123` alike.
+                    pr="${1#\#}"
+                    _pr_set=1
                     ;;
                 *)
                     remote="$1"
@@ -204,7 +209,11 @@ devx_pr_verify_live_parse() {
         esac
     done
 
-    if [ -n "$pr" ]; then
+    # Gate on "a PR# positional was given", not on `pr` being non-empty: a
+    # bare `#` strips to an empty PR# and must still be rejected here
+    # instead of silently falling back to PR auto-detection (#1748 codex
+    # review, PR #1749).
+    if [ "$_pr_set" -eq 1 ]; then
         if ! _devx_pr_verify_live_pos_int "$pr"; then
             echo "PR# must be a positive integer: '$pr'" >&2
             return 2

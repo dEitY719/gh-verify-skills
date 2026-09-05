@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/herdr_agent_lookup.sh
-# Synced 2026-09-05T02:31Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/herdr_agent_lookup.sh
 # SSOT for "is a herdr agent sitting on this worktree?" (issue #1569).
 #

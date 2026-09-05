@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live_backend_identity.py
-# Synced 2026-09-05T02:31Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/devx_pr_verify_live_backend_identity.py
 # Python backend identity verification helper. Orchestrates the fallback ladder
 # to check if the running backend contains the target commit.

@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_project_status.sh
-# Synced 2026-09-03T08:20Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/gh_project_status.sh
 # Push a projectV2 Status transition for an Issue or PR. Auto-discovers every
@@ -269,14 +269,24 @@ _gh_project_status_sync() {
     #   project.id | item.id | field.id | target_option.id | current_status_name
     # The current_status_name is needed for --only-from gating.
     #
-    # Variables: $owner String!, $repo String!, $number Int!, $target String!
+    # Pagination (issue #1757): an item can belong to more than one board,
+    # and the jq select below keeps only the boards whose Status field
+    # actually offers $target. With a fixed `first: 10` an 11th-or-later
+    # membership was dropped before the filter ever saw it, so the sync
+    # degraded to a silent no-op indistinguishable from "not on any matching
+    # board". `--paginate` makes gh follow pageInfo.endCursor itself — that
+    # is why the query declares $endCursor and asks for pageInfo — and it
+    # re-runs the --jq filter per page, so $_records collects every match.
+    # Variables: $owner String!, $repo String!, $number Int!, $target String!,
+    #            $endCursor String
     local _records
-    _records=$(gh api graphql \
+    _records=$(gh api graphql --paginate \
         -f query="
-          query(\$owner: String!, \$repo: String!, \$number: Int!, \$target: String!) {
+          query(\$owner: String!, \$repo: String!, \$number: Int!, \$target: String!, \$endCursor: String) {
             repository(owner: \$owner, name: \$repo) {
               ${_q_field}(number: \$number) {
-                projectItems(first: 10) {
+                projectItems(first: 100, after: \$endCursor) {
+                  pageInfo { hasNextPage endCursor }
                   nodes {
                     id
                     fieldValueByName(name: \"Status\") {
@@ -380,7 +390,7 @@ _gh_project_status_set_and_verify() {
     local _attempt
     for _attempt in 1 2; do
         sleep "${_GH_PROJECT_STATUS_VERIFY_SLEEP-1}"
-        _actual=$(_gh_project_status_query_current "$_kind" "$_num" "$_repo_arg")
+        _actual=$(_gh_project_status_query_current "$_kind" "$_num" "$_repo_arg" "$_proj")
 
         if [ "$_actual" = "$_target" ]; then
             if [ "$_attempt" -eq 1 ]; then
@@ -411,12 +421,10 @@ _gh_project_status_set_and_verify() {
 }
 
 # Best-effort read of the current Status for an issue/PR. Returns the first
-# non-empty Status value found across the item's project memberships — for
-# multi-board items the verify pair only checks one board's value, but every
-# board runs the same builtin workflows so observing one race surface is
-# sufficient for the recovery contract.
+# non-empty Status value found across the item's project memberships, or —
+# when a project id is pinned — the value on exactly that one board.
 #
-# Args: kind num [owner/repo]
+# Args: kind num [owner/repo] [project-id]
 #   The optional third positional pins the repo (issue #1405). It is handed
 #   straight to _gh_project_status_resolve_owner_repo, so it accepts both
 #   "OWNER/REPO" and "HOST/OWNER/REPO" and, when omitted/empty, falls back to
@@ -424,6 +432,15 @@ _gh_project_status_set_and_verify() {
 #   explicit value is a resolution failure, reported as rc 1 below (the
 #   resolver's own rc 2 is folded in), never a silent fallback to
 #   auto-detect.
+#
+#   The optional fourth positional pins the project (issue #1757). Without
+#   it the read answers with whichever board GitHub lists first, which for a
+#   multi-board item need not be the board the caller just wrote to: the
+#   verify pair could then report a false revert, or "verified" off the
+#   wrong board. _gh_project_status_set_and_verify passes the project id it
+#   mutated; every other caller omits it and keeps the first-row behaviour.
+#   A value that is not a plain GitHub node id is a caller bug — rc 1, never
+#   a quietly unfiltered read.
 # Output (stdout): current Status name, or nothing.
 # Returns (four-way contract, issues #1354 and #1356):
 #   0 + non-empty stdout — query succeeded, item has a Status value.
@@ -450,7 +467,7 @@ _gh_project_status_set_and_verify() {
 # board attached", or a gate built on this helper would silently open
 # on its own misuse. Reviewer follow-up, PR #1355 (agy).
 _gh_project_status_query_current() {
-    local _kind="$1" _num="$2" _repo_arg="${3-}"
+    local _kind="$1" _num="$2" _repo_arg="${3-}" _proj_arg="${4-}"
     [ -z "$_kind" ] && return 1
     [ -z "$_num" ] && return 1
 
@@ -466,6 +483,21 @@ _gh_project_status_query_current() {
         *) return 1 ;;
     esac
 
+    # Project pin (#1757), validated before anything is queried. The guard
+    # exists so a caller-supplied id cannot break out of the jq string
+    # literal it is spliced into below — only `"` and `\` could do that, so
+    # the class stays permissive over the id alphabet itself and covers both
+    # base64 (`+`, `/`) and base64url (`-`, `_`) plus `=` padding. GraphQL
+    # node ids are opaque and GitHub guarantees neither variant (PR #1758,
+    # codex), so narrowing this to base64url would reject a legitimate id and
+    # turn a working verify into a silent "verify failed twice".
+    local _proj_sel=''
+    case "$_proj_arg" in
+        '') ;;
+        *[!A-Za-z0-9_=+/-]*) return 1 ;;
+        *) _proj_sel="| select(.project?.id == \"$_proj_arg\")" ;;
+    esac
+
     local _owner _repo _resolved
     # Resolution failure is a query failure, not "no board" (#1354). That
     # includes a malformed explicit repo argument (#1405) — callers gate on
@@ -477,13 +509,18 @@ _gh_project_status_query_current() {
     # Substitute gh's output into a variable, then filter it — a
     # `gh ... | head -n 1` pipeline would report head's exit status, not
     # gh's, and the POSIX Golden Rules rule out ${PIPESTATUS[0]} (#1354).
+    # `--paginate` + $endCursor is the same unbounded-membership fix the
+    # discovery query carries (#1757): a pinned board sitting past the first
+    # page must still be readable.
     local _raw _nl _gql_query _gql_jq _gql_err
     _gql_query="
-          query(\$owner: String!, \$repo: String!, \$number: Int!) {
+          query(\$owner: String!, \$repo: String!, \$number: Int!, \$endCursor: String) {
             repository(owner: \$owner, name: \$repo) {
               ${_q_field}(number: \$number) {
-                projectItems(first: 10) {
+                projectItems(first: 100, after: \$endCursor) {
+                  pageInfo { hasNextPage endCursor }
                   nodes {
+                    project { id }
                     fieldValueByName(name: \"Status\") {
                       ... on ProjectV2ItemFieldSingleSelectValue { name }
                     }
@@ -493,11 +530,12 @@ _gh_project_status_query_current() {
             }
           }"
     _gql_jq=".data.repository.${_q_field}.projectItems.nodes[]
+              ${_proj_sel}
               | .fieldValueByName?.name?
               | select(. != null and . != \"\")"
 
-    # Variables: $owner String!, $repo String!, $number Int!
-    if ! _raw=$(gh api graphql -f query="$_gql_query" \
+    # Variables: $owner String!, $repo String!, $number Int!, $endCursor String
+    if ! _raw=$(gh api graphql --paginate -f query="$_gql_query" \
         -f owner="$_owner" -f repo="$_repo" -F number="$_num" \
         --jq "$_gql_jq" \
         2>/dev/null); then
@@ -506,8 +544,8 @@ _gh_project_status_query_current() {
         # *successful* call, which would corrupt _raw on the happy path
         # (agy review, PR #1357). Re-run stderr-only, read-only, purely to
         # classify the failure — rc 2 vs rc 1, see the contract above (#1356).
-        # Variables: $owner String!, $repo String!, $number Int!
-        _gql_err=$(gh api graphql -f query="$_gql_query" \
+        # Variables: $owner String!, $repo String!, $number Int!, $endCursor String
+        _gql_err=$(gh api graphql --paginate -f query="$_gql_query" \
             -f owner="$_owner" -f repo="$_repo" -F number="$_num" \
             --jq "$_gql_jq" \
             2>&1 1>/dev/null)
@@ -518,8 +556,11 @@ _gh_project_status_query_current() {
     fi
 
     [ -z "$_raw" ] && return 0
-    # First line only — projectItems(first: 10) can yield multiple rows.
-    # Plain parameter expansion instead of `| head -n 1` to skip the fork.
+    # First line only — an unpinned read still spans every board the item
+    # sits on. With a $4 project pin the jq select above has already narrowed
+    # it to that board's single row (#1757); this stays the unpinned path's
+    # tie-break. Plain parameter expansion instead of `| head -n 1` to skip
+    # the fork.
     _nl='
 '
     printf '%s\n' "${_raw%%"$_nl"*}"
