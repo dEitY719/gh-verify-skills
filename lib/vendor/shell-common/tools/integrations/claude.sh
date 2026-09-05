@@ -10,6 +10,7 @@
 # CLI reports the misleading "~/.dotfiles-setup-mode != internal". The rest of
 # upstream claude.sh (claude_yolo, account routing, ux_lib) is deliberately not
 # vendored — only the one function this plugin's gates read.
+# Bridges: _dotfiles_setup_mode
 
 # shellcheck source=/dev/null
 . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/dotfiles_setup_mode.sh"
