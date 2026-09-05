@@ -128,9 +128,11 @@ safe 래퍼로 갈아탄 뒤에야 라벨이 붙었다.
 스킬이 통째로 죽는다. `tests/bats/skills/helper_fallback_nf1.bats` 가 이 계약을 지킨다.
 
 ```bash
-_HELPER="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_project_status.sh"
-[ -f "$_HELPER" ] || { _HELPER="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common/functions/gh_project_status.sh"; export SHELL_COMMON="${CLAUDE_PLUGIN_ROOT:-}/lib/vendor/shell-common"; }
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
+[ -f "$_SC/functions/gh_project_status.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
+_HELPER="$_SC/functions/gh_project_status.sh"
 if [ -r "$_HELPER" ]; then
+    export SHELL_COMMON="$_SC"
     . "$_HELPER"
     if ! command -v _gh_project_status_sync >/dev/null 2>&1; then
         printf '[pr-verify-live] %s sourced but _gh_project_status_sync undefined (#724).\n' \
@@ -138,6 +140,9 @@ if [ -r "$_HELPER" ]; then
     else
         _gh_project_status_sync issue "$N" "Backlog" --repo "$TARGET_REPO" || true
     fi
+else
+    printf '[gh-verify:live] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+        "$_SC" >&2
 fi
 ```
 
