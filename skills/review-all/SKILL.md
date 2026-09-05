@@ -74,13 +74,16 @@ is accepted rather than closed with a lock file.
 
 The five lanes dispatch together in a single turn. agy/codex/opencode/hermes
 are comment-only; `/simplify` may mutate and commit. Every lane is soft-fail,
-and ends in one of **three** outcomes. `OK` — it ran and left a verdict
-on the PR. `SKIP` — it was never dispatched (CLI absent, non-internal PC), and
-contributes no verdict line. `FAIL` — it was dispatched and exited non-zero: it
-**could not run**, which is not a `SKIP` and must never be reported as one
-(dEitY719/gh-verify-skills#14); keep its stderr as `<reason>`. A guard-skipped
-lane counts as `OK` — it already has a valid verdict for this exact head, which
-is why the guard skipped it, and Step 3.5 harvests it. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; . "$_SC/functions/dotfiles_setup_mode.sh"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
+and ends in one of **three** outcomes. **Step 3 is the only place they are
+known**, so record them as you dispatch: `$LANES`, one `<ai>:ok|skip|fail` per
+**line** (never space-separated — Step 3.5 iterates it, and zsh does not
+word-split). `ok` — ran, verdict on the PR (a guard-skipped lane is `ok`: it already
+has one for this head, which is why the guard skipped it). `skip` — never
+dispatched (CLI absent, non-internal PC). `fail` — dispatched, exited non-zero:
+it **could not run**, which is not a `skip` and must never be reported as one
+(dEitY719/gh-verify-skills#14). Take a `fail`'s `<reason>` from the lane's
+**first stderr line**, newlines and control characters stripped, truncated to
+120 chars — Step 6 prints exactly one line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; . "$_SC/functions/dotfiles_setup_mode.sh"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
 
 - **agy** — if `command -v agy`, an Agent runs
   `Skill(gh-pr:review, "--ai agy <pr> <remote>")`; absent → SKIP, non-zero exit → FAIL.
@@ -113,11 +116,9 @@ In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
    `ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"`.
    Only markers written by this login count as a lane's verdict (dEitY719/dotfiles#1639) — see
    `references/review-verdict-label.md` → "Marker authorship".
-4. For **each lane that ran fresh in Step 3, FAILed, or was skipped by the
-   duplicate-review guard** (i.e. every lane except a `SKIP` for a
-   **missing CLI / non-internal PC** — `/simplify` never contributes either),
-   pipe `BODIES` through `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`
-   → `devx_pr_review_all_verdict`, and pipe that stream straight into
+4. Walk `$LANES` (`/simplify` never contributes). For an `ok` lane pipe
+   `BODIES` through `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`
+   → `devx_pr_review_all_verdict`; drop a `skip` entirely. Pipe the stream into
    `devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"`.
    **Since dEitY719/dotfiles#1636 that call only ever writes `review-blocked`.** An
    all-non-blocking round clears any stale `review-blocked` and stops there —
@@ -133,11 +134,9 @@ In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
    `review-passed`, since the aggregator only sees the lanes fed to it. It costs
    nothing extra — `devx_pr_review_all_lane_block` reads whatever marker already
    exists in `$BODIES`, and the guard already proved this one exists.
-   **A FAILed lane has no block to harvest, so emit a literal `unknown` line
-   for it** (dEitY719/gh-verify-skills#14): the aggregator reads any `unknown`
-   as "verdict not established", so the PR stays unlabelled instead of being
-   certified off the surviving lane alone. Dropping it is what let a 62-file PR
-   with a dead agy lane read as a two-reviewer pass.
+   **A `fail` lane has no block to harvest, so emit a literal `unknown` line
+   for it** (dEitY719/gh-verify-skills#14) — the PR then stays unlabelled
+   instead of being certified off the surviving lane alone.
    Never stage the verdicts in a variable and re-expand it — zsh does not
    word-split, and a two-lane PR would silently report one.
 
@@ -196,8 +195,8 @@ state to mark.
 
 Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g.
 `[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
-Name a FAILed lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and
-downgrade the line to `[WARN]` when any lane FAILed. The trailing clause is
+Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and
+downgrade the line to `[WARN]` when any lane failed. The trailing clause is
 Step 3.5's outcome: `review-blocked` or `unlabelled`.
 
 ## Constraints (full rationale: `references/constraints.md`)

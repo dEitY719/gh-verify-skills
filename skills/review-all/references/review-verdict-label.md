@@ -288,16 +288,21 @@ Build the stream with `printf` inside the lane loop and pipe it straight in.
 Never stage the verdicts in a variable and re-expand it:
 
 ```sh
+# $LANES is what Step 3 recorded: one `<ai>:ok|skip|fail` per LINE. Newline-
+# delimited for the same reason the aggregator takes stdin — `for x in $LANES`
+# would need word-splitting, which zsh does not do, and every lane but the
+# first would vanish.
 AGG=$(
-    for ai in agy codex opencode hermes; do
-        lane_dispatched "$ai" || continue   # never dispatched -> NOTHING
-        if lane_failed "$ai"; then          # dispatched, could not run
-            printf 'unknown\n'; continue
-        fi
-        v=$(printf '%s\n' "$BODIES" |
-            devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
-            devx_pr_review_all_verdict)
-        printf '%s\n' "$v"
+    printf '%s\n' "$LANES" | while IFS= read -r spec; do
+        [ -n "$spec" ] || continue
+        ai=${spec%%:*}
+        case "${spec#*:}" in
+        skip) continue ;;              # never dispatched -> NOTHING
+        fail) printf 'unknown\n' ;;    # dispatched, could not run
+        *)    printf '%s\n' "$BODIES" |
+                  devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
+                  devx_pr_review_all_verdict ;;
+        esac
     done | devx_pr_review_all_aggregate
 )
 label=$(printf '%s\n' "$AGG" | sed -n 's/^label=//p')
@@ -344,6 +349,18 @@ established* — so no new vocabulary is needed: the round reports
 `[WARN] no reviewer lane produced a verdict … left unlabelled`, and unlabelled
 reads downstream as "not verified". Fail-closed, and visibly so.
 
+**Where the lane state lives.** Nothing on the PR records it, so Step 3 — the
+only step that watched the lanes — writes it down as it dispatches, one
+`<ai>:ok|skip|fail` per **line** (`$LANES` in the blocks below). Step
+3.5 walks that list; it never re-derives the outcomes, because they are not
+re-derivable. This is deliberately a shell variable inside one skill run and
+not a file or a PR marker: the two steps are the same run by construction
+(Step 3.5 must precede Step 4's push), so there is nothing to persist across.
+
+A `fail`'s `<reason>` is the lane's **first stderr line**, newlines and control
+characters stripped, truncated to 120 characters. Step 6 prints exactly one
+line, and a lane's stderr is arbitrary text that can carry both.
+
 The distinction is only knowable **here**. `command -v agy` empty and
 `gh-pr:review --ai agy` exiting 1 both leave the PR with no `ai-review` block
 for that lane; nothing downstream can tell them apart. Collapsing both into one
@@ -358,14 +375,16 @@ owns this. Build the verdict stream and pipe it in — do **not** stage the
 verdicts in a variable and re-expand it (same zsh rule as the section above):
 
 ```sh
-for ai in agy codex opencode hermes; do
-    lane_dispatched "$ai" || continue   # never dispatched -> NOTHING
-    if lane_failed "$ai"; then          # dispatched, could not run
-        printf 'unknown\n'; continue
-    fi
-    printf '%s\n' "$BODIES" |
-        devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
-        devx_pr_review_all_verdict
+printf '%s\n' "$LANES" | while IFS= read -r spec; do   # one <ai>:<state> per line
+    [ -n "$spec" ] || continue
+    ai=${spec%%:*}
+    case "${spec#*:}" in
+    skip) continue ;;                   # never dispatched -> NOTHING
+    fail) printf 'unknown\n' ;;         # dispatched, could not run
+    *)    printf '%s\n' "$BODIES" |
+              devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
+              devx_pr_review_all_verdict ;;
+    esac
 done | devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"
 ```
 
