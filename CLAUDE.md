@@ -136,7 +136,10 @@ reference file that specifies the footer's exact output has to show the real
 glyphs. `lib/vendor/` is exempt for the same reason one level down:
 `shell-common/functions/gh_pr_review.sh` prints that footer, so its verbatim
 upstream copy carries the glyphs too, and that tree is replaced wholesale by
-the sync script rather than edited here. CI's emoji gate is passed both
+dotfiles' own `scripts/sync-shell-common-vendor.sh` — which lives upstream, not
+in this repo — rather than edited here. `.shellcheckrc` exists for the same
+reason: upstream is shellcheck-clean because the dotfiles repo root carries
+one, and a vendored copy inherits the code but not the config. CI's emoji gate is passed both
 prefixes in `allow-emoji-paths` for exactly those reasons. Do not widen the
 allowlist further; do not add emoji anywhere else.
 

@@ -1,0 +1,19 @@
+# Shellcheck configuration for gh-verify-skills.
+#
+# Everything tracked as a shell script in this repo lives under `lib/vendor/`
+# and is a verbatim copy of `dEitY719/dotfiles` `shell-common/functions/`.
+# Upstream is shellcheck-clean *because* the dotfiles repo root carries a
+# `.shellcheckrc` with these disables; a vendored copy inherits the code but
+# not the config, so without this file the same bytes fail here. Keep the
+# subset below in sync with dotfiles' `.shellcheckrc` — do not add project-wide
+# disables of your own for hand-written scripts.
+
+# SC1090/SC1091: can't follow a non-constant / missing source. The whole
+# `_SC` two-tier fallback pattern this plugin is built on sources a path held
+# in a variable, by construction.
+disable=SC1090
+disable=SC1091
+
+# SC3043: `local` is undefined in POSIX sh. Not POSIX, but every /bin/sh these
+# files target implements it, and shell-common/ relies on it pervasively.
+disable=SC3043

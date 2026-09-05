@@ -42,7 +42,8 @@ jobs:
       # shell-common/functions/gh_pr_review.sh *prints* that footer, so its
       # verbatim upstream copy carries the same glyphs. Editing them here would
       # fork the vendor and change what the footer renders as — the tree is
-      # replaced wholesale by scripts/sync-shell-common-vendor.sh, never edited.
+      # replaced wholesale by dotfiles' own scripts/sync-shell-common-vendor.sh
+      # (that script lives upstream, not here), never edited in this repo.
       allow-emoji-paths: |
         skills/exception-merge-checklist/references/
         lib/vendor/
