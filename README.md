@@ -113,8 +113,12 @@ What "partial" means:
   silent no-op by design, on every harness including Claude Code.
 
 Two more constraints apply everywhere: `gh` must be authenticated for the host
-the remote points at, and several skills source shell helpers from the upstream
-dotfiles checkout (`${SHELL_COMMON}/functions/*.sh`) that are not vendored here.
+the remote points at, and several skills source shell helpers
+(`${SHELL_COMMON}/functions/*.sh`). Those helpers are vendored here under
+`lib/vendor/shell-common/`: an upstream `~/dotfiles` checkout is preferred when
+present (tier 1) and the vendored copy is the fallback (tier 2), per the
+resolution order in
+[`dEitY719/harness-skills/references/plugin-root.md`](https://github.com/dEitY719/harness-skills/blob/main/references/plugin-root.md).
 
 ## Layout
 
