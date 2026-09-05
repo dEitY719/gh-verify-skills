@@ -39,7 +39,6 @@ _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
 }
 export SHELL_COMMON="$_SC"
 source "$_SC/functions/gh_pr_edit_safe.sh"
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
 [ -f "$_SC/functions/gh_host.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
 [ -f "$_SC/functions/gh_host.sh" ] || {
     printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
