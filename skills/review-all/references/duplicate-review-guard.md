@@ -16,15 +16,23 @@ re-review from a second opinion.
 Once, before any lane is dispatched:
 
 ```sh
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/devx_pr_review_all.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
-[ -f "$_SC/functions/devx_pr_review_all.sh" ] || {
-    printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/devx_pr_review_all.sh" ]; then
+    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
+        printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+            "$_SC" >&2
+        return 1 2>/dev/null || exit 1
+    }
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
+unset -f devx_pr_review_all_already_reviewed 2>/dev/null || :
+[ -f "$_SC/functions/devx_pr_review_all.sh" ] && . "$_SC/functions/devx_pr_review_all.sh"
+command -v devx_pr_review_all_already_reviewed >/dev/null 2>&1 || {                  # tier 5
+    printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
 }
 export SHELL_COMMON="$_SC"
-. "$_SC/functions/devx_pr_review_all.sh"
 
 head_sha=$(GH_HOST="$TARGET_HOST" gh pr view "$pr" --repo "$TARGET_REPO" \
     --json headRefOid --jq .headRefOid)

@@ -30,23 +30,25 @@ export 하지 않으므로, 같은 `<remote>` URL 에서 여기서 한 번 뽑�
 가 **같은 URL 한 개**에서 나와야 서로 어긋나지 않는다 (dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407).
 
 ```bash
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/gh_pr_edit_safe.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
-[ -f "$_SC/functions/gh_pr_edit_safe.sh" ] || {
-    printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/gh_pr_edit_safe.sh" ]; then
+    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
+        printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+            "$_SC" >&2
+        return 1 2>/dev/null || exit 1
+    }
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
+unset -f _gh_pr_edit_safe_label _gh_resolve_host 2>/dev/null || :
+[ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
+[ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
+if ! command -v _gh_pr_edit_safe_label >/dev/null 2>&1 ||
+    ! command -v _gh_resolve_host >/dev/null 2>&1; then                              # tier 5
+    printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
-}
+fi
 export SHELL_COMMON="$_SC"
-source "$_SC/functions/gh_pr_edit_safe.sh"
-[ -f "$_SC/functions/gh_host.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
-[ -f "$_SC/functions/gh_host.sh" ] || {
-    printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
-        "$_SC" >&2
-    return 1 2>/dev/null || exit 1
-}
-export SHELL_COMMON="$_SC"
-source "$_SC/functions/gh_host.sh"
 
 # 0) host 고정 — repo 와 같은 remote URL 에서, 실패하면 setup-mode 기본값
 TARGET_HOST="${TARGET_HOST:-$(_gh_host_from_url "$(git remote get-url "$remote")" 2>/dev/null)}"

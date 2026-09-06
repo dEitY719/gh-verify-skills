@@ -49,21 +49,19 @@ PR 에 남는 것이 **한 글자도 다르면 안 된다.**
 REPORT_BODY_FILE=$(mktemp) && trap 'rm -f "$REPORT_BODY_FILE"' EXIT
 # ... Step 8 이 stdout 에 출력한 리포트 블록을 한 글자도 바꾸지 않고 "$REPORT_BODY_FILE" 에 그대로 옮겨 쓴다 ...
 
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/gh_pr_review.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/gh_pr_review.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
 _HELPER="$_SC/functions/gh_pr_review.sh"
-if [ -r "$_HELPER" ]; then
+unset -f _gh_pr_review_post_comment 2>/dev/null || :
+[ -f "$_HELPER" ] && . "$_HELPER"
+if command -v _gh_pr_review_post_comment >/dev/null 2>&1; then
     export SHELL_COMMON="$_SC"
-    . "$_HELPER"
-    if ! command -v _gh_pr_review_post_comment >/dev/null 2>&1; then
-        printf '[pr-verify-live] %s sourced but _gh_pr_review_post_comment undefined (#724).\n' \
-            "$_HELPER" >&2
-    else
-        _gh_pr_review_post_comment "$PR" "$TARGET_REPO" "$REPORT_BODY_FILE" "$post_comment" || true
-    fi
+    _gh_pr_review_post_comment "$PR" "$TARGET_REPO" "$REPORT_BODY_FILE" "$post_comment" || true
 else
-    printf '[gh-verify:live] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
-        "$_SC" >&2
+    printf '[gh-verify:live] %s did not load a usable shell-common — PR comment skipped. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+        "$_SC" >&2                                                                   # tier 5
 fi
 ```
 

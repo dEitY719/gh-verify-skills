@@ -169,15 +169,24 @@ docker-published 포트는 `ss -ltnp` 에 PID 가 안 잡힌다(docker-proxy). �
 그때 `SHELL_COMMON` 을 vendor 루트로 export 해야 헬퍼가 자기 `.py` 형제(`$SHELL_COMMON/functions/`)도 찾는다.
 
 ```sh
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
-[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] || {
-    printf '[gh-verify:live] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ]; then
+    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
+        printf '[gh-verify:live] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+            "$_SC" >&2
+        return 1 2>/dev/null || exit 1
+    }
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
+unset -f devx_pr_verify_live_backend_identity 2>/dev/null || :
+[ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] \
+    && . "$_SC/functions/devx_pr_verify_live_backend_identity.sh"
+command -v devx_pr_verify_live_backend_identity >/dev/null 2>&1 || {                 # tier 5
+    printf '[gh-verify:live] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
 }
 export SHELL_COMMON="$_SC"
-. "$_SC/functions/devx_pr_verify_live_backend_identity.sh"
 devx_pr_verify_live_backend_identity --repo-root "$REPO_ROOT" --target-repo "$TARGET_REPO" \
   --target-sha "$TARGET_SHA" --base-url "$BASE_URL" [--backend-ports "$PORTS"] [--container-name "$NAME"]
 ```
@@ -209,15 +218,23 @@ dev 서버 PID 는 재기동으로 세션 중에 바뀐다. 실측: 같은 런 �
 # DOTFILES_FORCE_INIT=1 은 load-bearing 이다: 이 파일의 인터랙티브 가드가
 # 비대화형 셸에서 조기 return 하면 헬퍼가 아예 정의되지 않는다.
 export DOTFILES_FORCE_INIT=1
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/gh_pr_review.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
-[ -f "$_SC/functions/gh_pr_review.sh" ] || {
-    printf '[gh-verify:live] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/gh_pr_review.sh" ]; then
+    [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
+        printf '[gh-verify:live] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+            "$_SC" >&2
+        return 1 2>/dev/null || exit 1
+    }
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
+unset -f _gh_pr_review_resolve_target_repo 2>/dev/null || :
+[ -f "$_SC/functions/gh_pr_review.sh" ] && . "$_SC/functions/gh_pr_review.sh"
+command -v _gh_pr_review_resolve_target_repo >/dev/null 2>&1 || {                    # tier 5
+    printf '[gh-verify:live] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
 }
 export SHELL_COMMON="$_SC"
-. "$_SC/functions/gh_pr_review.sh"
 TARGET_REPO=$(_gh_pr_review_resolve_target_repo "${remote:-origin}") || {
   echo "Cannot resolve remote '${remote:-origin}' to a repo" >&2; exit 1; }
 PR=$(_gh_pr_review_resolve_pr_number "$pr")   # 인자 우선, 없으면 현재 브랜치
