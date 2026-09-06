@@ -41,7 +41,7 @@
 |------|--------|------|
 | `--defer-reply M` / `--defer-reply=M` | off (inline) | 인라인 답변 대신 `devx:schedule` 로 `/gh-pr-reply` 를 M **분** 뒤에 예약 |
 | `--no-reply` | off | 답변 단계를 통째로 건너뛴다 |
-| `--force-review` | off | 중복 리뷰 가드를 우회해 모든 리뷰어 레인(agy/codex/opencode/hermes)을 현재 head sha 가 이미 리뷰됐어도 재실행. `/simplify` 는 이 플래그와 무관하게 항상 먼저 돈다 |
+| `--force-review` | off | 중복 리뷰 가드를 우회해 모든 리뷰어 레인(agy/codex/opencode/hermes)을 현재 head sha 가 이미 리뷰됐어도 재실행. `/simplify` 는 이 플래그와 무관하게, 디스패치되면 항상 먼저 돈다(트리가 더러우면 `simplify:skip`) |
 | `-h` / `--help` / `help` | — | 도움말 출력 후 정지 |
 
 `--defer-reply` 와 `--no-reply` 를 같이 주면 `--no-reply` 가 이긴다(답변 생략).
