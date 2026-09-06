@@ -37,15 +37,11 @@ checkout: verifying stale code proves nothing, so that stops the run.
 
 ## Step 1: Gate on the watched-repos registry (F-1)
 
-Run the block in `references/registry-gate.md`: it reads `verify_skill` for
-`$TARGET_REPO` out of
-`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`.
-Empty value, unreadable file, no `jq`, or no `herdr` → **do nothing at all**, no
-output — an unwatched repo behaves exactly as before dEitY719/dotfiles#1511.
-Unparseable JSON, or a `verify_skill` outside the allowlist (`gh-verify:merged`,
-`gh-verify:live` — it reaches a `--dangerously-skip-permissions` agent's prompt,
-so it is never free text) → one `[WARN]`, stop before any herdr call. Schema and
-registration procedure: `references/watched-repos-schema.md`.
+Run the block and follow the outcome table in `references/registry-gate.md`:
+it gates on `verify_skill` for `$TARGET_REPO` from
+`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
+before any git or herdr call. Schema and registration procedure:
+`references/watched-repos-schema.md`.
 
 ## Step 2: Resolve the target repo + host
 
