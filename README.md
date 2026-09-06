@@ -13,7 +13,7 @@ out.
 
 | Skill | Invoke | What it does |
 |-------|--------|--------------|
-| `review-all` | `/gh-verify:review-all <PR#> [remote] [--defer-reply M] [--no-reply] [--force-review]` | Dispatches agy, codex, opencode, hermes and a `/simplify` auto-fix pass over one PR **in a single turn**, aggregates their verdicts into the `review-blocked` merge-gate label, pushes the auto-fix commit, then replies inline or on a delay. Never approves. |
+| `review-all` | `/gh-verify:review-all <PR#> [remote] [--defer-reply M] [--no-reply] [--force-review]` | Runs a `/simplify` auto-fix pass alone first and pushes it, then dispatches agy, codex, opencode and hermes over the simplified head **in a single turn**, aggregates their verdicts into the `review-blocked` merge-gate label, then replies inline or on a delay. Never approves. |
 | `live` | `/gh-verify:live [<PR#>] [remote] [--url U] [--matrix full] [--dry-run]` | Attaches to the app you already have running, proves the process really is serving the PR's merge commit, then drives the PR's claims through the browser with machine-readable assertions. Findings that survive self-refutation become issues. |
 | `merged` | `/gh-verify:merged [<PR#>] [remote] [--matrix full] [--no-diff-check]` | For repos with nothing to serve: clones the merge commit into a temp dir and re-runs the checks there, so a dirty worktree cannot fake a pass. Compares which test cases actually exist in the clone versus your tree. |
 | `exception-merge-checklist` | `/gh-verify:exception-merge-checklist [<PR#>] [--skip-bisect] [--auto-fix]` | Ten read-only checks right before an exception-track hand-merge — broken rebase intermediates, lock drift, YAML damage, over-broad formatter writes, missing test mocks. `--auto-fix` stages, never commits. |
@@ -103,9 +103,12 @@ mappings and capability gaps are documented once, in
 What "partial" means:
 
 - **`review-all`** needs a parallel subagent primitive. Its Step 3 dispatches
-  five lanes in one turn; a harness without that runs them sequentially, which
-  is slower but still correct. What is *not* acceptable is dropping lanes — the
-  verdict Step 3.5 records must reflect every lane that actually ran.
+  four reviewer lanes in one turn; a harness without that runs them
+  sequentially, which is slower but still correct. What is *not* acceptable is
+  dropping lanes — the verdict Step 3.5 records must reflect every lane that
+  actually ran. The `/simplify` auto-fix pass is not one of those four: it runs
+  alone in Step 2.5, and moving it back beside them is a defect
+  (dEitY719/gh-verify-skills#18).
 - **`live`** needs a browser driver. Its `references/driver.md` defines a
   ladder down to a degraded check set, and the report has to declare which rung
   it reached.

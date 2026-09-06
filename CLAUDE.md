@@ -78,12 +78,19 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
 - **Description budget.** CI sums every skill description and fails past 5,440
   characters — Codex's context budget. Keep new descriptions tight.
 - **`review-all`'s parallel fan-out is behaviour, not formatting.** Step 3
-  dispatches five lanes — agy, codex, opencode, hermes, and a `/simplify`
-  auto-fix pass — **in one turn**, and Step 3.5 aggregates their verdicts only
-  after every lane has returned and before Step 4 pushes. Both the parallelism
-  and that ordering are load-bearing (dEitY719/dotfiles#1613,
+  dispatches the four **reviewer** lanes — agy, codex, opencode, hermes —
+  **in one turn**, and Step 3.5 aggregates their verdicts only after every lane
+  has returned. The parallelism is load-bearing (dEitY719/dotfiles#1613,
   dEitY719/dotfiles#1636, PR dEitY719/dotfiles#1598); a rewrite that serialises
-  the lanes or reorders those steps changes what the merge gate certifies.
+  those four changes what the merge gate certifies.
+- **`/simplify` is not one of them, and must never be dispatched beside them**
+  (dEitY719/gh-verify-skills#18). It is the only lane that writes to the
+  working tree, so it runs alone in Step 2.5 — before the fan-out, on a tree
+  asserted clean, edit-only, with the orchestrator committing after it returns.
+  Four same-day incidents came from running it concurrently, the worst a
+  subagent that read the orchestrator's edits as an attack and reverted a
+  codex BLOCKER fix. Moving it back into Step 3's turn reopens all four:
+  `skills/review-all/references/simplify-lane.md`.
 - **Honour each skill's safety contract.** `live` and `merged` are read-only on
   source: findings leave as new issues via `gh-issue:create`, never as edits.
   `exception-merge-checklist` mutates only as far as `git add` under

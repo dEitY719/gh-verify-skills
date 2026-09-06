@@ -6,8 +6,8 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   `codex`, `opencode`, or `hermes` CLI (`command -v` empty), a rate-limit, or
   any non-zero exit from `gh-pr:review` stops only that lane; the other lanes
   and the rest of the flow continue. `opencode` and `hermes` also skip softly
-  unless `_dotfiles_setup_mode` is `internal`. If all reviewer CLIs are
-  unavailable, `/simplify` still runs. `gh-pr:review` already does its own
+  unless `_dotfiles_setup_mode` is `internal`. `/simplify` has already run in
+  Step 2.5 either way. `gh-pr:review` already does its own
   `command -v`/OPEN/draft pre-flight, so do **not** duplicate those as
   hard-fails here — always wrap the lane softly.
 
@@ -57,12 +57,26 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
 - **The auto-fix commit is its own commit.** `refactor(<scope>): simplify per
   /simplify` lands separately from any fix commits `gh-pr:reply` makes later,
   keeping `git blame`/revert granular — a bad cleanup can be reverted without
-  touching a review-driven correctness fix. A single `git push` at Step 4
-  sends up whatever exists.
+  touching a review-driven correctness fix. Step 2.5 pushes it before any
+  reviewer is dispatched.
+
+- **`/simplify` runs alone, first, and never commits its own work**
+  (dEitY719/gh-verify-skills#18). It is the only lane that writes to the tree,
+  so it is dispatched by itself in Step 2.5 — before the Step 3 reviewer
+  fan-out, which is entirely comment-only. It is dispatched **edit-only**: the
+  prompt forbids `git revert`, `git reset`, `git checkout --`, `git stash`,
+  `git commit` and `git push`, and forbids touching any hunk it did not author.
+  The orchestrator commits after the agent returns, over a tree that was
+  asserted clean before dispatch — which is what makes "the commit contains
+  only hunks the agent authored" a property rather than a hope. Four same-day
+  incidents forced this, the worst being a subagent that read the concurrent
+  orchestrator's edits as an attack and reverted a codex BLOCKER fix. Full
+  history, the ordering trade-off, and the verbatim dispatch prompt:
+  `references/simplify-lane.md`.
 
 - **Delay is not a guarantee — inline reply is the deterministic path.**
   agy/codex/opencode/hermes reviews are synchronous `gh-pr:review` CLI calls: they post the
-  PR comment before returning. Because Step 3 awaits all five Agents, the
+  PR comment before returning. Because Step 3 awaits all four reviewer Agents, the
   comments exist by the time Step 5 runs, so an **inline** `gh-pr:reply` sees
   them with deterministic ordering — no fixed delay needed. `--defer-reply` is
   a convenience for the issue-flow path (short turns), not a correctness
@@ -82,9 +96,11 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   edit whatever tree happens to be checked out. On the issue-flow delegation
   path the branch is already correct, so the checkout is a no-op skip.
 
-- **The auto-fix commit + push (Step 4) run synchronously before return.**
+- **The auto-fix commit + push (Step 2.5) run synchronously before return.**
   On the issue-flow delegation path this guarantees no dirty tree is left for
-  the later rebase steps — a dirty working tree breaks `git rebase`.
+  the later rebase steps — a dirty working tree breaks `git rebase`. Step 4
+  re-asserts the clean tree rather than pushing anything, since the push
+  already happened before the reviewers were dispatched.
 
 - No emojis anywhere. POSIX-compatible shell snippets (`[ ]`, `>/dev/null 2>&1`).
 
