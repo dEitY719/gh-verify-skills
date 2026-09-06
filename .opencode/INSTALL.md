@@ -46,9 +46,11 @@ recognise; this repo keeps no copy on purpose. Short version:
 - "Create a todo" -> `todowrite`
 - "Invoke a skill" -> OpenCode's native `skill` tool
 - "Dispatch a subagent" -> OpenCode has no parallel subagent primitive.
-  `review-all` Step 3 wants five reviewer lanes dispatched in one turn; run
+  `review-all` Step 3 wants its four reviewer lanes dispatched in one turn; run
   them sequentially and say so in the report. A serialised fan-out is slower
-  but still correct — a fan-out silently reduced to one lane is not.
+  but still correct — a fan-out silently reduced to one lane is not. The
+  `/simplify` auto-fix pass is not one of those four: it runs alone in Step
+  2.5, before them (dEitY719/gh-verify-skills#18).
 - "Ask the user" -> OpenCode has no dedicated ask tool; stop and ask in your
   reply, then wait. `live` and `merged` both need a real answer when the base
   URL, API origin, or claim list cannot be resolved.

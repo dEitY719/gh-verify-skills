@@ -82,7 +82,7 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
   **in one turn**, and Step 3.5 aggregates their verdicts only after every lane
   has returned. The parallelism is load-bearing (dEitY719/dotfiles#1613,
   dEitY719/dotfiles#1636, PR dEitY719/dotfiles#1598); a rewrite that serialises
-  those four changes what the merge gate certifies.
+  those four lanes changes what the merge gate certifies.
 - **`/simplify` is not one of them, and must never be dispatched beside them**
   (dEitY719/gh-verify-skills#18). It is the only lane that writes to the
   working tree, so it runs alone in Step 2.5 — before the fan-out, on a tree
