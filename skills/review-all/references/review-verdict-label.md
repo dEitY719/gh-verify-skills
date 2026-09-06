@@ -258,11 +258,13 @@ is the stale-verdict hole this argument exists to close.
 > this closes.
 
 **Read the sha before any push of this run.** The lanes reviewed the PR's
-current *remote* head. `gh-verify:review-all`'s own `/simplify` lane may have
-committed locally by the time the verdicts are collected, but Step 4 has not
-pushed yet — so `gh pr view --json headRefOid` still answers the sha the lanes
-actually reviewed. Reading it after the push answers the *new* sha, every lane
-misses, and the gate is silently dead. That is why Step 3.5 sits before Step 4.
+current *remote* head, so reading the sha after a push answers the *new* one,
+every lane misses, and the gate is silently dead. Since
+dEitY719/gh-verify-skills#18 this is structural rather than a matter of step
+order: the `/simplify` lane commits and pushes in Step 2.5, **before** the
+reviewer lanes are dispatched, and nothing pushes afterwards — so the sha
+Step 3.5 reads is the same one the lanes tagged, and is also the head that
+gets merged.
 
 ### What the verdict parser accepts
 
@@ -362,8 +364,8 @@ only step that watched the lanes — writes it down as it dispatches, one
 `<ai>:ok|skip|fail` per **line** (`$LANES` in the blocks below). Step
 3.5 walks that list; it never re-derives the outcomes, because they are not
 re-derivable. This is deliberately a shell variable inside one skill run and
-not a file or a PR marker: the two steps are the same run by construction
-(Step 3.5 must precede Step 4's push), so there is nothing to persist across.
+not a file or a PR marker: the two steps are the same run by construction, so
+there is nothing to persist across.
 
 A `fail`'s `<reason>` is the lane's **first stderr line**, newlines and control
 characters stripped, truncated to 120 characters. Step 6 prints exactly one

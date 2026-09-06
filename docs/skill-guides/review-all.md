@@ -4,8 +4,8 @@
 
 ## 언제 쓰는가
 
-- 머지 **전** 정적 리뷰 게이트가 필요할 때. PR 하나에 `agy` · `codex` · `opencode` · `hermes` 2차 의견과
-  `/simplify` auto-fix 패스를 **한 번에** 돌리고 싶을 때 쓴다.
+- 머지 **전** 정적 리뷰 게이트가 필요할 때. `/simplify` auto-fix 패스를 먼저 돌리고, 그 head 위로
+  `agy` · `codex` · `opencode` · `hermes` 2차 의견을 **한 번에** 받고 싶을 때 쓴다.
 - 리뷰어를 하나만 돌리려면 이 스킬이 아니라 `gh:pr-review` 다. 이 스킬은 그 위에 얹힌 조합(composition)
   스킬로, 여러 리뷰어 + 답변 패스를 오케스트레이션한다.
 - 승인/변경요청 결정이 필요하면 `gh:pr-approve` 다. 이 스킬은 판정 라벨만 쓰고 `reviewDecision` 은
@@ -41,7 +41,7 @@
 |------|--------|------|
 | `--defer-reply M` / `--defer-reply=M` | off (inline) | 인라인 답변 대신 `devx:schedule` 로 `/gh-pr-reply` 를 M **분** 뒤에 예약 |
 | `--no-reply` | off | 답변 단계를 통째로 건너뛴다 |
-| `--force-review` | off | 중복 리뷰 가드를 우회해 모든 리뷰어 레인(agy/codex/opencode/hermes)을 현재 head sha 가 이미 리뷰됐어도 재실행. `/simplify` 는 이 플래그와 무관하게 항상 돈다 |
+| `--force-review` | off | 중복 리뷰 가드를 우회해 모든 리뷰어 레인(agy/codex/opencode/hermes)을 현재 head sha 가 이미 리뷰됐어도 재실행. `/simplify` 는 이 플래그와 무관하게 항상 먼저 돈다 |
 | `-h` / `--help` / `help` | — | 도움말 출력 후 정지 |
 
 `--defer-reply` 와 `--no-reply` 를 같이 주면 `--no-reply` 가 이긴다(답변 생략).
@@ -60,27 +60,34 @@
    `force_review` `START_TS` 를 캡처한다.
 2. **Step 2 — Pre-flight.** `TARGET_REPO` 해석, PR 이 `OPEN` 이고 draft 아님을 확인, `gh auth status` 확인,
    PR head 브랜치가 아니면 `gh pr checkout` 한다(`/simplify` 가 올바른 트리에서 돌게).
-3. **Step 3 — 리뷰 + auto-fix 게이트.** 먼저 중복 리뷰 가드로 현재 head sha 를 이미 리뷰한 레인을 건너뛴 뒤,
-   남은 레인과 auto-fix 패스를 **한 턴에 병렬** 디스패치한다 — agy · codex · opencode · hermes 는
-   `gh:pr-review --ai <name>` 에 위임하는 코멘트 전용이고, `/simplify` 는 워킹 트리를 고쳐 스스로 커밋한다.
-   각 레인은 soft-fail 이며, `OK` / `SKIP`(디스패치조차 안 됨) / `FAIL`(디스패치됐고 non-zero 로 죽음) 중
-   하나로 끝난다.
-4. **Step 3.5 — 판정 집계와 머지 게이트 라벨.** **모든 레인이 복귀한 뒤, Step 4 의 push 전에** 돈다. 레인들의
-   마감 판정 줄을 모아 라벨을 쓰되, #1636 이후 이 스킬이 쓰는 라벨은 `review-blocked` 뿐이다. 전 레인 비차단이면
-   묵은 `review-blocked` 만 지우고 멈춘다. soft-fail — 라벨 실패가 이후 단계를 막지 않는다.
-5. **Step 4 — auto-fix 커밋 push.** `/simplify` 가 커밋했을 때만 `git push`. push 했다면 `review-passed` 를
-   즉시 떼어낸다(리뷰되지 않은 커밋 위에 판정이 남지 않도록). `review-blocked` 는 여기서 절대 떼지 않는다.
-6. **Step 5 — 답변 패스.** `inline`(기본)은 `gh:pr-reply` 즉시 실행, `defer` 는 `reply-pending` 라벨을 먼저
+3. **Step 2.5 — auto-fix 패스 (`/simplify` 단독, 리뷰보다 먼저).** 워킹 트리를 쓰는 레인은 이것 하나뿐이라
+   리뷰어 팬아웃보다 **먼저 혼자** 돈다(dEitY719/gh-verify-skills#18). 트리가 clean 임을 확인한 뒤 Agent 를
+   하나만 띄우고, 그 Agent 는 **파일 편집만** 한다 — `git revert`/`reset`/`commit`/`push` 금지, 자기가 만들지
+   않은 hunk 는 손대지 않는다. 커밋(`git commit -am`)과 push 는 복귀 후 오케스트레이터가 하고, push 했으면
+   묵은 `review-passed` 를 떼어낸다.
+4. **Step 3 — 리뷰어 팬아웃.** 먼저 중복 리뷰 가드로 현재 head sha 를 이미 리뷰한 레인을 건너뛴 뒤, 남은
+   레인을 **한 턴에 병렬** 디스패치한다 — agy · codex · opencode · hermes 모두 `gh:pr-review --ai <name>` 에
+   위임하는 **코멘트 전용**이라 워킹 트리를 건드리지 않는다. 각 레인은 soft-fail 이며,
+   `OK` / `SKIP`(디스패치조차 안 됨) / `FAIL`(디스패치됐고 non-zero 로 죽음) 중 하나로 끝난다.
+5. **Step 3.5 — 판정 집계와 머지 게이트 라벨.** **모든 레인이 복귀한 뒤** 돈다. 이 뒤로는 push 가 없으므로
+   여기서 읽는 head sha 는 레인들이 리뷰한 sha 그대로다. 레인들의 마감 판정 줄을 모아 라벨을 쓰되, #1636 이후
+   이 스킬이 쓰는 라벨은 `review-blocked` 뿐이다. 전 레인 비차단이면 묵은 `review-blocked` 만 지우고 멈춘다.
+   soft-fail — 라벨 실패가 이후 단계를 막지 않는다.
+6. **Step 4 — 트리 clean 확인.** push 는 Step 2.5 에서 이미 끝났다. 여기서는 `git status --porcelain` 이
+   비어 있는지만 확인하고, 더러우면 `[WARN]` 만 남기고 커밋하지 않는다(작성자를 알 수 없는 hunk 이므로).
+7. **Step 5 — 답변 패스.** `inline`(기본)은 `gh:pr-reply` 즉시 실행, `defer` 는 `reply-pending` 라벨을 먼저
    붙이고 `devx:schedule` 로 예약, `none` 은 생략.
-7. **Step 6 — 보고.** `[OK]`/`[SKIP]`/`[WARN]` 한 줄을 출력하고, 끝에 Step 3.5 의 결과
+8. **Step 6 — 보고.** `[OK]`/`[SKIP]`/`[WARN]` 한 줄을 출력하고, 끝에 Step 3.5 의 결과
    (`review-blocked` / `unlabelled`)를 붙인다. `FAIL` 레인이 하나라도 있으면 `[WARN]` 이다.
 
 ## 주의사항
 
 - **승인하지 않는다.** approve / request-changes 결정은 이 스킬 밖(`gh:pr-approve`)이다. 판정 라벨은
   머지 트레인 게이트일 뿐 승인이 아니다.
-- **Step 3 의 병렬성과 Step 3.5 의 순서는 동작 계약이다.** 다섯 레인은 한 턴에 함께 디스패치되고, 집계는 모든
-  레인 복귀 후·push 전에 돈다. 순서를 바꾸면 라벨이 새 sha 를 읽어 게이트가 조용히 무력화된다.
+- **Step 3 의 병렬성과 `/simplify` 의 단독 선행은 동작 계약이다.** 리뷰어 레인 넷은 한 턴에 함께
+  디스패치되고, `/simplify` 는 그보다 앞서 Step 2.5 에서 혼자 돈다. `/simplify` 를 리뷰어와 같은 턴에
+  되돌려 넣으면 워킹 트리를 두 프로세스가 동시에 쓰게 되어, 리뷰 수정본이 되돌려지는 사고가 다시 열린다
+  (dEitY719/gh-verify-skills#18).
 - 리뷰어 레인은 전부 soft-fail — CLI 가 없거나 에러가 나도 hard-fail 하지 않는다. 다만 **soft-fail 은
   침묵이 아니다**(gh-verify-skills#14): 죽은 레인은 보고 줄에 `<ai>:FAIL(<reason>)` 로 이름이 남고 판정
   스트림에 `unknown` 을 넣어, 살아남은 레인만으로 PR 이 인증되는 대신 무라벨로 남는다.

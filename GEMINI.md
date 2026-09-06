@@ -53,10 +53,12 @@ read that repo's `references/antigravity-tools.md` instead: `agy` shares
 ## Capability gaps on Gemini CLI
 
 - **`review-all`'s parallel fan-out is the load-bearing part.** Step 3
-  dispatches five lanes in a single turn: four reviewer lanes plus a
-  `/simplify` auto-fix pass. Serialising them is acceptable and slower; quietly
-  running fewer lanes than the report claims is not. Step 3.5 then aggregates
-  the verdicts, and a lane that contributed nothing must not be counted.
+  dispatches the four reviewer lanes in a single turn. Serialising them is
+  acceptable and slower; quietly running fewer lanes than the report claims is
+  not. Step 3.5 then aggregates the verdicts, and a lane that contributed
+  nothing must not be counted. The `/simplify` auto-fix pass is **not** one of
+  those lanes: it runs alone in Step 2.5, before them, and dispatching it
+  beside them is a defect, not an optimisation (dEitY719/gh-verify-skills#18).
 - `review-all` invokes other harnesses by name (`agy`, `codex`, `opencode`,
   `hermes`). Each lane is soft-fail: a missing binary is a `SKIP`, never an
   abort.
