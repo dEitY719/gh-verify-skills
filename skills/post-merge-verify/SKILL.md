@@ -40,7 +40,9 @@ checkout: verifying stale code proves nothing, so that stops the run.
 Run the block and follow the outcome table in `references/registry-gate.md`:
 it gates on `verify_skill` for `$TARGET_REPO` from
 `${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
-before any git or herdr call. Schema and registration procedure:
+before any git or herdr call. `$TARGET_REPO` is Step 2's binding — a pure
+remote-URL parse, no API call, no write — so resolving it first does not
+break F-1. Schema and registration procedure:
 `references/watched-repos-schema.md`.
 
 ## Step 2: Resolve the target repo + host
