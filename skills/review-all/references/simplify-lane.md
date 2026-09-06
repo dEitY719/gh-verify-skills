@@ -90,7 +90,7 @@ if [ "$PUSHED" = "1" ]; then
     if _vl_err=$(_gh_pr_drop_label "$pr" review-passed "$TARGET_REPO" "$TARGET_HOST" 2>&1); then
         echo "[OK] \`review-passed\` 무효화됨 — /simplify 커밋이 push 되어 이전 판정은 만료"
     else
-        echo "[WARN] \`review-passed\` 제거 실패: ${_vl_err}"
+        echo "[WARN] \`review-passed\` 제거 실패 — 리뷰되지 않은 auto-fix 커밋에 판정이 남아 있다: ${_vl_err}"
     fi
 fi
 ```
