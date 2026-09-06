@@ -95,10 +95,31 @@ Two flag choices are load-bearing, both from agy + codex review of PR #28:
 staged files (`skills/review-all`, `docs`, …). Committing the literal string
 `refactor(<scope>):` is a defect, not a template.
 
+## The push must succeed, or the round stops (codex, PR #28 BLOCKER)
+
+`git push` is the step that makes "reviewers read the simplified head" true. A
+failed push — network, auth, a branch-protection rule — leaves the simplify
+commit local while the remote head is still the pre-simplify one. Dispatching
+Step 3 then reviews a tree that does not exist any more, and stamps verdict
+markers with a sha the merge will never carry: the same class of silent
+mis-certification #18 set out to close.
+
+So this is the one hard-fail in an otherwise soft-fail skill. On push failure,
+print the git error, leave the commit in place (it is not lost — it is local
+and pushable by hand), and **exit without dispatching a single reviewer lane**.
+A round that reviews the wrong head is worse than no round: the first produces
+a verdict nobody should trust, the second produces none and says so.
+
 ```bash
+PUSHED=0                                     # never left unset — agy, PR #28
 if [ -n "$(git status --porcelain)" ]; then
-    git add -A && git commit -m "refactor(<scope>): simplify per /simplify" &&
-        git push && PUSHED=1
+    git add -A && git commit -m "refactor(<scope>): simplify per /simplify" || exit 1
+    if git push; then
+        PUSHED=1
+    else
+        printf '[FAIL] simplify commit could not be pushed — reviewers would read the stale remote head. Push it by hand and re-run.\n' >&2
+        exit 1
+    fi
 fi
 
 if [ "$PUSHED" = "1" ]; then

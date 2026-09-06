@@ -63,8 +63,10 @@
 3. **Step 2.5 — auto-fix 패스 (`/simplify` 단독, 리뷰보다 먼저).** 워킹 트리를 쓰는 레인은 이것 하나뿐이라
    리뷰어 팬아웃보다 **먼저 혼자** 돈다(dEitY719/gh-verify-skills#18). 트리가 clean 임을 확인한 뒤 Agent 를
    하나만 띄우고, 그 Agent 는 **파일 편집만** 한다 — `git revert`/`reset`/`commit`/`push` 금지, 자기가 만들지
-   않은 hunk 는 손대지 않는다. 커밋(`git commit -am`)과 push 는 복귀 후 오케스트레이터가 하고, push 했으면
-   묵은 `review-passed` 를 떼어낸다.
+   않은 hunk 는 손대지 않는다. 커밋(`git add -A && git commit -m` — `-am` 은 `/simplify` 가 **생성**한
+   untracked 파일을 놓친다)과 push 는 복귀 후 오케스트레이터가 하고, push 했으면 묵은 `review-passed` 를
+   떼어낸다. push 가 실패하면 리뷰어를 하나도 디스패치하지 않고 중단한다 — 리뷰어가 낡은 remote head 를
+   읽게 되기 때문이다.
 4. **Step 3 — 리뷰어 팬아웃.** 먼저 중복 리뷰 가드로 현재 head sha 를 이미 리뷰한 레인을 건너뛴 뒤, 남은
    레인을 **한 턴에 병렬** 디스패치한다 — agy · codex · opencode · hermes 모두 `gh:pr-review --ai <name>` 에
    위임하는 **코멘트 전용**이라 워킹 트리를 건드리지 않는다. 각 레인은 soft-fail 이며,

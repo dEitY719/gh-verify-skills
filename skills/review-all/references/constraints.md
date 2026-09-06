@@ -26,8 +26,13 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   commit opens an editor for the message and hangs. Always pass `-m` with a
   conventional-commit message. `/simplify` edits files without staging them,
   so a plain `-m` finds nothing staged and fails with `no changes added to
-  commit` — use `-am` so the commit picks up the unstaged edits too, e.g.
-  `git commit -am "refactor(<scope>): simplify per /simplify"`.
+  commit` — stage first with `git add -A`, then
+  `git commit -m "refactor(<scope>): simplify per /simplify"`. **Not `-am`**
+  (agy + codex, PR dEitY719/gh-verify-skills#28): `-a` stages modifications to
+  *tracked* files only, and `/simplify` is free to **create** a file, which
+  `-am` would silently leave behind as a dirty untracked path. `-A` is safe
+  here only because Step 2.5's clean-tree gate ran first — see
+  `references/simplify-lane.md`.
 
 - **`/code-review --fix` is NOT a lane here, and must not be re-added.**
   Claude Code v2.1.215 made `/code-review` (and `/verify`) user-invocation-only:
