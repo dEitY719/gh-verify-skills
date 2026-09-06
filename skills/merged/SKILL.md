@@ -1,18 +1,7 @@
 ---
 name: merged
-# Check 16 WARN-band exception (391 chars, limit 250) — measured, not preferred.
-# dEitY719/dotfiles#1411 shrank this description and dropped two distinct things: the positive
-# discriminator ("no running app", "dirty worktree") and the "Sister skill of
-# gh-verify:live" boundary. dEitY719/dotfiles#1417's trigger eval measured each half
-# separately on this skill's own eval set:
-#   before (pre-dEitY719/dotfiles#1411)         90%  recall 8/10  reject 10/10
-#   after  (dEitY719/dotfiles#1411, 244 chars)  75%  recall 7/10  reject  8/10   FAIL
-#   boundary restored only                      75%  recall 5/10  reject 10/10   FAIL
-#   both restored (388ch)                       90%  recall 8/10  reject 10/10   PASS
-# The boundary sentence restores rejection; the positive discriminator restores recall — both load-bearing, so
-# this stays over 250 until a shorter wording is measured to hold 90%. The shipped 391 = that 388-char wording
-# plus the `/gh-verify:merged` alias, minus `/devx-pr-verify-merged` and "post-merge" (untrimmed: 426 = FAIL). Procedure:
-# dotfiles claude/skills/skill-check/references/trigger-eval-procedure.md
+# Description is 391 chars, over check 16's 250-char WARN band, on purpose —
+# measured, not preferred. Rationale: references/description-rationale.md
 description: >-
   Re-verify a merged PR in a fresh clone of its merge commit, proving a clean
   checkout behaves as claimed — for repos with no running app, where
@@ -81,10 +70,9 @@ fetch 해 Step 6 까지 재사용하고, `state != MERGED` 또는 `.mergeCommit.
 
 ## Step 6: 차등 검증 (`references/differential.md`)
 
-주장 1건마다 **PR 이전 상태**(머지 전략별 좌표 계산은 `differential.md` §1-1 — squash·단일커밋
-rebase 는 `~1`, 다중커밋 rebase 는 `~N`)로 같은 입력을 돌린다. 같은 `TEST_CMD` 를 공유하는 주장은 이전
-상태 실행을 **1회만** 돌려 결과를 나눠 쓴다. 전·후 결과가 같으면 `unproven` — 둘 다 통과하는 검사는
-아무것도 증명하지 않는다. 기본 on, `--no-diff-check` 로만 끄고 껐다는 사실을 리포트에 적는다.
+주장 1건마다 **PR 이전 상태**(머지 전략별 좌표 계산은 `differential.md` §1-1)로 같은 입력을 돌리고, 같은
+`TEST_CMD` 를 공유하는 주장은 이전 상태 실행을 **1회만** 돌려 결과를 나눠 쓴다. 전·후 결과가 같으면
+`unproven` — 둘 다 통과하는 검사는 아무것도 증명하지 않는다. 기본 on, `--no-diff-check` 로만 끄고 껐다는 사실을 리포트에 적는다.
 
 ## Step 7: 자기 반증 후 이슈화 (F-8)
 
@@ -95,17 +83,15 @@ rebase 는 `~1`, 다중커밋 rebase 는 `~N`)로 같은 입력을 돌린다. �
 ## Step 8: 리포트와 PR 코멘트 게시 (`references/report-template.md`)
 
 `[OK]`/`[WARN]`/`[FAIL]` 한 블록 — `Clone:` `Claims:` `Matrix:` `Unproven:` `Unverified:` `Rejected:`
-`Findings:` 가 모두 있어야 하고 마지막 줄은 항상 `Next:` 다. 게시는 live 와 **같은 규칙**: `[OK]`/`[WARN]`
-이고 `post_comment=1` 일 때만 그 블록을 그대로 대상 PR 코멘트로 남기고, `[FAIL]` 은 `--no-comment` 와
-무관하게 게시하지 않는다. 경로는 `_gh_pr_review_post_comment` 하나 — 절차는
-`../live/references/pr-comment.md`.
+`Findings:` 가 모두 있어야 하고 마지막 줄은 항상 `Next:` 다. 게시는 live 와 **같은 규칙**이고 경로도
+`_gh_pr_review_post_comment` 하나다 — 게시 여부 표와 절차는 `../live/references/pr-comment.md` 가 SSOT.
 
 ## Constraints (전체 목록과 근거: `references/constraints.md`)
 
-- 환경 축 1개 실패는 정지가 아니다 — 계약 5번(측정 전 정지)의 유일한 예외다.
-- 검증은 임시 클론 안에서만 — 작업 트리·인덱스·스태시를 읽지도 쓰지도 않는다(F-3 비교용 읽기만 예외).
-- 클론은 종료 시 정리하되 `[FAIL]` 이면 남기고 경로를 출력한다. deny 규칙(`Bash(rm:*)`)에 막히면 **경로를 출력하고 사용자에게 맡긴다 — 우회 금지**.
-- 자기 반증을 통과하지 못한 후보는 이슈로 만들지 않는다.
+환경 축 1개 실패는 정지가 아니다 — 계약 5번(측정 전 정지)의 유일한 예외다 · 검증은 임시 클론 안에서만
+하고 작업 트리·인덱스·스태시를 읽지도 쓰지도 않는다(F-3 비교용 읽기만 예외) · 클론은 종료 시 정리하되
+`[FAIL]` 이면 남기고 경로를 출력하며, deny 규칙(`Bash(rm:*)`)에 막히면 **경로를 출력하고 사용자에게
+맡긴다 — 우회 금지** · 자기 반증을 통과하지 못한 후보는 이슈로 만들지 않는다.
 
 ## Related Skills
 

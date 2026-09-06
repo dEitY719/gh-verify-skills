@@ -167,11 +167,10 @@ There are no checks defined in this repo. To change what is validated here, open
 a PR against `harness-skills`; a merge to its `main` ships to all fifteen repos
 at once.
 
-Two inputs are tuned for this repo, both documented inline in `validate.yml`:
-`max-skill-lines: 215` (migration debt — four SKILL.md files arrived over the
-100-line limit and Phase 2 forbids editing them down; tracked as #1, see
-[`CLAUDE.md`](CLAUDE.md) -> "Migration debt") and `allow-emoji-paths` for the
-one reference file that specifies the dotfiles ai-metrics footer.
+One input is tuned for this repo and documented inline in `validate.yml`:
+`allow-emoji-paths`, for the one reference file that specifies the dotfiles
+ai-metrics footer. `max-skill-lines` is left at the shared default of 100 —
+every `SKILL.md` here is under it.
 
 ## Provenance
 
