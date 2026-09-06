@@ -3,6 +3,13 @@
 This skill acts on **registered repos only**. The gate below is what decides
 that, and it runs before anything else — no git call, no herdr call.
 
+**Precondition: `$TARGET_REPO` must already be bound** (Step 2's binding,
+which `references/dispatch.sh.md` states the same way). It is the registry
+key, so an unbound one matches nothing and silently disables verification.
+Step 2 makes no API call and no write — it parses one remote URL — so doing
+it first is not "acting on" an unregistered repo, and the F-1 promise the
+gate carries (no git call, no herdr call, no output) still holds.
+
 ## The block
 
 ```bash
