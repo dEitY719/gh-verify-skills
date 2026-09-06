@@ -60,10 +60,10 @@ reviewers read the simplified head and nothing ever shares the tree with it.
 **Read `references/simplify-lane.md` before dispatching**: the four incidents,
 the verbatim dispatch prompt, substep 3's runnable block, `$SIMPLIFY`'s values.
 
-1. **Clean-tree gate.** `git status --porcelain` must be empty (`--porcelain`
-   lists untracked files too). Non-empty → record `SIMPLIFY=skip`, print
-   `[SKIP] simplify: working tree dirty`, and go to Step 3. This gate is what
-   makes "every dirty path afterwards is the agent's own" true by construction.
+1. **Clean-tree gate.** `git status --porcelain` must be empty (it lists
+   untracked files too). Non-empty → record `SIMPLIFY=skip`, print `[SKIP]
+   simplify: working tree dirty`, go to Step 3. This gate is what makes "every
+   dirty path afterwards is the agent's own" true by construction.
 2. **Dispatch exactly one Agent** running built-in `/simplify`, **edit-only**,
    with the scope contract from `references/simplify-lane.md` quoted in its
    prompt verbatim — it forbids every tree-rewriting git command and forbids
@@ -72,9 +72,12 @@ the verbatim dispatch prompt, substep 3's runnable block, `$SIMPLIFY`'s values.
    is dirty: `git add -A && git commit -m "refactor(<scope>): simplify per
    /simplify"`, `git push`, then drop a now-stale `review-passed` (soft-fail).
    `-A` not `-am` (`/simplify` may create files; `-a` stages only tracked ones),
-   `-m` not a bare commit (editor hang), `<scope>` derived not literal — all
-   three in `references/simplify-lane.md`. Never drop `review-blocked`: this
-   step holds no evidence any blocker was addressed.
+   `-m` not a bare commit (editor hang), `<scope>` derived not literal. Never
+   drop `review-blocked`: no evidence here that any blocker was addressed.
+   **A failed `git push` stops the run** — this skill's only hard-fail: the
+   commit stays local while the remote head is the pre-simplify one, so Step 3
+   would review a tree that no longer exists. Print the error, dispatch
+   nothing. All four in `references/simplify-lane.md`.
 
 ## Step 3: Reviewer fan-out (dispatch all reviewer lanes in ONE turn)
 
@@ -159,22 +162,19 @@ In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
    Never stage the verdicts in a variable and re-expand it — zsh does not
    word-split, and a two-lane PR would silently report one.
 
-Fetch `head_sha` and `BODIES` again rather than reusing Step 3's duplicate-guard
-values (`ME` is stable and may be reused): the sha is unchanged — no push
-happened — but the lanes just posted new comments.
-
-The whole step is **soft-fail**: a labelling failure never blocks Steps 4-6,
-and an unlabelled PR reads downstream as "not verified", which
-`gh-pr:merge-train` `[SKIPPED]`s rather than merges.
+Re-fetch `head_sha` and `BODIES` rather than reusing Step 3's duplicate-guard
+values (`ME` is stable): the sha is unchanged — no push happened — but the
+lanes just posted new comments. The whole step is **soft-fail**: a labelling
+failure never blocks Steps 4-6, and an unlabelled PR reads downstream as "not
+verified", which `gh-pr:merge-train` `[SKIPPED]`s rather than merges.
 
 ## Step 4: Clean-tree assertion (nothing to push here)
 
-Step 2.5 already pushed the auto-fix commit, so this step pushes nothing; it
-asserts the invariant the caller depends on. `git status --porcelain` must be
-empty — if it is not, a comment-only lane wrote to the tree: print `[WARN]
-working tree dirty after review lanes` and leave it alone rather than commit
-hunks of unknown authorship (`gh-flow:issue` rebases on return, and a dirty
-tree breaks `git rebase`).
+Step 2.5 already pushed, so this pushes nothing; it asserts the invariant the
+caller depends on. `git status --porcelain` must be empty — if not, a
+comment-only lane wrote to the tree: print `[WARN] working tree dirty after
+review lanes` and leave it rather than commit hunks of unknown authorship
+(`gh-flow:issue` rebases on return; a dirty tree breaks `git rebase`).
 
 ## Step 5: pr-reply (per reply_mode)
 
