@@ -47,7 +47,9 @@ request-changes) — that is `gh-pr:approve`.
    an explicit `-m`) and pushes, then drops any now-stale `review-passed`.
    Nothing else touches the working tree while it runs, and the agent is
    forbidden to `git revert`/`reset`/`commit` or to touch a hunk it did not
-   author. Spec: `references/simplify-lane.md`.
+   author. **If that push fails, the run stops here** — no reviewer lane is
+   dispatched, since one would review a tree that no longer matches the remote
+   head (codex, PR #28 BLOCKER). Spec: `references/simplify-lane.md`.
 4. Reviewer fan-out — first skip any lane that already posted a review for the
    PR's current head sha (the duplicate-review guard, dEitY719/dotfiles#1613;
    `--force-review` bypasses it), then dispatch the remaining lanes as Agent

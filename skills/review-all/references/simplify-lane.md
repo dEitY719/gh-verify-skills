@@ -91,9 +91,11 @@ Two flag choices are load-bearing, both from agy + codex review of PR #28:
 - **`-m`, never a bare `git commit`**: it opens an editor and hangs a
   non-interactive shell.
 
-`<scope>` is a placeholder — derive it from the shared top-level path of the
-staged files (`skills/review-all`, `docs`, …). Committing the literal string
-`refactor(<scope>):` is a defect, not a template.
+`<scope>` is a placeholder — the runnable block below derives it from the
+staged files' top-level directories, joined with `+` when they span more than
+one (`skills/review-all` + `docs` → `skills+docs`). Committing the literal
+string `refactor(<scope>):` is a defect, not a template — codex, PR #28
+BLOCKER: the prose said "derive it" but the block never did.
 
 ## The push must succeed, or the round stops (codex, PR #28 BLOCKER)
 
@@ -113,7 +115,8 @@ a verdict nobody should trust, the second produces none and says so.
 ```bash
 PUSHED=0                                     # never left unset — agy, PR #28
 if [ -n "$(git status --porcelain)" ]; then
-    git add -A && git commit -m "refactor(<scope>): simplify per /simplify" || exit 1
+    _scope=$(git status --porcelain | awk '{print $2}' | cut -d/ -f1 | sort -u | paste -sd+ -)
+    git add -A && git commit -m "refactor(${_scope:-review-all}): simplify per /simplify" || exit 1
     if git push; then
         PUSHED=1
     else
