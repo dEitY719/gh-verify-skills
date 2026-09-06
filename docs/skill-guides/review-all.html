@@ -332,7 +332,7 @@
               <tr><td class="k">--no-reply</td><td class="def">off</td><td>답변 단계를 통째로 건너뛴다</td></tr>
               <tr>
                 <td class="k">--force-review</td><td class="def">off</td>
-                <td>중복 리뷰 가드를 우회해 모든 리뷰어 레인(agy/codex/opencode/hermes)을 현재 head sha 가 이미 리뷰됐어도 재실행. <code>/simplify</code> 는 이 플래그와 무관하게 항상 먼저 돈다</td>
+                <td>중복 리뷰 가드를 우회해 모든 리뷰어 레인(agy/codex/opencode/hermes)을 현재 head sha 가 이미 리뷰됐어도 재실행. <code>/simplify</code> 는 이 플래그와 무관하게, 디스패치되면 항상 먼저 돈다(트리가 더러우면 <code>simplify:skip</code>)</td>
               </tr>
               <tr><td class="k">-h / --help / help</td><td class="def">&mdash;</td><td>도움말 출력 후 정지</td></tr>
             </tbody>
