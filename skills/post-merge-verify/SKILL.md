@@ -35,17 +35,7 @@ never *writes* to GitHub — `gh-pr:merge` has already merged and reported.
 report must print either way (F-6). The one exception is a stale main
 checkout: verifying stale code proves nothing, so that stops the run.
 
-## Step 1: Gate on the watched-repos registry (F-1)
-
-Run the block and follow the outcome table in `references/registry-gate.md`:
-it gates on `verify_skill` for `$TARGET_REPO` from
-`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
-before any git or herdr call. `$TARGET_REPO` is Step 2's binding — a pure
-remote-URL parse, no API call, no write — so resolving it first does not
-break F-1. Schema and registration procedure:
-`references/watched-repos-schema.md`.
-
-## Step 2: Resolve the target repo + host
+## Step 1: Resolve the target repo + host
 
 Same binding as `gh-pr:merge` — repo **and** host from one remote URL (dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407); see
 `gh-pr:merge`'s `references/github-target.md` (dotfiles `claude/skills/gh-pr-merge/`). No API call is made: the slug is only the registry key and part of the agent name.
@@ -55,6 +45,15 @@ Also bind `HEAD_BRANCH` and `BASE_BRANCH` (the merged PR's head/base branches) p
 refs in its own Step 2 and passes them down; standalone, recover them with the host-pinned
 `gh pr view` in `references/dispatch.sh.md` → "Inputs". Step 3 fetches and rebases with
 those — never a literal `origin`/`main`.
+
+## Step 2: Gate on the watched-repos registry (F-1)
+
+Run the block and follow the outcome table in `references/registry-gate.md`:
+it gates on `verify_skill` for `$TARGET_REPO` — Step 1's binding, and the
+registry key, so it must be bound first — from
+`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
+before any herdr call and before anything that touches a repo. Schema and
+registration procedure: `references/watched-repos-schema.md`.
 
 ## Step 3: Run the dispatch
 

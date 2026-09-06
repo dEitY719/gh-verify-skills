@@ -1,7 +1,7 @@
 # Post-merge verification dispatch — the verbatim block
 
 Step 3 pastes this. It expects `PR_NUMBER`, `TARGET_REPO` and `TARGET_HOST`
-already bound (Step 2), and it is a no-op for any repo missing from
+already bound (Step 1), and it is a no-op for any repo missing from
 `${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`
 — the same untracked registry `issue_watcher_cron.sh` reads (issue dEitY719/dotfiles#1555).
 
@@ -423,11 +423,11 @@ printf '  attach: herdr agent attach %s\n' "$PMV_AGENT"
 
 | Variable | Bound by | Notes |
 |---|---|---|
-| `PR_NUMBER` | Step 1 | The merged PR |
-| `TARGET_REPO` / `TARGET_HOST` | Step 2 | One remote URL, dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407 |
+| `PR_NUMBER` | args | The merged PR; positional 1 |
+| `TARGET_REPO` / `TARGET_HOST` | Step 1 | One remote URL, dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407 |
 | `HEAD_BRANCH` | caller | The merged PR's head branch, used to find the impl worktree |
 | `BASE_BRANCH` | caller | The merged PR's base branch (`baseRefName`). Empty → the main checkout's current branch, and a detached HEAD stops the run |
-| `REMOTE` | Step 1, optional | The `[remote]` positional; default `origin`. `fetch`/`rebase` use it, never a hardcoded `origin` |
+| `REMOTE` | args, optional | The `[remote]` positional; default `origin`. `fetch`/`rebase` use it, never a hardcoded `origin` |
 | `PMV_PROMPT_TIMEOUT_MS` | env, optional | `herdr agent prompt --wait` cap, default 900000 (15 min) |
 | `PMV_PROMPT_ATTEMPT_MAX` | env, optional | Retry budget for `agent_prompt_stalled` / `timeout`, default 3 |
 | `PMV_SETTLE_SECONDS` | env, optional | Wait after each herdr call that brings something up, default 13; `0` disables both waits (dEitY719/dotfiles#1571) |

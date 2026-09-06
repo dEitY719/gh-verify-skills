@@ -48,17 +48,18 @@
 
 ## 동작 단계
 
-1. **Step 1 — watched-repos 레지스트리 게이트.**
+1. **Step 1 — 대상 레포와 호스트 해석.** `gh:pr-merge` 와 같은 바인딩으로 하나의 remote URL 에서 레포와
+   호스트를 함께 얻는다. API 호출은 없다 — 슬러그는 레지스트리 키이자 에이전트 이름의 일부다. 여기서
+   `HEAD_BRANCH` `BASE_BRANCH` `REMOTE` 도 바인딩한다(`gh:pr-merge` 가 넘겨주거나, 단독 실행 시 호스트 고정
+   `gh pr view` 로 복구). 게이트보다 먼저 도는 이유는 슬러그가 곧 레지스트리 조회 키이기 때문이다 —
+   바인딩되지 않은 값은 어떤 항목과도 매칭되지 않아 검증을 조용히 통째로 꺼버린다.
+2. **Step 2 — watched-repos 레지스트리 게이트.**
    `${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}` 에서 대상 레포의
    `verify_skill` 을 읽는다. 값이 비었거나 파일을 못 읽거나 `jq` 가 없으면 **아무것도 하지 않는다**(출력 없음).
    `jq` 가 non-zero(파일은 있는데 JSON 이 아님)면 `[WARN]` 하나 뒤 건너뛴다. `verify_skill` 이 허용 목록
    (`gh-verify:merged`, `gh-verify:live`) 밖이면 herdr 호출 전에 `[WARN]` 을 내고 멈춘다 —
    `--dangerously-skip-permissions` 에이전트의 프롬프트에 들어가는 값이라 자유 텍스트일 수 없다.
    `herdr` 이 없으면 조용한 no-op.
-2. **Step 2 — 대상 레포와 호스트 해석.** `gh:pr-merge` 와 같은 바인딩으로 하나의 remote URL 에서 레포와
-   호스트를 함께 얻는다. API 호출은 없다 — 슬러그는 레지스트리 키이자 에이전트 이름의 일부다. 여기서
-   `HEAD_BRANCH` `BASE_BRANCH` `REMOTE` 도 바인딩한다(`gh:pr-merge` 가 넘겨주거나, 단독 실행 시 호스트 고정
-   `gh pr view` 로 복구).
 3. **Step 3 — 디스패치 실행.** `references/dispatch.sh.md` 를 그대로 붙여 다음 순서로 돈다.
    1. `git worktree list --porcelain` → 머지된 head 브랜치의 로컬 워크트리 경로.
    2. `herdr agent list` → 그 경로에 있는 `tab_id` → `herdr tab close <tab_id>`. 못 찾으면 기록만 하고 계속.
