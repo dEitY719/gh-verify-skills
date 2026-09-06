@@ -19,9 +19,12 @@ dispatch soft-failed and you want to retry it.
 
 ## What it does
 
-1. Reads the untracked watched-repos registry (`${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
-   the same file `issue_watcher_cron.sh` reads). **A repo that is not
-   registered there gets nothing at all** — no output, no herdr call, no git call.
+1. Binds the repo slug from the `[remote]`'s URL (one local `git remote
+   get-url`, no API call), then reads the untracked watched-repos registry
+   (`${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
+   the same file `issue_watcher_cron.sh` reads) under that slug. **A repo that
+   is not registered there gets nothing at all** — no output, no herdr call,
+   no fetch, no rebase.
 2. Checks `command -v jq` and `command -v herdr`. Either missing → silent
    no-op: the feature is unavailable, which is not an error worth a line.
 3. `git worktree list --porcelain` → the local worktree of the merged head branch.

@@ -1,14 +1,15 @@
-# post-merge-verify — Step 1: the watched-repos registry gate (F-1)
+# post-merge-verify — Step 2: the watched-repos registry gate (F-1)
 
 This skill acts on **registered repos only**. The gate below is what decides
-that, and it runs before anything else — no git call, no herdr call.
+that, and nothing that touches a repo or a herdr tab runs before it.
 
-**Precondition: `$TARGET_REPO` must already be bound** (Step 2's binding,
-which `references/dispatch.sh.md` states the same way). It is the registry
-key, so an unbound one matches nothing and silently disables verification.
-Step 2 makes no API call and no write — it parses one remote URL — so doing
-it first is not "acting on" an unregistered repo, and the F-1 promise the
-gate carries (no git call, no herdr call, no output) still holds.
+**Precondition: `$TARGET_REPO` must already be bound** — Step 1's binding, and
+`references/dispatch.sh.md` declares it an input the same way. It is the
+registry key, so an unbound one matches no entry and silently disables
+verification for every repo. That is why the binding is Step 1 and this gate
+is Step 2: `git remote get-url` is a local read that prints nothing, mutates
+nothing and calls no API, so ordering it first costs an unwatched repo exactly
+what F-1 promises it — no output, no herdr call, no fetch, no rebase.
 
 ## The block
 
