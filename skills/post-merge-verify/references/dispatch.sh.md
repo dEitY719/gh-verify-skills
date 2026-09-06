@@ -102,16 +102,19 @@ PMV_PROMPT_ATTEMPT_MAX="${PMV_PROMPT_ATTEMPT_MAX:-3}"
 # `_SC` fallback ladder, same as every other helper this plugin sources: with only
 # the plugin installed there is no $HOME/dotfiles, so fall back to the vendored copy
 # and export SHELL_COMMON so anything sourced after this resolves from the same root.
-_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
-[ -f "$_SC/functions/herdr_agent_name.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/herdr_agent_name.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
 PMV_NAME_LIB="$_SC/functions/herdr_agent_name.sh"
-if [ ! -r "$PMV_NAME_LIB" ]; then
-    printf '[WARN] gh-verify:post-merge-verify: %s not readable — verification skipped.\n' "$PMV_NAME_LIB"
+unset -f herdr_agent_name 2>/dev/null || :
+# shellcheck source=/dev/null
+[ -f "$PMV_NAME_LIB" ] && . "$PMV_NAME_LIB"
+if ! command -v herdr_agent_name >/dev/null 2>&1; then                               # tier 5
+    printf '[WARN] gh-verify:post-merge-verify: %s did not load a usable shell-common — verification skipped. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC"
     return 0 2>/dev/null || exit 0
 fi
 export SHELL_COMMON="$_SC"
-# shellcheck source=/dev/null
-. "$PMV_NAME_LIB"
 
 pmv_prompt_retryable() {
     case "$1" in

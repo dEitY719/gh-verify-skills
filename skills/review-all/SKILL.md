@@ -36,7 +36,7 @@ it verbatim, then stop. No API calls.
 ## Step 1: Parse Args
 
 Source and delegate to `devx_pr_review_all_parse`:
-`_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/devx_pr_review_all.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"; [ -f "$_SC/functions/devx_pr_review_all.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; source "$_SC/functions/devx_pr_review_all.sh"` then
+`_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/devx_pr_review_all.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi; unset -f devx_pr_review_all_parse 2>/dev/null || :; [ -f "$_SC/functions/devx_pr_review_all.sh" ] && . "$_SC/functions/devx_pr_review_all.sh"; command -v devx_pr_review_all_parse >/dev/null 2>&1 || { printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"` then
 `devx_pr_review_all_parse "$@"`. On help, follow Help; on exit 2, print stderr
 and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`,
 and `START_TS`.
@@ -83,7 +83,7 @@ dispatched (CLI absent, non-internal PC). `fail` — dispatched, exited non-zero
 it **could not run**, which is not a `skip` and must never be reported as one
 (dEitY719/gh-verify-skills#14). Take a `fail`'s `<reason>` from the lane's
 **first stderr line**, newlines and control characters stripped, truncated to
-120 chars — Step 6 prints exactly one line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; . "$_SC/functions/dotfiles_setup_mode.sh"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
+120 chars — Step 6 prints exactly one line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/dotfiles_setup_mode.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi; unset -f _dotfiles_setup_mode 2>/dev/null || :; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] && . "$_SC/functions/dotfiles_setup_mode.sh"; command -v _dotfiles_setup_mode >/dev/null 2>&1 || { printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
 
 - **agy** — if `command -v agy`, an Agent runs
   `Skill(gh-pr:review, "--ai agy <pr> <remote>")`; absent → SKIP, non-zero exit → FAIL.
@@ -165,9 +165,9 @@ addressed, and the auto-fix commit is unreviewed by construction:
 
 ```bash
 if [ "$PUSHED" = "1" ]; then
-    _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"; [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] || _SC="${CLAUDE_PLUGIN_ROOT:-$PWD}/lib/vendor/shell-common"
-    [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] || { printf '[gh-verify:review-all] shell-common not found under %s. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"
-    . "$_SC/functions/gh_pr_edit_safe.sh"
+    _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/gh_pr_edit_safe.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi
+    unset -f _gh_pr_drop_label 2>/dev/null || :; [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
+    command -v _gh_pr_drop_label >/dev/null 2>&1 || { printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"
     if _vl_err=$(_gh_pr_drop_label "$pr" review-passed "$TARGET_REPO" "$TARGET_HOST" 2>&1); then
         echo "[OK] \`review-passed\` 무효화됨 — /simplify 커밋이 push 되어 이전 판정은 만료"
     else
