@@ -1,7 +1,7 @@
 # post-merge-verify — Step 2: the watched-repos registry gate (F-1)
 
 This skill acts on **registered repos only**. The gate below is what decides
-that, and nothing that touches a repo or a herdr tab runs before it.
+that: nothing is printed and no herdr call, fetch or rebase happens before it.
 
 **Precondition: `$TARGET_REPO` must already be bound** — Step 1's binding, and
 `references/dispatch.sh.md` declares it an input the same way. It is the
