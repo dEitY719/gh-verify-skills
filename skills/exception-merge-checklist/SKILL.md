@@ -1,5 +1,7 @@
 ---
 name: exception-merge-checklist
+# Description is 287 chars, over check 16's 250-char band, on purpose — the two
+# dotfiles-era aliases are protected by CLAUDE.md "Rules for changing skills".
 description: >-
   Run a 10-point read-only sanity check on a PR right before an exception-track
   hand-merge — regressions ordinary CI gates miss. Use for
@@ -21,10 +23,8 @@ metadata:
 ## Role
 
 "예외 트랙"(CI 는 초록이지만 추가 검토와 함께 손으로 머지하는 PR) 머지 **직전**에 도는 **읽기 전용 10항목 점검**.
-평범한 CI 게이트가 놓치는 숨은 회귀를 잡는다 — rebase 중간 커밋이 깨진 경우 · OpenAPI lock drift · YAML 들여쓰기
-파손 · 과범위 prettier write · 새 프레임워크 호출(`cookies()` / `headers()` / `new NextRequest(`)에 대한 테스트 mock
-누락. 기본은 읽기 전용이며 `--auto-fix` 도 C8 / C9 만 스테이징한다(커밋하지 않는다). 인자/플래그 표와 C1–C10
-요약: `references/help.md`.
+C1–C5 는 머지를 막는 게이트를, C6–C10 은 2026-05-16 PR #727 회귀 6건을 잡는다 — 카탈로그와 인자/플래그 표는
+`references/help.md`. 기본은 읽기 전용이며 `--auto-fix` 도 C8 / C9 만 스테이징한다(커밋하지 않는다).
 
 ## Help
 
@@ -88,8 +88,7 @@ by other skills. `GH_DISABLE_AI_METRICS=1` skips this step entirely
 ## Constraints
 
 - **Read-only default.** Never merge, approve, push, or edit PR body/labels. Only `--auto-fix` mutates, and only as far as `git add` (never `git commit`).
-- **No fail-fast.** All 10 checks run — aggregating in one pass is the whole point.
-- **C6 opt-out via `--skip-bisect` only.** C7–C10 are not opt-outable — that would re-open the regression gap.
+- **No fail-fast, and C6 is the only opt-out.** Both bind in Step 2 — that is where they are stated.
 - **Exit codes**: `0` (all PASS or only WARN) / `1` (≥ 1 FAIL) / `2` (bad args, missing remote) / `3` (no PR detected).
 - **Never silently switch the build command.** If `--build-cmd` is absent and `bun run build` does not exist, mark C6 `N/A` with the reason — do NOT guess `npm test`.
 
