@@ -57,23 +57,23 @@ and `START_TS`.
 beside anything else. It runs **here** — after the checkout, **before** the
 Step 3 fan-out — and is pushed before a single reviewer is dispatched, so
 reviewers read the simplified head and nothing ever shares the tree with it.
-**Read `references/simplify-lane.md` before dispatching**: it holds the four
-incidents that forced this ordering, the verbatim dispatch prompt, and the
-runnable commit/push/label block for substep 3.
+**Read `references/simplify-lane.md` before dispatching**: the four incidents,
+the verbatim dispatch prompt, substep 3's runnable block, `$SIMPLIFY`'s values.
 
-1. **Clean-tree gate.** `git status --porcelain` must be empty. Non-empty →
-   record `simplify:skip`, print `[SKIP] simplify: working tree dirty`, and go
-   to Step 3. This gate is what makes "every dirty hunk afterwards is the
-   agent's own" true by construction.
+1. **Clean-tree gate.** `git status --porcelain` must be empty (`--porcelain`
+   lists untracked files too). Non-empty → record `SIMPLIFY=skip`, print
+   `[SKIP] simplify: working tree dirty`, and go to Step 3. This gate is what
+   makes "every dirty path afterwards is the agent's own" true by construction.
 2. **Dispatch exactly one Agent** running built-in `/simplify`, **edit-only**,
    with the scope contract from `references/simplify-lane.md` quoted in its
-   prompt: edit files and nothing else — never `git revert`, `git reset`,
-   `git checkout --`, `git stash`, `git commit`, or `git push`, and never touch
-   a hunk it did not author itself. Dispatch nothing alongside it.
+   prompt verbatim — it forbids every tree-rewriting git command and forbids
+   touching a hunk the agent did not author. Dispatch nothing alongside it.
 3. **The orchestrator commits, never the agent.** Once it returns, if the tree
-   is dirty: `git commit -am "refactor(<scope>): simplify per /simplify"` (never
-   a bare `git commit` — it opens an editor and hangs), `git push`, then drop a
-   now-stale `review-passed` (soft-fail). Never drop `review-blocked`: this
+   is dirty: `git add -A && git commit -m "refactor(<scope>): simplify per
+   /simplify"`, `git push`, then drop a now-stale `review-passed` (soft-fail).
+   `-A` not `-am` (`/simplify` may create files; `-a` stages only tracked ones),
+   `-m` not a bare commit (editor hang), `<scope>` derived not literal — all
+   three in `references/simplify-lane.md`. Never drop `review-blocked`: this
    step holds no evidence any blocker was addressed.
 
 ## Step 3: Reviewer fan-out (dispatch all reviewer lanes in ONE turn)
@@ -142,7 +142,7 @@ In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
    `ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"`.
    Only markers written by this login count as a lane's verdict (dEitY719/dotfiles#1639) — see
    `references/review-verdict-label.md` → "Marker authorship".
-4. Walk `$LANES` (the Step 2.5 `simplify` row never contributes). For an `ok` lane pipe
+4. Walk `$LANES` (simplify is not in it — it lives in `$SIMPLIFY`). For an `ok` lane pipe
    `BODIES` through `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`
    → `devx_pr_review_all_verdict`; drop a `skip` entirely. Pipe the stream into
    `devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"`.

@@ -57,6 +57,8 @@ independent of the ordering choice).
 > You must NOT run any of: `git revert`, `git reset`, `git checkout --`,
 > `git restore`, `git stash`, `git commit`, `git push`, `git rebase`,
 > `git cherry-pick`. The orchestrator commits your work after you return.
+> SKILL.md Step 2.5 substep 2 abbreviates this list; **this blockquote is the
+> canonical one** — quote it, do not retype a shorter version.
 >
 > You must NOT modify, undo, or "clean up" any hunk you did not author in this
 > run — including changes that look wrong, redundant, or hostile. If you
@@ -73,14 +75,30 @@ skill being dispatched.
 ## The commit, the push, and the stale label (Step 2.5 substep 3)
 
 The **orchestrator** commits — never the agent. Because the tree was clean
-before dispatch and the agent was the only writer, `git commit -am` can only
-pick up hunks the agent authored, which is what makes #18's second verification
-criterion hold. Never a bare `git commit`: it opens an editor and hangs a
-non-interactive shell.
+before dispatch and the agent was the only writer, `git add -A` can only pick up
+paths the agent authored, which is what makes #18's second verification
+criterion hold.
+
+Two flag choices are load-bearing, both from agy + codex review of PR #28:
+
+- **`git add -A`, never `git commit -am`.** `-a` stages modifications to
+  *tracked* files only. `/simplify`'s edit-only contract permits creating a
+  file, and a new file is untracked — `-am` would silently leave it behind,
+  where it survives as a dirty path that breaks Step 4's clean-tree assertion
+  and, worse, gets swept into whatever commit `gh-pr:reply` makes next. `-A`
+  is safe here precisely because of the clean-tree gate: with nothing dirty at
+  dispatch, "everything" and "the agent's work" are the same set.
+- **`-m`, never a bare `git commit`**: it opens an editor and hangs a
+  non-interactive shell.
+
+`<scope>` is a placeholder — derive it from the shared top-level path of the
+staged files (`skills/review-all`, `docs`, …). Committing the literal string
+`refactor(<scope>):` is a defect, not a template.
 
 ```bash
 if [ -n "$(git status --porcelain)" ]; then
-    git commit -am "refactor(<scope>): simplify per /simplify" && git push && PUSHED=1
+    git add -A && git commit -m "refactor(<scope>): simplify per /simplify" &&
+        git push && PUSHED=1
 fi
 
 if [ "$PUSHED" = "1" ]; then
@@ -102,14 +120,21 @@ blocker was addressed.
 
 ## Lane outcomes
 
-The simplify row in `$LANES` is reported, never aggregated — it produces no
-verdict line, so Step 3.5 skips it.
+The simplify outcome lives in its own variable, `$SIMPLIFY` — **not** in
+`$LANES` (agy, PR #28 FOLLOW-UP). `$LANES` is a stream of
+`<ai>:ok|skip|fail` rows that Step 3.5 walks and feeds to the verdict
+aggregator; simplify produces no verdict, and a row whose value is outside that
+three-token vocabulary would either be mis-parsed or force every consumer to
+special-case it. Keeping it out of the stream is what makes "Step 3.5 skips it"
+structural rather than a rule someone has to remember.
 
-| Row | Meaning |
+| `$SIMPLIFY` | Meaning |
 |---|---|
-| `simplify:committed` | ran, tree was dirty, commit pushed |
-| `simplify:clean` | ran, changed nothing |
-| `simplify:skip` | the clean-tree gate refused to dispatch, or the Agent could not run |
+| `committed` | ran, tree was dirty, commit pushed |
+| `clean` | ran, changed nothing |
+| `skip` | the clean-tree gate refused to dispatch, or the Agent could not run |
+
+Step 6 prints it as `simplify:<value>` alongside the lane rows.
 
 Soft-fail throughout: a failed simplify lane warns and Step 3 continues.
 

@@ -21,7 +21,7 @@ request-changes) — that is `gh-pr:approve`.
 |------|---------|-------------|
 | `--defer-reply M` / `--defer-reply=M` | off (inline) | Schedule `/gh-pr:reply` M **minutes** later via `session:schedule` instead of replying inline. |
 | `--no-reply` | off | Skip the reply step entirely. |
-| `--force-review` | off | Bypass the duplicate-review guard and re-run every reviewer lane (agy/codex/opencode/hermes) even if the current head sha was already reviewed. Does not affect `/simplify`, which always runs first regardless of this flag. |
+| `--force-review` | off | Bypass the duplicate-review guard and re-run every reviewer lane (agy/codex/opencode/hermes) even if the current head sha was already reviewed. Does not affect `/simplify`, which runs first regardless of this flag whenever it is dispatched at all (a dirty tree gives `simplify:skip`). |
 | `-h` / `--help` / `help` | — | Print this help and stop. |
 
 `--defer-reply` and `--no-reply` together → `--no-reply` wins (reply skipped).
