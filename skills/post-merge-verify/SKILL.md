@@ -52,7 +52,7 @@ Run the block and follow the outcome table in `references/registry-gate.md`:
 it gates on `verify_skill` for `$TARGET_REPO` — Step 1's binding, and the
 registry key, so it must be bound first — from
 `${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
-before any herdr call and before anything that touches a repo. Schema and
+before any output, herdr call, fetch or rebase. Schema and
 registration procedure: `references/watched-repos-schema.md`.
 
 ## Step 3: Run the dispatch
