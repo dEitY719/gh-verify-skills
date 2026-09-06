@@ -8,11 +8,12 @@
 
 ## Flags
 
-| Flag | Description |
-|------|-------------|
-| `--skip-bisect` | Skip C6 (commit-by-commit build). Use when the merge target is squash-merge (intermediate commits are discarded). C6 is reported as `N/A` with a one-line reason. |
-| `--auto-fix` | After the report, run deterministic fixes for C8 (`.openapi-lock` regenerate) and C9 (`prettier --write` on changed-only files) and stage them with `git add`. **Never commits.** All other FAILs require human decisions. |
-| `--build-cmd <cmd>` | Override the C6 per-commit verification command. Default is `bun run build`. Quote the value if it contains spaces. |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--skip-bisect` | off | Skip C6 (commit-by-commit build). Use when the merge target is squash-merge (intermediate commits are discarded). C6 is reported as `N/A` with a one-line reason. |
+| `--auto-fix` | off | After the report, run deterministic fixes for C8 (`.openapi-lock` regenerate) and C9 (`prettier --write` on changed-only files) and stage them with `git add`. **Never commits.** All other FAILs require human decisions. |
+| `--build-cmd <cmd>` | `bun run build` | Override the C6 per-commit verification command. Quote the value if it contains spaces. |
+| `-h` / `--help` / `help` | — | Print this help and stop. |
 
 ## Usage
 
