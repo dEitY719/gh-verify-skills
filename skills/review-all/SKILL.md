@@ -19,196 +19,72 @@ metadata:
 
 ## Role
 
-Orchestrate a single PR through a `/simplify` auto-fix pass first, then all available reviewers at once —
-agy, codex, opencode, hermes — record the aggregate verdict as a merge-gate label, then reply to
-review comments inline or deferred. No
-approve/request-changes decision and no manual per-comment authoring. Every reviewer lane is soft-fail.
-This skill is the **only** writer of `review-blocked`; since dEitY719/dotfiles#1636 it never writes
-`review-passed` — that label belongs to `gh-pr:reply` Step 6
-(`references/review-verdict-label.md`); `gh-pr:merge-train` is their only reader.
-Argument/flag table (`<PR#> [remote] [--defer-reply M] [--no-reply] [--force-review]`): `references/help.md`.
+Take one PR through a `/simplify` auto-fix pass first, then every available reviewer at once — agy, codex, opencode, hermes — record the aggregate verdict as a merge-gate label, then reply to review comments inline or deferred. No approve/request-changes decision, no manual per-comment authoring, and every reviewer lane is soft-fail.
+This skill is the **only** writer of `review-blocked`, and since dEitY719/dotfiles#1636 it never writes `review-passed` — that label belongs to `gh-pr:reply` Step 6 (`references/review-verdict-label.md`); `gh-pr:merge-train` is their only reader.
+Arguments and flags (`<PR#> [remote] [--defer-reply M] [--no-reply] [--force-review]`): `references/help.md`.
 
 ## Help
 
-If arg #1 is `-h`, `--help`, or `help`, read `references/help.md` and output
-it verbatim, then stop. No API calls.
+If arg #1 is `-h`, `--help`, or `help`, read `references/help.md` and output it verbatim, then stop. No API calls.
 
 ## Step 1: Parse Args
 
-Source and delegate to `devx_pr_review_all_parse`:
-`_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/devx_pr_review_all.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi; unset -f devx_pr_review_all_parse 2>/dev/null || :; [ -f "$_SC/functions/devx_pr_review_all.sh" ] && . "$_SC/functions/devx_pr_review_all.sh"; command -v devx_pr_review_all_parse >/dev/null 2>&1 || { printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"` then
-`devx_pr_review_all_parse "$@"`. On help, follow Help; on exit 2, print stderr
-and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`,
-and `START_TS`.
+Paste the Step 1 loader block from `references/shell-common-source.md`, then call `devx_pr_review_all_parse "$@"`. On help, follow Help; on exit 2, print stderr and stop.
+Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`, and `START_TS`.
 
 ## Step 2: Pre-flight
 
-- Resolve `TARGET_REPO` for `<remote>` and pass `-R <TARGET_REPO>` on every
-  `gh pr`/`gh repo` call.
-- PR state must be `OPEN` and not draft (`gh pr view <pr> -R <TARGET_REPO>`)
-  → else exit 1 `PR #<pr> is <state>; aborting`.
-- `gh auth status` returns 0 → else exit 1 with the gh error line.
-- **auto-fix branch context**: if not on the PR head branch, run
-  `gh pr checkout <pr> -R <TARGET_REPO>`; `/simplify` acts on the working tree.
+- Resolve `TARGET_REPO` for `<remote>`; pass `-R <TARGET_REPO>` on every `gh pr`/`gh repo` call.
+- PR must be `OPEN` and not draft (`gh pr view <pr> -R <TARGET_REPO>`) → else exit 1 `PR #<pr> is <state>; aborting`; `gh auth status` must return 0 → else exit 1 with its error line.
+- **auto-fix branch context**: if not on the PR head branch, run `gh pr checkout <pr> -R <TARGET_REPO>` — `/simplify` acts on the working tree.
 
 ## Step 2.5: Auto-fix pass — `/simplify` runs FIRST, alone (dEitY719/gh-verify-skills#18)
 
-`/simplify` is the only lane that writes to the working tree, so it never runs
-beside anything else. It runs **here** — after the checkout, **before** the
-Step 3 fan-out — and is pushed before a single reviewer is dispatched, so
-reviewers read the simplified head and nothing ever shares the tree with it.
-**Read `references/simplify-lane.md` before dispatching**: the four incidents,
-the verbatim dispatch prompt, substep 3's runnable block, `$SIMPLIFY`'s values.
-
-1. **Clean-tree gate.** `git status --porcelain` must be empty (it lists
-   untracked files too). Non-empty → record `SIMPLIFY=skip`, print `[SKIP]
-   simplify: working tree dirty`, go to Step 3. This gate is what makes "every
-   dirty path afterwards is the agent's own" true by construction.
-2. **Dispatch exactly one Agent** running built-in `/simplify`, **edit-only**,
-   with the scope contract from `references/simplify-lane.md` quoted in its
-   prompt verbatim — it forbids every tree-rewriting git command and forbids
-   touching a hunk the agent did not author. Dispatch nothing alongside it.
-3. **The orchestrator commits, never the agent.** Once it returns, if the tree
-   is dirty: `git add -A && git commit -m "refactor(<scope>): simplify per
-   /simplify"`, `git push`, then drop a now-stale `review-passed` (soft-fail).
-   `-A` not `-am` (`/simplify` may create files; `-a` stages only tracked ones),
-   `-m` not a bare commit (editor hang), `<scope>` derived not literal. Never
-   drop `review-blocked`: no evidence here that any blocker was addressed.
-   **A failed `git push` stops the run** — this skill's only hard-fail: the
-   commit stays local while the remote head is the pre-simplify one, so Step 3
-   would review a tree that no longer exists. Print the error, dispatch
-   nothing. All four in `references/simplify-lane.md`.
+`/simplify` is the only lane that writes to the working tree, so it never runs beside anything else. It runs **here** — after the checkout, **before** the Step 3 fan-out — and is pushed before a single reviewer is dispatched, so reviewers read the simplified head.
+**Read `references/simplify-lane.md` before dispatching**: the four incidents, the verbatim dispatch prompt, substep 3's runnable block, and `$SIMPLIFY`'s values. Its three substeps are (1) a **clean-tree gate** — `git status --porcelain` non-empty → record `SIMPLIFY=skip`, print `[SKIP] simplify: working tree dirty`, go to Step 3;
+(2) **dispatch exactly one Agent** running built-in `/simplify`, **edit-only**, with that file's scope contract quoted verbatim in its prompt and nothing dispatched alongside it; (3) **the orchestrator commits, never the agent**, then pushes and drops a now-stale `review-passed` (soft-fail) but never `review-blocked`.
+**A failed `git push` stops the run** — this skill's only hard-fail: reviewers would otherwise read a remote head that no longer matches the tree.
 
 ## Step 3: Reviewer fan-out (dispatch all reviewer lanes in ONE turn)
 
-**Duplicate-review guard first (dEitY719/dotfiles#1613).** Before dispatching anything, read
-`head_sha` once (`gh pr view "$pr" -R "$TARGET_REPO" --json headRefOid --jq
-.headRefOid`) and `BODIES` once
-(`gh api --paginate "repos/$TARGET_REPO/issues/$pr/comments"` — **raw JSON, no
-`--jq '.[].body'`**: `.user.login` must survive, dEitY719/dotfiles#1639) and the trusted login
-once
-(`ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"`).
-Then, unless `force_review=1`, skip any reviewer lane for which
-`devx_pr_review_all_already_reviewed "$ai" "$head_sha" "$ME"` (fed `$BODIES` on
-stdin) returns 0 — print
-`[SKIP] <ai> already reviewed head <head_sha> — pass --force-review to re-run`
-and do **not** dispatch that lane's Agent. Two sessions reviewing the same head
-concurrently is what posted duplicate agy/codex comments on PR dEitY719/dotfiles#1608. Fail
-open: if either fetch errors, treat every lane as not-yet-reviewed and dispatch
-normally. This is a read-before-write check, not a lock — two sessions can
-still both read "not yet reviewed" and both fan out; see
-`references/duplicate-review-guard.md` → "Known limitation" for why that race
-is accepted rather than closed with a lock file.
+**Duplicate-review guard first (dEitY719/dotfiles#1613).** Read `head_sha`, `BODIES` and the trusted login `ME` once each, then — unless `force_review=1` — skip any lane `devx_pr_review_all_already_reviewed` reports as already reviewed for this head, printing `[SKIP] <ai> already reviewed head <head_sha> — pass --force-review to re-run`.
+The runnable block, the raw-JSON requirement (`.user.login` must survive, dEitY719/dotfiles#1639), the fail-open rule, and why this is a read-before-write check rather than a lock: `references/duplicate-review-guard.md`.
 
-Step 2.5 already pushed, so the `head_sha` read here is the head the reviewers
-review — and stays it, since nothing pushes after this. The four reviewer lanes
-dispatch together in a single turn and are **all comment-only: none writes to
-the working tree**. The one lane that does, `/simplify`, already ran and
-committed in Step 2.5 — never dispatch it here
-(dEitY719/gh-verify-skills#18). Every lane is soft-fail, and ends in one
-of **three** outcomes. **Step 3 is the only place they are
-known**, so record them as you dispatch: `$LANES`, one `<ai>:ok|skip|fail` per
-**line** (never space-separated — Step 3.5 iterates it, and zsh does not
-word-split). `ok` — ran, verdict on the PR (a guard-skipped lane is `ok`: it already
-has one for this head, which is why the guard skipped it). `skip` — never
-dispatched (CLI absent, non-internal PC). `fail` — dispatched, exited non-zero:
-it **could not run**, which is not a `skip` and must never be reported as one
-(dEitY719/gh-verify-skills#14). Take a `fail`'s `<reason>` from the lane's
-**first stderr line**, newlines and control characters stripped, truncated to
-120 chars — Step 6 prints exactly one line. `_dotfiles_setup_mode` is **not** in scope by default and Step 1's source does not carry over — every skill Bash call is a fresh `bash --noprofile --norc` — so read it inside the same call that gates on it: `_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/dotfiles_setup_mode.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi; unset -f _dotfiles_setup_mode 2>/dev/null || :; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] && . "$_SC/functions/dotfiles_setup_mode.sh"; command -v _dotfiles_setup_mode >/dev/null 2>&1 || { printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"; _dotfiles_setup_mode`. Undefined, both gates below read non-internal and skip looking exactly like a missing CLI.
+Step 2.5 already pushed, so this `head_sha` is the head the reviewers review — and stays it, since nothing pushes after this. The four lanes dispatch together in a single turn and are **all comment-only: none writes to the working tree**; `/simplify` already ran in Step 2.5 and is never dispatched here (dEitY719/gh-verify-skills#18).
+Every lane is soft-fail and **Step 3 is the only place its outcome is known**, so record `$LANES` as you dispatch — one `<ai>:ok|skip|fail` per **line**, never space-separated (Step 3.5 iterates it, and zsh does not word-split). The three outcomes, why a `fail` is never reported as a `skip` (dEitY719/gh-verify-skills#14), and a `fail`'s `<reason>` format: `references/review-verdict-label.md` → "Aggregating the lanes".
 
-- **agy** — if `command -v agy`, an Agent runs
-  `Skill(gh-pr:review, "--ai agy <pr> <remote>")`; absent → SKIP, non-zero exit → FAIL.
-- **codex** — the same, with `--ai codex`.
-- **opencode**, **hermes** — the same, with `--ai opencode` / `--ai hermes`, but
-  each also requires `_dotfiles_setup_mode` = `internal`; absent or
-  non-internal → SKIP, non-zero exit → FAIL.
+- **agy**, **codex** — if the CLI is present, an Agent runs `Skill(gh-pr:review, "--ai <agy|codex> <pr> <remote>")`; absent → SKIP, non-zero exit → FAIL.
+- **opencode**, **hermes** — the same with `--ai opencode` / `--ai hermes`, but each also requires `_dotfiles_setup_mode` = `internal` (loader: `references/shell-common-source.md`, pasted **inside the same Bash call that gates on it**); absent or non-internal → SKIP, non-zero exit → FAIL.
 
 Never add `/code-review --fix`; it is user-invocation-only (`references/constraints.md`).
 
 ## Step 3.5: Aggregate review verdicts and apply the merge-gate label
 
-Runs **after every Step 3 lane has returned.** The lanes tagged their comments
-with the PR's current **remote** head; since dEitY719/gh-verify-skills#18 no
-push happens between their dispatch and this read, so the sha still matches.
-
-Full runnable block, exit codes, and rationale: `references/review-verdict-label.md`.
-In short — bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO`
-(the block in `references/reply-pending-label.sh.md` step 0), then:
-
-1. `head_sha` — one `gh pr view "$pr" -R "$TARGET_REPO" --json headRefOid --jq
-   .headRefOid`.
-2. `BODIES` — one `gh api --paginate "repos/$TARGET_REPO/issues/$pr/comments"`,
-   **raw JSON with no `--jq '.[].body'`** (dEitY719/dotfiles#1639): the harvester filters on
-   `.user.login`, and pre-extracting `.body` throws the author away.
-3. `ME` — the login this pipeline authenticates as:
-   `ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"`.
-   Only markers written by this login count as a lane's verdict (dEitY719/dotfiles#1639) — see
-   `references/review-verdict-label.md` → "Marker authorship".
-4. Walk `$LANES` (simplify is not in it — it lives in `$SIMPLIFY`). For an `ok` lane pipe
-   `BODIES` through `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`
-   → `devx_pr_review_all_verdict`; drop a `skip` entirely. Pipe the stream into
-   `devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"`.
-   **Since dEitY719/dotfiles#1636 that call only ever writes `review-blocked`** —
-   an all-non-blocking round clears a stale one and stops there; `review-passed`
-   is `gh-pr:reply` Step 6's, so an unlabelled PR reads "not verified yet".
-   Always pass the trailing `$head_sha` (dEitY719/dotfiles#1601 freshness marker).
-   **A guard-skipped lane still counts as `ok`** — it already has a verdict for
-   this head, and dropping it would let a partial re-run overwrite
-   `review-blocked` (`references/duplicate-review-guard.md`).
-   **A `fail` lane has no block to harvest, so emit a literal `unknown` line
-   for it** (dEitY719/gh-verify-skills#14) — the PR then stays unlabelled
-   instead of being certified off the surviving lane alone.
-   Never stage the verdicts in a variable and re-expand it — zsh does not
-   word-split, and a two-lane PR would silently report one.
-
-Re-fetch `head_sha` and `BODIES` rather than reusing Step 3's duplicate-guard
-values (`ME` is stable): the sha is unchanged — no push happened — but the
-lanes just posted new comments. The whole step is **soft-fail**: a labelling
-failure never blocks Steps 4-6, and an unlabelled PR reads downstream as "not
-verified", which `gh-pr:merge-train` `[SKIPPED]`s rather than merges.
+Runs **after every Step 3 lane has returned** and is **soft-fail** throughout — a labelling failure never blocks Steps 4-6, and an unlabelled PR reads downstream as "not verified", which `gh-pr:merge-train` `[SKIPPED]`s rather than merges.
+Bind `TARGET_HOST` from the same `<remote>` URL as `TARGET_REPO` (step 0 block in `references/reply-pending-label.sh.md`), then follow `references/review-verdict-label.md`: the runnable block, the re-fetch of `head_sha` and `BODIES`, marker authorship, why the call only ever writes `review-blocked`, and why a guard-skipped lane still counts as `ok` while a `fail` lane emits a literal `unknown`.
 
 ## Step 4: Clean-tree assertion (nothing to push here)
 
-Step 2.5 already pushed, so this pushes nothing; it asserts the invariant the
-caller depends on. `git status --porcelain` must be empty — if not, a
-comment-only lane wrote to the tree: print `[WARN] working tree dirty after
-review lanes` and leave it rather than commit hunks of unknown authorship
-(`gh-flow:issue` rebases on return; a dirty tree breaks `git rebase`).
+Step 2.5 already pushed, so this pushes nothing; it asserts the invariant the caller depends on. `git status --porcelain` must be empty — if not, a comment-only lane wrote to the tree: print `[WARN] working tree dirty after review lanes` and leave it rather than commit hunks of unknown authorship (`gh-flow:issue` rebases on return; a dirty tree breaks `git rebase`).
 
 ## Step 5: pr-reply (per reply_mode)
 
 - `inline` (default) → run `Skill(gh-pr:reply, "<pr> <remote>")` immediately.
-- `defer` → **first** add the `reply-pending` label per
-  `references/reply-pending-label.sh.md` (idempotent `gh label create`, then
-  `_gh_pr_edit_safe_label`; soft-fail — a label failure never blocks the
-  schedule), **then**
-  `Skill(session:schedule, "--time <reply_delay> \"/gh-pr:reply <pr> <remote>\"")`.
-  The label is what makes `gh-pr:merge-train` hard-skip this PR until the
-  reply pass finishes (dEitY719/dotfiles#1524); `gh-pr:reply` Step 6 removes it.
-- `none` → skip.
-
-Only `defer` labels: `inline` and `none` defer nothing, so there is no pending
-state to mark.
+- `defer` → **first** add the `reply-pending` label per `references/reply-pending-label.sh.md` (idempotent `gh label create`, then `_gh_pr_edit_safe_label`; soft-fail — a label failure never blocks the schedule), **then** `Skill(session:schedule, "--time <reply_delay> \"/gh-pr:reply <pr> <remote>\"")`.
+  That label is what makes `gh-pr:merge-train` hard-skip this PR until the reply pass finishes (dEitY719/dotfiles#1524); `gh-pr:reply` Step 6 removes it.
+- `none` → skip. Only `defer` labels — the other two defer nothing, so there is no pending state to mark.
 
 ## Step 6: Report
 
-Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g.
-`[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
-Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and
-downgrade the line to `[WARN]` when any lane failed. The trailing clause is
-Step 3.5's outcome: `review-blocked` or `unlabelled`.
+Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g. `[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
+Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and downgrade the line to `[WARN]` when any lane failed. The trailing clause is Step 3.5's outcome: `review-blocked` or `unlabelled`.
 
 ## Constraints (full rationale: `references/constraints.md`)
 
 - Reviewer lanes are soft-fail and comment-only; `/simplify` runs alone in Step 2.5, before them, never concurrently with anything that edits the tree.
-- Never add `/code-review`; never run bare `git commit`.
+- Never add `/code-review`; never run bare `git commit`. No approve / request-changes here — that is `gh-pr:approve`.
 - Inline reply is deterministic; `--defer-reply` is minutes-only and not a guarantee.
-- No approve / request-changes here — that is `gh-pr:approve`.
 
 ## Related Skills
 
-`gh-pr:review` (one reviewer at a time — this skill fans out over it) · `gh-pr:reply` / `session:schedule` (the reply
-pass) · `gh-pr:approve` (the approve/request-changes decision) · `gh-pr:merge-train` (consumes Step 3.5's
-verdict label as a hard merge gate) · `gh-setup:label-bootstrap` (provisions the two labels). Reused by
-`gh-flow:issue` (Step 2.4) as its post-PR quality gate.
+`gh-pr:review` (one reviewer at a time — this skill fans out over it) · `gh-pr:reply` / `session:schedule` (the reply pass) · `gh-pr:approve` (the approve/request-changes decision) · `gh-pr:merge-train` (consumes Step 3.5's verdict label as a hard merge gate) · `gh-setup:label-bootstrap` (provisions the two labels). Reused by `gh-flow:issue` (Step 2.4) as its post-PR quality gate.

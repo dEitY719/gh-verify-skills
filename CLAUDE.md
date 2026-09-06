@@ -71,10 +71,11 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
   description still lists its dotfiles-era forms (`/devx:pr-verify-live`,
   `/gh-pr-post-merge-verify`, ...) alongside the new one, because muscle memory
   outlives a migration. Removing them is a regression, not a cleanup.
-- **Progressive disclosure.** `SKILL.md` should stay under 100 lines and name
-  which `references/` file to read and when. Detail lives in that skill's own
-  `references/`. Do not inline a reference file back into `SKILL.md`. See
-  "Migration debt" below for why CI's limit is currently higher than 100.
+- **Progressive disclosure.** `SKILL.md` stays under 100 lines and names which
+  `references/` file to read and when. Detail lives in that skill's own
+  `references/`. Do not inline a reference file back into `SKILL.md`. CI
+  enforces the limit with `skill-check`'s shared default — `validate.yml`
+  passes no `max-skill-lines` override, so there is nothing to raise.
 - **Description budget.** CI sums every skill description and fails past 5,440
   characters — Codex's context budget. Keep new descriptions tight.
 - **`review-all`'s parallel fan-out is behaviour, not formatting.** Step 3
@@ -116,21 +117,6 @@ phrases inside a `description:` — see "Rules for changing skills" above.
 Paths under `claude/skills/`, `shell-common/functions/`, and
 `tests/bats/` — those point into `dEitY719/dotfiles` and are labelled as such.
 Only paths **inside** this repo were rewritten by the migration.
-
-## Migration debt: the SKILL.md line limit
-
-CI's `max-skill-lines` is set to **215** in `validate.yml`, not the standard
-100. Four of the five skills arrived from dotfiles already over the limit —
-`review-all` 213, `merged` 112, `live` 111, `post-merge-verify` 111
-(`exception-merge-checklist` is at 100). Phase 2 of dEitY719/dotfiles#1410 is a
-placement-and-naming migration and its NF-4 forbids changing skill behaviour on
-the way across, so the content was copied verbatim and the limit raised rather
-than the files being cut down.
-
-This is debt, not a new standard, and it is tracked as #1: refactor each
-`SKILL.md` into its own `references/` and bring the limit back to 100. Until
-then: do not raise 215 any further, and do not add lines to a `SKILL.md` that is
-already over 100.
 
 ## Emojis
 

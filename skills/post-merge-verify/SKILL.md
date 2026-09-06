@@ -37,36 +37,26 @@ checkout: verifying stale code proves nothing, so that stops the run.
 
 ## Step 1: Gate on the watched-repos registry (F-1)
 
-```bash
-WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}"
-VERIFY_SKILL=""
-if command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
-    VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
-        '(if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r) | .verify_skill // empty' "$WATCHED_FILE" 2>/dev/null)
-fi
-```
-
-- Empty `VERIFY_SKILL`, an unreadable file, or no `jq` → **do nothing at
-  all**, no output. An unwatched repo behaves exactly as before dEitY719/dotfiles#1511.
-- `jq` non-zero (the file exists but is not JSON) → one `[WARN]`, then skip.
-- `VERIFY_SKILL` outside the allowlist (`gh-verify:merged`,
-  `gh-verify:live`) → one `[WARN]`, stop before any herdr call. It reaches
-  a `--dangerously-skip-permissions` agent's prompt, so it is never free text.
-- `command -v herdr` missing → silent no-op.
-
-Schema and registration procedure: `references/watched-repos-schema.md`.
+Run the block in `references/registry-gate.md`: it reads `verify_skill` for
+`$TARGET_REPO` out of
+`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`.
+Empty value, unreadable file, no `jq`, or no `herdr` → **do nothing at all**, no
+output — an unwatched repo behaves exactly as before dEitY719/dotfiles#1511.
+Unparseable JSON, or a `verify_skill` outside the allowlist (`gh-verify:merged`,
+`gh-verify:live` — it reaches a `--dangerously-skip-permissions` agent's prompt,
+so it is never free text) → one `[WARN]`, stop before any herdr call. Schema and
+registration procedure: `references/watched-repos-schema.md`.
 
 ## Step 2: Resolve the target repo + host
 
 Same binding as `gh-pr:merge` — repo **and** host from one remote URL (dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407); see
 `gh-pr:merge`'s `references/github-target.md` (dotfiles `claude/skills/gh-pr-merge/`). No API call is made: the slug is only the registry key and part of the agent name.
 
-Also bind `HEAD_BRANCH` and `BASE_BRANCH` (the merged PR's head/base branches)
-plus `REMOTE` (the `[remote]` positional, default `origin`). `gh-pr:merge`
-already read both refs in its own Step 2 and passes them down; standalone,
-recover them with the host-pinned `gh pr view` in `references/dispatch.sh.md`
-→ "Inputs". Step 3 fetches and rebases with those — never a literal
-`origin`/`main`.
+Also bind `HEAD_BRANCH` and `BASE_BRANCH` (the merged PR's head/base branches) plus
+`REMOTE` (the `[remote]` positional, default `origin`). `gh-pr:merge` already read both
+refs in its own Step 2 and passes them down; standalone, recover them with the host-pinned
+`gh pr view` in `references/dispatch.sh.md` → "Inputs". Step 3 fetches and rebases with
+those — never a literal `origin`/`main`.
 
 ## Step 3: Run the dispatch
 
@@ -79,13 +69,11 @@ Paste `references/dispatch.sh.md` verbatim. It performs, in order:
    only once `MAIN_ROOT` is a git worktree root and its HEAD is on
    `BASE_BRANCH`. Dirty tree, wrong/detached branch, or conflict → `[WARN]`,
    `rebase --abort`, **stop** (F-3).
-4. `git worktree add --detach "$PMV_SCRATCH" "$REMOTE/$BASE_BRANCH"` where
-   `PMV_SCRATCH` is `<git-common-dir>/pr-post-merge-verify/pr-<N>` — created if
-   absent, reused if present, never torn down here. Then
-   `herdr tab create --workspace <ws> --cwd "$PMV_SCRATCH" --label "pr-<N>"` and
-   `herdr agent start mv-<repo>-pr-<N> --kind claude --pane <pane>
-   -- --dangerously-skip-permissions` (F-4). The session does **not** live in
-   `MAIN_ROOT`: that checkout is shared, and step 3 rebases it (dEitY719/dotfiles#1577).
+4. `git worktree add --detach "$PMV_SCRATCH" "$REMOTE/$BASE_BRANCH"` — created if
+   absent, reused if present, never torn down here — then `herdr tab create` +
+   `herdr agent start mv-<repo>-pr-<N> --kind claude` (F-4). The session does
+   **not** live in `MAIN_ROOT`: that checkout is shared, and step 3 rebases it
+   (dEitY719/dotfiles#1577).
 5. `herdr agent prompt <agent> "/<verify-skill> <N>" --wait --until idle` (F-5),
    then report the new `tab_id`, the agent name, and the `attach` hint.
 
@@ -102,10 +90,9 @@ dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` — change on
 
 ## Related Skills
 
-`gh-pr:merge` reads `references/dispatch.sh.md` and runs it inline at the end of
-its Step 5 — never `Skill(gh-verify:post-merge-verify, ...)`, which vanished inside
-`gh-pr:merge-train`'s loop (dEitY719/dotfiles#1565); this skill stays the standalone manual entry
-point and the SSOT for that block · `gh-verify:merged`
-/ `gh-verify:live` are what the dispatched session actually runs (the
-registry picks which) · `gh-pr:merge-train` shares the herdr
-workspace→tab→agent→prompt sequence via `pr_merge_train_cron.sh`.
+`gh-pr:merge` reads `references/dispatch.sh.md` and runs it inline at the end of its
+Step 5 — never `Skill(gh-verify:post-merge-verify, ...)`, which vanished inside
+`gh-pr:merge-train`'s loop (dEitY719/dotfiles#1565); this skill stays the standalone
+manual entry point and the SSOT for that block · `gh-verify:merged` / `gh-verify:live`
+are what the dispatched session actually runs (the registry picks which) ·
+`gh-pr:merge-train` shares the herdr workspace→tab→agent→prompt sequence via `pr_merge_train_cron.sh`.
