@@ -23,8 +23,8 @@ metadata:
 ## Role
 
 "예외 트랙"(CI 는 초록이지만 추가 검토와 함께 손으로 머지하는 PR) 머지 **직전**에 도는 **읽기 전용 10항목 점검**.
-C1–C5 는 머지를 막는 게이트를, C6–C10 은 2026-05-16 PR #727 회귀 6건을 잡는다 — 카탈로그와 인자/플래그 표는
-`references/help.md`. 기본은 읽기 전용이며 `--auto-fix` 도 C8 / C9 만 스테이징한다(커밋하지 않는다).
+C1–C5 는 머지를 막는 게이트, C6–C10 은 PR #727 회귀를 잡는 감지기다(Step 2) — 카탈로그와 인자/플래그
+표는 `references/help.md`. 기본은 읽기 전용이며 `--auto-fix` 도 C8 / C9 만 스테이징한다(커밋하지 않는다).
 
 ## Help
 
@@ -88,7 +88,7 @@ by other skills. `GH_DISABLE_AI_METRICS=1` skips this step entirely
 ## Constraints
 
 - **Read-only default.** Never merge, approve, push, or edit PR body/labels. Only `--auto-fix` mutates, and only as far as `git add` (never `git commit`).
-- **No fail-fast, and C6 is the only opt-out.** Both bind in Step 2 — that is where they are stated.
+- **No fail-fast; `--skip-bisect` is C6's only opt-out.** Both bind in Step 2, stated there.
 - **Exit codes**: `0` (all PASS or only WARN) / `1` (≥ 1 FAIL) / `2` (bad args, missing remote) / `3` (no PR detected).
 - **Never silently switch the build command.** If `--build-cmd` is absent and `bun run build` does not exist, mark C6 `N/A` with the reason — do NOT guess `npm test`.
 
