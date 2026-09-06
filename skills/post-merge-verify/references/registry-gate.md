@@ -9,10 +9,20 @@ that, and it runs before anything else — no git call, no herdr call.
 WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}"
 VERIFY_SKILL=""
 if command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
-    VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
-        '(if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r) | .verify_skill // empty' "$WATCHED_FILE" 2>/dev/null)
+    if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
+        '(if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r) | .verify_skill // empty' "$WATCHED_FILE" 2>/dev/null); then
+        # The file exists but is not JSON: a broken SSOT, not an opt-out.
+        printf '[WARN] gh-verify:post-merge-verify: %s is not valid JSON — post-merge verification skipped.\n' \
+            "$WATCHED_FILE"
+        VERIFY_SKILL=""
+    fi
 fi
 ```
+
+`VERIFY_SKILL=$(jq ...)` on its own would swallow `jq`'s exit status: a
+malformed registry would leave the variable empty, which the table below reads
+as "unwatched repo, stay silent". The `if !` is what separates *no entry* from
+*broken file*, so the `[WARN]` row is reachable at all (#32).
 
 The `if type == "array"` branch accepts both shapes the registry has shipped
 with: a bare top-level array, and an object with a `repos` key.
