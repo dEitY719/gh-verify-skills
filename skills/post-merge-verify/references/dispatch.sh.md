@@ -409,7 +409,14 @@ if [ "${PROMPT_RC:-0}" -ne 0 ]; then
 fi
 
 # --- 7. report ------------------------------------------------------------
-printf '[OK] post-merge verification dispatched\n'
+if [ "${PROMPT_RC:-0}" -eq 0 ]; then
+    printf '[OK] post-merge verification dispatched\n'
+else
+    # The prompt failed even after retries (the [WARN] above already said so) —
+    # printing [OK] here would contradict it. The tab/agent were still created,
+    # so the rest of the report below still applies for the by-hand retry.
+    printf '[WARN] gh-verify:post-merge-verify: post-merge verification dispatched, but the prompt failed — attach and run it by hand.\n'
+fi
 printf '  tab:    %s (label pr-%s)\n' "${NEW_TAB:--}" "$PR_NUMBER"
 # Reported because nothing removes it: the operator who closes the tab is the
 # one who can also drop this directory (dEitY719/dotfiles#1577 leaves teardown unautomated).
