@@ -71,9 +71,10 @@ request-changes) — that is `gh-pr:approve`.
 7. Print one `[OK]`/`[SKIP]`/`[WARN]` report line, naming every lane's outcome
    and ending with the verdict clause, e.g.
    `(agy:FAIL(argv limit) codex:OK …) — reply: inline — verdict: unlabelled`,
-   followed by a `Next:` line keyed to that verdict (re-run with
-   `--force-review` after fixing blockers; run `/gh-pr:reply` when the PR is
-   still unlabelled and the reply pass has not run).
+   followed by exactly one `Next:` line, first match wins: re-run with
+   `--force-review` after fixing blockers; a deferred reply is already
+   scheduled, so it only reports the delay and the `reply-pending` label; any
+   other `unlabelled` PR gets `/gh-pr:reply <pr> <remote>`.
 
 ## What the skill will NOT do
 
