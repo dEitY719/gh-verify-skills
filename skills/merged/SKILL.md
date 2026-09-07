@@ -37,9 +37,8 @@ verbatim, then stop. No API calls, no clone.
 
 ## Step 1: Parse Args
 
-Positional `[pr-number] [remote]` 는 **첫 글자로 구분**한다 — 숫자면 PR#(양의 정수가 아니면 exit 2),
-아니면 remote(기본 `origin`). 플래그는 `--x V`·`--x=V` 둘 다 받고 빈 값·모르는 플래그·남는 positional
-은 exit 2 (플래그 표: `references/help.md`). 캡처: `pr` `remote` `matrix` `env_axes` `clone_dir` `diff_check` `issue_mode` `post_comment`.
+포지셔널 구분 규칙·플래그 형식·exit 2 조건은 `references/help.md` 가 SSOT. 캡처: `pr` `remote`
+`matrix` `env_axes` `clone_dir` `diff_check` `issue_mode` `post_comment`.
 
 ## Step 2: 대상 해석 (F-1)
 
