@@ -81,10 +81,10 @@ Step 2.5 already pushed, so this pushes nothing; it asserts the invariant the ca
 
 Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g. `[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
 Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and downgrade the line to `[WARN]` when any lane failed. The trailing clause is Step 3.5's outcome: `review-blocked` or `unlabelled`.
-Then one `Next:` line, keyed to that clause — `unlabelled` reads downstream as "not verified yet", which `[OK]` alone does not convey:
+Then one `Next:` line, keyed to that clause — `unlabelled` reads downstream as "not verified yet", which `[OK]` alone does not convey. Exactly one bullet fires, first match wins:
 - `review-blocked` → `Next: fix the blockers, then /gh-verify:review-all <pr> --force-review`
-- `unlabelled` and the reply was deferred or skipped → `Next: /gh-pr:reply <pr> <remote>` — that pass is what writes `review-passed`
-- reply deferred → append `; reply scheduled in <reply_delay>m, PR carries reply-pending until it lands`
+- reply deferred → `Next: reply scheduled in <reply_delay>m; the PR carries reply-pending until it lands` — do not run it by hand
+- otherwise `unlabelled` → `Next: /gh-pr:reply <pr> <remote>` — that pass is what writes `review-passed`
 
 ## Constraints (full rationale: `references/constraints.md`)
 
