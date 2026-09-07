@@ -1,5 +1,8 @@
 ---
 name: review-all
+# Description is 270 chars, over check 16's 250-char WARN band, on purpose —
+# the two dotfiles-era aliases are protected by CLAUDE.md "Rules for changing
+# skills", so the overage is cheaper than dropping a live trigger.
 description: >-
   Fan out every available reviewer on one PR in parallel, then run a reply pass.
   Use for /gh-verify:review-all, /devx:pr-review-all, /devx-pr-review-all, "PR 다중 리뷰어 병렬로",
@@ -78,6 +81,10 @@ Step 2.5 already pushed, so this pushes nothing; it asserts the invariant the ca
 
 Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g. `[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
 Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and downgrade the line to `[WARN]` when any lane failed. The trailing clause is Step 3.5's outcome: `review-blocked` or `unlabelled`.
+Then one `Next:` line, keyed to that clause — `unlabelled` reads downstream as "not verified yet", which `[OK]` alone does not convey:
+- `review-blocked` → `Next: fix the blockers, then /gh-verify:review-all <pr> --force-review`
+- `unlabelled` and the reply was deferred or skipped → `Next: /gh-pr:reply <pr> <remote>` — that pass is what writes `review-passed`
+- reply deferred → append `; reply scheduled in <reply_delay>m, PR carries reply-pending until it lands`
 
 ## Constraints (full rationale: `references/constraints.md`)
 
