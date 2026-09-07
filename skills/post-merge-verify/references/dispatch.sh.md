@@ -409,7 +409,7 @@ if [ "${PROMPT_RC:-0}" -ne 0 ]; then
 fi
 
 # --- 7. report ------------------------------------------------------------
-printf 'post-merge verification dispatched\n'
+printf '[OK] post-merge verification dispatched\n'
 printf '  tab:    %s (label pr-%s)\n' "${NEW_TAB:--}" "$PR_NUMBER"
 # Reported because nothing removes it: the operator who closes the tab is the
 # one who can also drop this directory (dEitY719/dotfiles#1577 leaves teardown unautomated).
