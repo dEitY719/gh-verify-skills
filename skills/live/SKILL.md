@@ -11,6 +11,7 @@ description: >-
   Read-only on source.
 license: MIT
 allowed-tools: Bash, Read, Grep, Glob, Write, AskUserQuestion, Agent
+compatibility: { network: required }
 metadata:
   model_recommendation:
     tier: opus
@@ -53,8 +54,8 @@ verbatim, then stop. No API calls, no browser.
 
 **변경된 코드를 서빙하는 모든 프로세스**에 대해 cwd → repo root → ancestry 를 돌린다. 비교 기준은 `references/verify-contract.md` 2번이고,
 PR 메타는 1회 fetch(`$PR_JSON`, Step 4 까지 재사용)해 미머지 PR 일 때만 폴백한다. 불일치면 몇 커밋 뒤처졌는지와 함께 **정지**한다.
-dirty 워킹 트리는 경고이다. 컨테이너 백엔드는 `devx_pr_verify_live_backend_identity.sh` 헬퍼(호출 규약과 `_SC` 폴백 블록:
-`references/discovery.md` §2-4)로 검증하며, verified면 계속 진행, mismatch면 즉시 정지, unverified면 사유를 리포트에 남기고 계속 진행한다.
+dirty 워킹 트리는 경고이다. 컨테이너 백엔드는 `devx_pr_verify_live_backend_identity.sh` 헬퍼로 검증한다 — 호출 규약·폴백 블록·판정
+(verified/mismatch/unverified) 의 유일한 사본은 `references/discovery.md` §2-4.
 
 ## Step 4: Decide what to verify (`references/targets.md`)
 

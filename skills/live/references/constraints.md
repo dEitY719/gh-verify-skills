@@ -24,7 +24,8 @@ SKILL.md 본문은 이 항목들을 한 줄씩만 적는다. 근거는 여기 �
 정지가 맞는 이유: 잘못된 코드를 검증하느니 멈추는 게 낫다. 반대로 dirty 워킹 트리는
 **정지가 과하다** — Vite 는 HEAD 가 아니라 워킹 트리를 서빙(HMR)하므로 HEAD 가 맞아도
 화면이 낡을 수 있지만, 사용자가 의도적으로 뭔가 얹어 놨을 수도 있다. 경고 + 리포트 명시가
-맞다. 컨테이너 백엔드는 `devx_pr_verify_live_backend_identity.sh` 헬퍼를 통해 검증하며, verified면 계속 진행, mismatch면 즉시 정지(FAIL)한다. unverified인 경우에는 정지하지 않고 미검증 상태로 두되 구체적 근거와 이유를 리포트에 적는다.
+맞다. 컨테이너 백엔드도 같은 원칙(mismatch=하드 정지, unverified=근거를 남기고 계속)을 따른다 —
+판정 절차의 유일한 사본은 `references/discovery.md` §2-4.
 
 
 ## ancestry 비교는 `mergeCommit.oid` — `headRefOid` 금지
