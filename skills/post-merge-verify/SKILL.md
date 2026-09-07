@@ -4,8 +4,7 @@ description: >-
   Closes the impl tab, rebases main, opens a herdr session for the repo's
   verify skill. Use for /gh-verify:post-merge-verify, /gh:pr-post-merge-verify,
   /gh-pr-post-merge-verify,
-  "머지 후 검증 세션", "post-merge verify". Dispatch only: gh-pr:merge calls it,
-  gh-verify:merged verifies.
+  "머지 후 검증 세션", "post-merge verify".
 license: MIT
 allowed-tools: Bash, Read, Grep
 metadata:
@@ -34,6 +33,7 @@ never *writes* to GitHub — `gh-pr:merge` has already merged and reported.
 **Every failure is soft** — one `[WARN]` line, exit 0 — because its caller's
 report must print either way (F-6). The one exception is a stale main
 checkout: verifying stale code proves nothing, so that stops the run.
+설계 근거와 대안 검토: `references/rationale.md`.
 
 ## Step 1: Resolve the target repo + host
 
