@@ -83,6 +83,6 @@ if [ -d /proc/self ] && _wt=$(cd "$(git rev-parse --show-toplevel 2>/dev/null)" 
 fi
 ```
 
-Carry `ORPHANS` to Step 6 — it is the `<n>` in the `[WARN]` line, or 0 when the block printed nothing. When it is above zero, Step 6 appends
-`orphans:<n>` after the lane rows and the line is `[WARN]`; at zero, Step 6 is
-unchanged.
+Carry `ORPHANS` to Step 6 — the `<n>` in the `[WARN]` line, or 0 when the
+block printed nothing. Above zero, Step 6 appends `orphans:<n>` after the lane
+rows and the line is `[WARN]`; at zero, Step 6 is unchanged.
