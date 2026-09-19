@@ -67,6 +67,12 @@ independent of the ordering choice).
 >
 > If `git status --porcelain` shows changes you did not make, stop, change
 > nothing further, and report it. Do not commit it and do not undo it.
+>
+> Before you return, make sure no background command or sub-agent you started
+> is still running, and stop any that are. Never start an interpreter
+> (`python`, `node`, ...) without a script, `-c`, `-m`, or a stdin redirect —
+> a bare one opens a REPL that blocks forever on the open stdin
+> (dEitY719/gh-verify-skills#42; Step 3.4 reports anything you leave behind).
 
 `/simplify` itself is a Claude Code built-in and is out of scope for this repo
 (#18, "Not in scope"). Everything above is imposed by the dispatch, not by the
