@@ -61,13 +61,16 @@ if [ -d /proc/self ] && _wt=$(cd "$(git rev-parse --show-toplevel 2>/dev/null)" 
     _win=$(( $(date +%s) - LANES_START_TS ))
     # One ps snapshot. awk drops this shell, its ancestors and its descendants,
     # and keeps what started inside the window (etimes <= seconds since start).
+    # ps reads /proc non-atomically, so a pid reused mid-snapshot could form a
+    # ppid cycle; the depth cap d keeps both walks finite.
     _hits=$(ps -eo pid=,ppid=,etimes= 2>/dev/null | awk -v self="$$" -v win="$_win" '
         { pp[$1] = $2; et[$1] = $3 }
         END {
-            for (p = self; (p in pp) && p > 1; p = pp[p]) skip[p] = 1
+            for (p = self; (p in pp) && p > 1 && d++ < 256; p = pp[p]) skip[p] = 1
             for (q in pp) {
+                d = 0
                 if ((q in skip) || et[q] > win) continue
-                for (a = pp[q]; (a in pp) && a > 1 && a != self; a = pp[a]) ;
+                for (a = pp[q]; (a in pp) && a > 1 && a != self && d++ < 256; a = pp[a]) ;
                 if (a != self) print q
             }
         }' | while read -r _pid; do
