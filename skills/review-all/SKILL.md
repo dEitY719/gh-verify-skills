@@ -45,7 +45,7 @@ Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`, and `START_
 
 `/simplify` is the only lane that writes to the working tree, so it never runs beside anything else. It runs **here** — after the checkout, **before** the Step 3 fan-out — and is pushed before a single reviewer is dispatched, so reviewers read the simplified head.
 **Read `references/simplify-lane.md` before dispatching**: the four incidents, the verbatim dispatch prompt, substep 3's runnable block, and `$SIMPLIFY`'s values. Its three substeps are (1) a **clean-tree gate** — `git status --porcelain` non-empty → record `SIMPLIFY=skip`, print `[SKIP] simplify: working tree dirty`, go to Step 3;
-(2) **dispatch exactly one Agent** running built-in `/simplify`, **edit-only**, with that file's scope contract quoted verbatim in its prompt and nothing dispatched alongside it; (3) **the orchestrator commits, never the agent**, then pushes and drops a now-stale `review-passed` (soft-fail) but never `review-blocked`.
+(2) record `LANES_START_TS=$(date +%s)` (Step 3.4's window; carry it as a literal), then **dispatch exactly one Agent** running built-in `/simplify`, **edit-only**, with that file's scope contract quoted verbatim in its prompt and nothing dispatched alongside it; (3) **the orchestrator commits, never the agent**, then pushes and drops a now-stale `review-passed` (soft-fail) but never `review-blocked`.
 **A failed `git push` stops the run** — this skill's only hard-fail: reviewers would otherwise read a remote head that no longer matches the tree.
 
 ## Step 3: Reviewer fan-out (dispatch all reviewer lanes in ONE turn)
@@ -59,7 +59,9 @@ Every lane is soft-fail and **Step 3 is the only place its outcome is known**, s
 - **agy**, **codex** — if the CLI is present, an Agent runs `Skill(gh-pr:review, "--ai <agy|codex> <pr> <remote>")`; absent → SKIP, non-zero exit → FAIL.
 - **opencode**, **hermes** — the same with `--ai opencode` / `--ai hermes`, but each also requires `_dotfiles_setup_mode` = `internal` (loader: `references/shell-common-source.md`, pasted **inside the same Bash call that gates on it**); absent or non-internal → SKIP, non-zero exit → FAIL.
 
-Never add `/code-review --fix`; it is user-invocation-only (`references/constraints.md`).
+## Step 3.4: Orphan sweep (after every lane returns; soft-fail, WARN only)
+
+A returned lane can leave children running (dEitY719/gh-verify-skills#42). Run `references/orphan-sweep.md`'s block with `LANES_START_TS` (from Step 2.5, or taken just before Step 3's dispatch if 2.5 skipped): processes in this worktree started since then → one `[WARN] lane left <n> process(es) running: …` line, carried to Step 6 as `ORPHANS`; none → no output. Never `kill`.
 
 ## Step 3.5: Aggregate review verdicts and apply the merge-gate label
 
@@ -80,7 +82,7 @@ Step 2.5 already pushed, so this pushes nothing; it asserts the invariant the ca
 ## Step 6: Report
 
 Print exactly one `[OK]`/`[SKIP]`/`[WARN]` line, e.g. `[WARN] PR #<pr> reviewed (agy:FAIL(argv limit) codex:OK opencode:SKIP hermes:SKIP simplify:committed) — reply: inline — verdict: unlabelled`.
-Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and downgrade the line to `[WARN]` when any lane failed. The trailing clause is Step 3.5's outcome: `review-blocked` or `unlabelled`.
+Name a `fail` lane `<ai>:FAIL(<reason>)` — never `SKIP`, never omitted — and downgrade the line to `[WARN]` when any lane failed. `ORPHANS` > 0 (Step 3.4) appends `orphans:<n>` after the lane rows and also downgrades to `[WARN]`. The trailing clause is Step 3.5's outcome: `review-blocked` or `unlabelled`.
 Then one `Next:` line, keyed to that clause — `unlabelled` reads downstream as "not verified yet", which `[OK]` alone does not convey. Exactly one bullet fires, first match wins:
 - `review-blocked` → `Next: fix the blockers, then /gh-verify:review-all <pr> --force-review`
 - reply deferred → `Next: reply scheduled in <reply_delay>m; the PR carries reply-pending until it lands` — do not run it by hand
@@ -89,7 +91,7 @@ Then one `Next:` line, keyed to that clause — `unlabelled` reads downstream as
 ## Constraints (full rationale: `references/constraints.md`)
 
 - Reviewer lanes are soft-fail and comment-only; `/simplify` runs alone in Step 2.5, before them, never concurrently with anything that edits the tree.
-- Never add `/code-review`; never run bare `git commit`. No approve / request-changes here — that is `gh-pr:approve`.
+- Never add `/code-review` (`--fix` included — user-invocation-only); never run bare `git commit`. No approve / request-changes here — that is `gh-pr:approve`.
 - Inline reply is deterministic; `--defer-reply` is minutes-only and not a guarantee.
 
 ## Related Skills

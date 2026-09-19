@@ -120,3 +120,17 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   `gh pr checkout <pr> -R <TARGET_REPO>` is still load-bearing for
   `/simplify` (working-tree diff), but no longer the only thing keeping the
   reply pass on the right repo.
+
+- **A returned lane is not a finished lane — sweep, WARN, never kill
+  (dEitY719/gh-verify-skills#42).** In `dEitY719/brokerdesk` PR #78 the
+  `/simplify` lane returned and committed while a nested sub-agent's bare
+  `python` REPL kept running in the PR worktree for over an hour; review-all
+  reported `simplify:committed` and nobody noticed. Step 3.4 now lists
+  processes with cwd in the worktree started since `LANES_START_TS` and
+  `[WARN]`s them into the Step 6 line as `orphans:<n>`. It never kills: a dev
+  server or watcher the user started in the same worktree looks identical to a
+  leak. A per-lane timeout was rejected (the Agent tool has none, and a large
+  `/simplify` is legitimately slow), and so was relying on the upstream
+  bare-interpreter hook alone (`dEitY719/dotfiles#1815`) — it fixes one cause
+  of leaked work, not the class. Window, exclusions, and the runnable block:
+  `references/orphan-sweep.md`.
