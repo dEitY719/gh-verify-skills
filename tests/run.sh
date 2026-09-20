@@ -9,6 +9,10 @@ set -euo pipefail
 
 cd -- "$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# One line per skills/*/lib/*.selfcheck.sh; the assertions stay next to the
+# code they cover.
+bash skills/exception-merge-checklist/lib/run-checks.selfcheck.sh
+
 # The shared `max-skill-lines` gate (100) is a proxy for progressive
 # disclosure: a SKILL.md a reader can hold in their head. Counting lines alone
 # lets a file satisfy the proxy horizontally — `review-all/SKILL.md` passed at
