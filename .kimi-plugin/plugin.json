@@ -1,6 +1,6 @@
 {
   "name": "gh-verify",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Gate a pull request: parallel reviewer fan-out, live-app and fresh-clone verification, pre-merge audit, post-merge dispatch.",
   "author": {
     "name": "dEitY719",
