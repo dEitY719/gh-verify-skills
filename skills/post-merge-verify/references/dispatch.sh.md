@@ -17,10 +17,15 @@ dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` and
 # --- 0. F-1 gate. Unregistered repo => do nothing at all, no output. -------
 WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}" # untracked, array-schema, shared with issue_watcher_cron.sh (dEitY719/dotfiles#1555)
 VERIFY_SKILL=""
+# An unbound registry key is a broken caller, not an opt-out: `select(.repo ==
+# "")` matches nothing, so the outcome table would read it as "unwatched repo"
+# and disable verification for every repo without a word (#33).
+if [ -z "${TARGET_REPO:-}" ]; then
+    printf '[WARN] gh-verify:post-merge-verify: TARGET_REPO is unbound (Step 1) — post-merge verification skipped.\n'
 # No jq → the registry cannot be read, so the feature is simply unavailable.
 # Silent, never a WARN: an absent tool is not a broken SSOT, and gh-pr:merge's
 # gate (which carries the same condition) must print nothing either way.
-if command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
+elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
     if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
         '(if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r) | .verify_skill // empty' "$WATCHED_FILE" 2>/dev/null); then
         # The file exists but is not JSON: a broken SSOT, not an opt-out.
@@ -438,6 +443,36 @@ printf '  attach: herdr agent attach %s\n' "$PMV_AGENT"
 | `PMV_PROMPT_TIMEOUT_MS` | env, optional | `herdr agent prompt --wait` cap, default 900000 (15 min) |
 | `PMV_PROMPT_ATTEMPT_MAX` | env, optional | Retry budget for `agent_prompt_stalled` / `timeout`, default 3 |
 | `PMV_SETTLE_SECONDS` | env, optional | Wait after each herdr call that brings something up, default 13; `0` disables both waits (dEitY719/dotfiles#1571) |
+
+`TARGET_REPO`/`TARGET_HOST` come from one and the same remote URL — a bare
+`gh` follows `gh repo set-default` instead of git's `$REMOTE` and misroutes on
+a dual-host login. `gh-pr:merge`'s `references/github-target.md` is the SSOT
+for that reasoning; the block below is it against this plugin's vendored
+shell-common, so Step 1 is runnable without leaving the repo:
+
+```bash
+TARGET_REPO=""
+TARGET_HOST=""
+_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+if [ ! -f "$_SC/functions/gh_host.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+fi
+unset -f _gh_resolve_host 2>/dev/null || :
+# shellcheck source=/dev/null
+[ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
+REMOTE_URL=$(git remote get-url "${REMOTE:-origin}" 2>/dev/null) || REMOTE_URL=""
+if [ -n "$REMOTE_URL" ] && command -v _gh_resolve_host >/dev/null 2>&1; then
+    export SHELL_COMMON="$_SC"
+    TARGET_REPO=$(_gh_parse_owner_repo_url "$REMOTE_URL") || TARGET_REPO=""
+    TARGET_HOST=$(_gh_host_from_url "$REMOTE_URL") || TARGET_HOST=$(_gh_resolve_host)
+    export GH_HOST="$TARGET_HOST" TARGET_REPO TARGET_HOST
+fi
+```
+
+Every branch that cannot resolve the slug leaves `TARGET_REPO` empty rather
+than exiting: this skill's failures are soft (F-6), and the gate above is the
+one place that reports an unbound key, so a missing shell-common, a missing
+remote and a non-github URL all surface as the same single `[WARN]`.
 
 `--wait --until idle` waits for the dispatched session to settle, so the
 timeout is generous. Hitting it is a `[WARN]`, not a failure: the prompt has

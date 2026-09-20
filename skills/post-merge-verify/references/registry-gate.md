@@ -4,19 +4,29 @@ This skill acts on **registered repos only**. The gate below is what decides
 that: nothing is printed and no herdr call, fetch or rebase happens before it.
 
 **Precondition: `$TARGET_REPO` must already be bound** — Step 1's binding, and
-`references/dispatch.sh.md` declares it an input the same way. It is the
-registry key, so an unbound one matches no entry and silently disables
-verification for every repo. That is why the binding is Step 1 and this gate
-is Step 2: `git remote get-url` is a local read that prints nothing, mutates
-nothing and calls no API, so ordering it first costs an unwatched repo exactly
-what F-1 promises it — no output, no herdr call, no fetch, no rebase.
+`references/dispatch.sh.md` → "Inputs" both declares it an input and carries
+the runnable block. It is the registry key, so an unbound one matches no entry.
+That is why the binding is Step 1 and this gate is Step 2: `git remote get-url`
+is a local read that prints nothing, mutates nothing and calls no API, so
+ordering it first costs an unwatched repo exactly what F-1 promises it — no
+output, no herdr call, no fetch, no rebase.
+
+Ordering alone cannot make the *unbound* state visible, though, so the block
+below tests for it first. `select(.repo == "")` matches nothing, which the
+outcome table would otherwise read as "unwatched repo — do nothing at all": a
+broken caller would silently disable verification for every repo. The guard
+separates that from an opt-out exactly as `if !` separates a broken file from
+one (#32, #33).
 
 ## The block
 
 ```bash
 WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}"
 VERIFY_SKILL=""
-if command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
+if [ -z "${TARGET_REPO:-}" ]; then
+    # An unbound registry key is a broken caller, not an opt-out (#33).
+    printf '[WARN] gh-verify:post-merge-verify: TARGET_REPO is unbound (Step 1) — post-merge verification skipped.\n'
+elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
     if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
         '(if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r) | .verify_skill // empty' "$WATCHED_FILE" 2>/dev/null); then
         # The file exists but is not JSON: a broken SSOT, not an opt-out.
@@ -40,6 +50,7 @@ with: a bare top-level array, and an object with a `repos` key.
 | Condition | Behaviour |
 |---|---|
 | Empty `VERIFY_SKILL`, unreadable file, or no `jq` | **do nothing at all**, no output |
+| `TARGET_REPO` unbound (Step 1 skipped or failed) | one `[WARN]`, then skip |
 | `command -v herdr` missing | silent no-op |
 | `jq` non-zero (file exists but is not JSON) | one `[WARN]`, then skip |
 | `VERIFY_SKILL` outside the allowlist | one `[WARN]`, stop before any herdr call |
