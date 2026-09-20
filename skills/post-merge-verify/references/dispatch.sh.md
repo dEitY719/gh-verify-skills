@@ -458,11 +458,14 @@ if [ ! -f "$_SC/functions/gh_host.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; the
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
 unset -f _gh_resolve_host 2>/dev/null || :
+# Export before sourcing, not after: gh_host.sh resolves its own dependencies
+# through ${SHELL_COMMON:-...}, so setting it afterwards is too late
+# (dEitY719/harness-skills#37).
+export SHELL_COMMON="$_SC"
 # shellcheck source=/dev/null
 [ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
 REMOTE_URL=$(git remote get-url "${REMOTE:-origin}" 2>/dev/null) || REMOTE_URL=""
 if [ -n "$REMOTE_URL" ] && command -v _gh_resolve_host >/dev/null 2>&1; then
-    export SHELL_COMMON="$_SC"
     TARGET_REPO=$(_gh_parse_owner_repo_url "$REMOTE_URL") || TARGET_REPO=""
     TARGET_HOST=$(_gh_host_from_url "$REMOTE_URL") || TARGET_HOST=$(_gh_resolve_host)
     export GH_HOST="$TARGET_HOST" TARGET_REPO TARGET_HOST
