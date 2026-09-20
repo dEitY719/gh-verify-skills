@@ -197,16 +197,15 @@ chk "every unset -f has a matching unalias, repo-wide" "$missing" ""
 proofs=$(tracked_xargs grep -nE 'command -v (devx_|_gh_|_dotfiles_|herdr_)[A-Za-z0-9_]* >/dev/null')
 chk "no exit-status-only load proof, repo-wide" "$proofs" ""
 
-# 5d. #37: export SHELL_COMMON precedes the load it exists for. The two soft
-# warn-and-skip blocks are exempt by name: their export sits inside the success
-# arm, and the soft form has no canonical export/undo shape yet
-# (harness-skills#60). Shrink this list as that issue lands — do not grow it.
-SOFT_PENDING_60="skills/live/references/findings.md skills/live/references/pr-comment.md"
+# 5d. #37: export SHELL_COMMON precedes the load it exists for. No exemptions,
+# and no list to hold them. harness-skills#60 settled the soft form (PR #61)
+# and it exports before the load too, so this is one rule for both forms. The
+# named-empty list this replaced would have been a config for a value that
+# cannot change, and an empty exemption slot is an invitation.
 # shellcheck disable=SC2016  # python program, not a shell expansion
-order=$(cd "$ROOT" && SOFT="$SOFT_PENDING_60" python3 -c '
-import os, re, subprocess
+order=$(cd "$ROOT" && python3 -c '
+import re, subprocess
 
-soft = set(os.environ["SOFT"].split())
 files = subprocess.run(["git", "ls-files", "--", ".", ":!lib/vendor", ":!tests"],
                        capture_output=True, text=True).stdout.split()
 load = re.compile(r"\. \"\$(?:_SC/functions/[A-Za-z0-9_./]+|_HELPER)\"")
@@ -214,11 +213,11 @@ exp = re.compile(r"export SHELL_COMMON=")
 # A prologue starts at its tier-1 assignment, and a fence ends one. Without
 # that reset a file with two prologues passes on the first one is export,
 # which is exactly how the first version of this check missed a real move.
-reset = re.compile(r"_SC=\"\$\{DOTFILES_ROOT|^```")
+# Any tier-1 assignment opens a prologue: the hard form spells
+# ${DOTFILES_ROOT...}, the soft form ${SHELL_COMMON...} (harness-skills#61).
+reset = re.compile(r"_SC=\"\$\{|^```")
 bad = []
 for f in files:
-    if f in soft:
-        continue
     try:
         lines = open(f, encoding="utf-8").read().splitlines()
     except (UnicodeDecodeError, IsADirectoryError):
@@ -237,6 +236,70 @@ for f in files:
 print("\n".join(bad))
 ')
 chk "export SHELL_COMMON precedes every load, repo-wide" "$order" ""
+
+# 5e. The hole harness-skills PR #61 found in its own selfcheck: 5b only fires
+# when an `unset -f` exists, so deleting BOTH it and the `unalias` passes
+# vacuously. Anchor on the proof instead — a name proved by the output
+# comparison must have been cleared both ways first, or the proof is proving
+# whatever the caller's shell already had.
+# shellcheck disable=SC2016  # the proof's literal text
+uncleared=$(tracked_xargs grep -hoE 'command -v [A-Za-z_][A-Za-z0-9_]* 2>/dev/null\)" =' \
+    | sed -E 's/command -v ([A-Za-z_][A-Za-z0-9_]*).*/\1/' | sort -u | while read -r fn; do
+        [ -n "$fn" ] || continue
+        for w in "unset -f $fn" "unalias $fn"; do
+            tracked_xargs grep -q -- "$w" || printf 'proof of %s has no "%s"\n' "$fn" "$w"
+        done
+    done)
+chk "every proved name is cleared both ways, repo-wide" "$uncleared" ""
+
+# --- 6. The soft form restores SHELL_COMMON; it does not unset it ----------
+# harness-skills#60 / PR #61. A soft block returns to its caller and is
+# normally not the run's first loader, so unsetting on failure would let an
+# optional step knock out a value a later REQUIRED read depends on. Asserted
+# by running each block at tier 5 with the variable in all three of its
+# states, because a `${VAR:+...}` mistake passes the first two and fails only
+# the third.
+SOFT_BLOCKS="skills/live/references/findings.md:_gh_project_status_sync
+skills/live/references/pr-comment.md:_gh_pr_review_post_comment"
+EMPTY_HOME2=$(mktemp -d)
+SANDBOX2=$(mktemp -d)
+for entry in $SOFT_BLOCKS; do
+    sf=${entry%%:*}
+    awk -v f="$FENCE" '$0 == f "bash" && !b { b = 1; next } $0 == f && b { exit } b' \
+        "$ROOT/$sf" > "$TMP/soft.sh"
+    [ -s "$TMP/soft.sh" ] || { printf 'FAIL  %s: no bash fence\n' "$sf"; FAIL=1; continue; }
+    softrun() { # softrun <shell> <env...> -> the value of SHELL_COMMON afterwards
+        _sh=$1; shift
+        # "$@" goes BEFORE the fixed assignment: env stops reading options at
+        # the first NAME=VALUE, so a trailing `-u SHELL_COMMON` is taken as a
+        # program name.
+        # shellcheck disable=SC2016  # the probe runs in the child shell
+        ( cd "$SANDBOX2" && env -u CLAUDE_PLUGIN_ROOT -u DOTFILES_ROOT \
+            "$@" HOME="$EMPTY_HOME2" "$_sh" -c '. "$1" >/dev/null 2>&1
+printf "%s" "${SHELL_COMMON-UNSET}"' _ "$TMP/soft.sh" )
+    }
+    for sh in sh bash zsh dash; do
+        command -v "$sh" >/dev/null 2>&1 || { printf 'skip  %s not installed\n' "$sh"; continue; }
+        # (a) a value an earlier HARD block proved must survive this failure.
+        chk "$sh/$sf restores a proven SHELL_COMMON" \
+            "$(softrun "$sh" SHELL_COMMON=/sentinel/shell-common)" /sentinel/shell-common
+        # (b) nothing to restore stays nothing — the hard form's case.
+        chk "$sh/$sf leaves an unset SHELL_COMMON unset" \
+            "$(softrun "$sh" -u SHELL_COMMON)" UNSET
+        # (c) set-but-empty comes back set-but-empty. This is the case the `:`
+        # forms silently turn into unset, which is why the SSOT pins `+`/`-`.
+        chk "$sh/$sf keeps a set-but-empty SHELL_COMMON set" \
+            "$(softrun "$sh" SHELL_COMMON=)" ""
+        # (d) and the tree that failed to load is never what survives
+        # (gh-resolve-skills#8 is unchanged by the restore).
+        chk "$sh/$sf never leaves the failed tree exported" \
+            "$(case "$(softrun "$sh" SHELL_COMMON=/sentinel/shell-common)" in
+                */lib/vendor/shell-common | */dotfiles/shell-common) echo leaked ;;
+                *) echo clean ;;
+               esac)" clean
+    done
+done
+rm -rf "$EMPTY_HOME2" "$SANDBOX2"
 
 [ "$FAIL" -eq 0 ] && echo "[OK] dispatch.sh.md fence contract" || echo "[FAIL] dispatch.sh.md fence contract"
 exit "$FAIL"

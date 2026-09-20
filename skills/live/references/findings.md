@@ -128,25 +128,33 @@ safe 래퍼로 갈아탄 뒤에야 라벨이 붙었다.
 스킬이 통째로 죽는다. `tests/bats/skills/helper_fallback_nf1.bats` 가 이 계약을 지킨다.
 
 ```bash
-_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/gh_project_status.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+# Soft warn-and-skip loader, the third canonical form in
+# harness-skills/references/plugin-root.md (#60 / PR #61). Everything the hard
+# form makes load-bearing is load-bearing here unchanged; what differs is the
+# failure arm, which RESTORES SHELL_COMMON rather than unsetting it. This block
+# is not the first loader in the run — Step 2's hard prologues bound it — so
+# unsetting here would let an optional step's failure knock out the proven
+# value every later required ${SHELL_COMMON:-...} reads. `${VAR+set}`/`${VAR-}`,
+# never the `:` forms: those cannot tell unset from empty.
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"                                   # tier 1
+if [ ! -f "$_SC/functions/gh_project_status.sh" ]; then
+    [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] ||                                              # tier 2
+        _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"
 fi
 _HELPER="$_SC/functions/gh_project_status.sh"
-# unalias beside unset -f, and the output-equality proof: harness-skills#35 /
-# #36. The SHELL_COMMON handling is deliberately untouched — it is inside the
-# success arm, and the soft warn-and-skip form has no canonical export/undo
-# shape yet (harness-skills#60 is open on exactly that).
+_sc_was=${SHELL_COMMON+set} _sc_prev="${SHELL_COMMON-}"                              # save
 unset -f _gh_project_status_sync 2>/dev/null || :
 unalias _gh_project_status_sync 2>/dev/null || :
+export SHELL_COMMON="$_SC"                                                           # before the load
 [ -f "$_HELPER" ] && . "$_HELPER"
 if [ "$(command -v _gh_project_status_sync 2>/dev/null)" = _gh_project_status_sync ]; then
-    export SHELL_COMMON="$_SC"
     _gh_project_status_sync issue "$N" "Backlog" --repo "$TARGET_REPO" || true
-else
+else                                                                                 # tier 5, soft
+    if [ -n "$_sc_was" ]; then export SHELL_COMMON="$_sc_prev"; else unset SHELL_COMMON; fi
     printf '[gh-verify:live] %s did not load a usable shell-common — board sync skipped. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
-        "$_SC" >&2                                                                   # tier 5
+        "$_SC" >&2
 fi
+unset _sc_was _sc_prev
 ```
 
 `--repo "$TARGET_REPO"` 가 load-bearing 이다 (dEitY719/dotfiles#1405) — 빼먹으면 헬퍼가 `gh repo view`

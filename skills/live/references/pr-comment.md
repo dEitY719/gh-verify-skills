@@ -49,25 +49,33 @@ PR 에 남는 것이 **한 글자도 다르면 안 된다.**
 REPORT_BODY_FILE=$(mktemp) && trap 'rm -f "$REPORT_BODY_FILE"' EXIT
 # ... Step 8 이 stdout 에 출력한 리포트 블록을 한 글자도 바꾸지 않고 "$REPORT_BODY_FILE" 에 그대로 옮겨 쓴다 ...
 
-_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/gh_pr_review.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-    _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+# Soft warn-and-skip loader, the third canonical form in
+# harness-skills/references/plugin-root.md (#60 / PR #61). Everything the hard
+# form makes load-bearing is load-bearing here unchanged; what differs is the
+# failure arm, which RESTORES SHELL_COMMON rather than unsetting it. This block
+# is not the first loader in the run — Step 2's hard prologues bound it — so
+# unsetting here would let an optional step's failure knock out the proven
+# value every later required ${SHELL_COMMON:-...} reads. `${VAR+set}`/`${VAR-}`,
+# never the `:` forms: those cannot tell unset from empty.
+_SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"                                   # tier 1
+if [ ! -f "$_SC/functions/gh_pr_review.sh" ]; then
+    [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] ||                                              # tier 2
+        _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"
 fi
 _HELPER="$_SC/functions/gh_pr_review.sh"
-# unalias beside unset -f, and the output-equality proof: harness-skills#35 /
-# #36. The SHELL_COMMON handling is deliberately untouched — it is inside the
-# success arm, and the soft warn-and-skip form has no canonical export/undo
-# shape yet (harness-skills#60 is open on exactly that).
+_sc_was=${SHELL_COMMON+set} _sc_prev="${SHELL_COMMON-}"                              # save
 unset -f _gh_pr_review_post_comment 2>/dev/null || :
 unalias _gh_pr_review_post_comment 2>/dev/null || :
+export SHELL_COMMON="$_SC"                                                           # before the load
 [ -f "$_HELPER" ] && . "$_HELPER"
 if [ "$(command -v _gh_pr_review_post_comment 2>/dev/null)" = _gh_pr_review_post_comment ]; then
-    export SHELL_COMMON="$_SC"
     _gh_pr_review_post_comment "$PR" "$TARGET_REPO" "$REPORT_BODY_FILE" "$post_comment" || true
-else
+else                                                                                 # tier 5, soft
+    if [ -n "$_sc_was" ]; then export SHELL_COMMON="$_sc_prev"; else unset SHELL_COMMON; fi
     printf '[gh-verify:live] %s did not load a usable shell-common — PR comment skipped. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
-        "$_SC" >&2                                                                   # tier 5
+        "$_SC" >&2
 fi
+unset _sc_was _sc_prev
 ```
 
 `$PR` 는 Step 2 (`discovery.md`) 가 해소한 그 변수다 — 이 스킬 안에 `PR_NUMBER` 라는 변수는
