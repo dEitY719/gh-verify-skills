@@ -232,8 +232,12 @@ chk "the shipped block emits the row set" "$(printf '%s\n' "$OUT" | cut -f1 | tr
 chk "the shipped block forwards SKIP_BISECT=1" \
     "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="C6" {print $3}')" "--skip-bisect"
 paste_block 0
+# Only that the flag reached the script, not which reason C6 then gave: with
+# SKIP_BISECT=0 the note depends on whether the runner has bun, and pinning
+# that made this red on CI and green on a dev box for the wrong reason.
+c6_note=$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="C6" {print $3}')
 chk "the shipped block forwards SKIP_BISECT=0" \
-    "$(printf '%s\n' "$OUT" | awk -F'\t' '$1=="C6" {print $3}')" "no bun run build target"
+    "$([ -n "$c6_note" ] && [ "$c6_note" != "--skip-bisect" ] && echo forwarded)" forwarded
 # PR and TARGET_REPO reaching the script is observable as it not exiting 2.
 chk "the shipped block forwards both positionals" "$RC" 0
 
