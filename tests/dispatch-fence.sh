@@ -18,6 +18,10 @@
 # This file buys that without the two-repo change, by extracting the fence with
 # the consumer's own awk and asserting the contract the consumer relies on.
 #
+# Section 5 is wider than the fence: it is this repo's plugin-root gate over
+# every tracked file, which is where the scoped version of it always said it
+# would end up once skills/live/ and skills/review-all/ were converted.
+#
 # No network, no gh, no herdr: nothing below runs the dispatch itself, only its
 # plugin-root prologues, at tier 5 where they must stop.
 set -u
@@ -150,24 +154,89 @@ for block in name-loader inputs; do
     fi
 done
 
-# --- 5. The banned path splices, over this skill's tree ---------------------
-# harness-skills/references/plugin-root.md's gate grep. Scoped to this skill
-# because skills/live/ and skills/review-all/ carry the same pre-#36 prologues
-# and are owned by other open issues; widening this to `git ls-files` is a
-# one-line change once they land.
-splices=$(cd "$ROOT" && git ls-files -z -- skills/post-merge-verify \
-    | xargs -0 grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*:?-(\$PWD|\$\(pwd\)|\.)?\}/' 2>/dev/null)
-chk "no empty-default or cwd path splices under post-merge-verify" "$splices" ""
+# --- 5. The plugin-root conventions, over every tracked file ----------------
+# The scoped version of this section covered skills/post-merge-verify/ only,
+# because skills/live/ and skills/review-all/ still carried the pre-#36
+# prologues. They do not any more, so this is the repo-wide gate now.
+#
+# `lib/vendor/` is excluded: it is replaced wholesale by dotfiles'
+# sync-shell-common-vendor.sh, never edited here. `tests/` is excluded because
+# this file names the banned patterns in order to ban them.
+# Both halves must run inside $ROOT: git ls-files answers repo-relative paths,
+# so a grep in the caller's cwd would silently read some other checkout — which
+# is exactly what it did the first time this was written, and it reported the
+# pre-conversion text from the clone this worktree hangs off.
+tracked_xargs() { # tracked_xargs <command...>  -- run it over every tracked file
+    (cd "$ROOT" && git ls-files -z -- . ':!lib/vendor' ':!tests' | xargs -0 "$@" 2>/dev/null)
+}
 
-# Every cleared name is cleared both ways (#36's other half).
-for fn in herdr_agent_name herdr_agent_tab_for_cwd _gh_resolve_host; do
-    body=$(cat "$DOC")
-    has "unalias accompanies unset -f for $fn" "$body" "unalias $fn"
-done
-# ... and no proved name is still tested by exit status alone (#36). The jq /
-# herdr availability probes are not proofs of a load and keep that form.
-chk "no exit-status-only load proof is left in the doc" \
-    "$(grep -cE 'command -v (herdr_agent_name|herdr_agent_tab_for_cwd|_gh_resolve_host) >/dev/null' "$DOC" || true)" "0"
+# 5a. harness-skills/references/plugin-root.md's gate grep: no default that can
+# expand to the filesystem root, and no cwd tier (harness-skills#22).
+# shellcheck disable=SC2016  # the banned pattern is the literal text
+splices=$(tracked_xargs grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*:?-(\$PWD|\$\(pwd\)|\.)?\}/')
+chk "no empty-default or cwd path splices, repo-wide" "$splices" ""
+
+# 5b. #36's other half: a cleared name is cleared both ways. Checked per name
+# per file, because a file that clears two helpers must unalias both.
+# shellcheck disable=SC2016  # awk program, not a shell expansion
+missing=$(tracked_xargs awk '
+    /^[[:space:]]*unset -f |; unset -f / {
+        line = $0
+        sub(/^.*unset -f /, "", line)
+        sub(/ 2>\/dev\/null.*$/, "", line)
+        n = split(line, names, " ")
+        for (i = 1; i <= n; i++) if (names[i] != "") print FILENAME "\t" names[i]
+    }' | sort -u | while IFS="$(printf '\t')" read -r f fn; do
+        grep -q "unalias $fn" "$ROOT/$f" || printf '%s: unset -f %s has no unalias\n' "$f" "$fn"
+    done)
+chk "every unset -f has a matching unalias, repo-wide" "$missing" ""
+
+# 5c. #36: a load proof compares command -v's OUTPUT to the bare name. Scoped
+# to the shell-common helper namespace — `command -v jq`/`gh`/`bunx` are tool
+# probes, not proofs that a load defined something, and keep the older form.
+proofs=$(tracked_xargs grep -nE 'command -v (devx_|_gh_|_dotfiles_|herdr_)[A-Za-z0-9_]* >/dev/null')
+chk "no exit-status-only load proof, repo-wide" "$proofs" ""
+
+# 5d. #37: export SHELL_COMMON precedes the load it exists for. The two soft
+# warn-and-skip blocks are exempt by name: their export sits inside the success
+# arm, and the soft form has no canonical export/undo shape yet
+# (harness-skills#60). Shrink this list as that issue lands — do not grow it.
+SOFT_PENDING_60="skills/live/references/findings.md skills/live/references/pr-comment.md"
+# shellcheck disable=SC2016  # python program, not a shell expansion
+order=$(cd "$ROOT" && SOFT="$SOFT_PENDING_60" python3 -c '
+import os, re, subprocess
+
+soft = set(os.environ["SOFT"].split())
+files = subprocess.run(["git", "ls-files", "--", ".", ":!lib/vendor", ":!tests"],
+                       capture_output=True, text=True).stdout.split()
+load = re.compile(r"\. \"\$(?:_SC/functions/[A-Za-z0-9_./]+|_HELPER)\"")
+exp = re.compile(r"export SHELL_COMMON=")
+# A prologue starts at its tier-1 assignment, and a fence ends one. Without
+# that reset a file with two prologues passes on the first one is export,
+# which is exactly how the first version of this check missed a real move.
+reset = re.compile(r"_SC=\"\$\{DOTFILES_ROOT|^```")
+bad = []
+for f in files:
+    if f in soft:
+        continue
+    try:
+        lines = open(f, encoding="utf-8").read().splitlines()
+    except (UnicodeDecodeError, IsADirectoryError):
+        continue
+    exported = False
+    for i, line in enumerate(lines, 1):
+        r, e, m = reset.search(line), exp.search(line), load.search(line)
+        if r and not (e and e.start() < r.start()):
+            exported = False
+        if e and (not m or e.start() < m.start()):
+            exported = True
+        if m and not exported:
+            bad.append("%s:%d: sources before exporting SHELL_COMMON" % (f, i))
+        if e and m and e.start() > m.start():
+            exported = True
+print("\n".join(bad))
+')
+chk "export SHELL_COMMON precedes every load, repo-wide" "$order" ""
 
 [ "$FAIL" -eq 0 ] && echo "[OK] dispatch.sh.md fence contract" || echo "[FAIL] dispatch.sh.md fence contract"
 exit "$FAIL"

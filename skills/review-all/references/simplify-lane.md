@@ -156,8 +156,8 @@ fi
 
 if [ "$PUSHED" = "1" ]; then
     _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/gh_pr_edit_safe.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi
-    unset -f _gh_pr_drop_label 2>/dev/null || :; [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
-    command -v _gh_pr_drop_label >/dev/null 2>&1 || { printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; export SHELL_COMMON="$_SC"
+    unset -f _gh_pr_drop_label 2>/dev/null || :; unalias _gh_pr_drop_label 2>/dev/null || :; export SHELL_COMMON="$_SC"; [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
+    [ "$(command -v _gh_pr_drop_label 2>/dev/null)" = _gh_pr_drop_label ] || { unset SHELL_COMMON; printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }
     if _vl_err=$(_gh_pr_drop_label "$pr" review-passed "$TARGET_REPO" "$TARGET_HOST" 2>&1); then
         echo "[OK] \`review-passed\` 무효화됨 — /simplify 커밋이 push 되어 이전 판정은 만료"
     else

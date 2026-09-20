@@ -133,9 +133,14 @@ if [ ! -f "$_SC/functions/gh_project_status.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
 _HELPER="$_SC/functions/gh_project_status.sh"
+# unalias beside unset -f, and the output-equality proof: harness-skills#35 /
+# #36. The SHELL_COMMON handling is deliberately untouched — it is inside the
+# success arm, and the soft warn-and-skip form has no canonical export/undo
+# shape yet (harness-skills#60 is open on exactly that).
 unset -f _gh_project_status_sync 2>/dev/null || :
+unalias _gh_project_status_sync 2>/dev/null || :
 [ -f "$_HELPER" ] && . "$_HELPER"
-if command -v _gh_project_status_sync >/dev/null 2>&1; then
+if [ "$(command -v _gh_project_status_sync 2>/dev/null)" = _gh_project_status_sync ]; then
     export SHELL_COMMON="$_SC"
     _gh_project_status_sync issue "$N" "Backlog" --repo "$TARGET_REPO" || true
 else

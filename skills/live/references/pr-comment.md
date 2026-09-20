@@ -54,9 +54,14 @@ if [ ! -f "$_SC/functions/gh_pr_review.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
 _HELPER="$_SC/functions/gh_pr_review.sh"
+# unalias beside unset -f, and the output-equality proof: harness-skills#35 /
+# #36. The SHELL_COMMON handling is deliberately untouched — it is inside the
+# success arm, and the soft warn-and-skip form has no canonical export/undo
+# shape yet (harness-skills#60 is open on exactly that).
 unset -f _gh_pr_review_post_comment 2>/dev/null || :
+unalias _gh_pr_review_post_comment 2>/dev/null || :
 [ -f "$_HELPER" ] && . "$_HELPER"
-if command -v _gh_pr_review_post_comment >/dev/null 2>&1; then
+if [ "$(command -v _gh_pr_review_post_comment 2>/dev/null)" = _gh_pr_review_post_comment ]; then
     export SHELL_COMMON="$_SC"
     _gh_pr_review_post_comment "$PR" "$TARGET_REPO" "$REPORT_BODY_FILE" "$post_comment" || true
 else

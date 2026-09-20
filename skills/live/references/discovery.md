@@ -178,15 +178,20 @@ if [ ! -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ]; then
     }
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
+# unalias, the output-equality proof, and export-before-load with an undo on
+# the failure arm: harness-skills#35 / #36 / #37 via references/plugin-root.md.
 unset -f devx_pr_verify_live_backend_identity 2>/dev/null || :
+unalias devx_pr_verify_live_backend_identity 2>/dev/null || :
+export SHELL_COMMON="$_SC"                                                           # before the load
 [ -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ] \
     && . "$_SC/functions/devx_pr_verify_live_backend_identity.sh"
-command -v devx_pr_verify_live_backend_identity >/dev/null 2>&1 || {                 # tier 5
+[ "$(command -v devx_pr_verify_live_backend_identity 2>/dev/null)" \
+    = devx_pr_verify_live_backend_identity ] || {                                    # tier 5
+    unset SHELL_COMMON
     printf '[gh-verify:live] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
 }
-export SHELL_COMMON="$_SC"
 devx_pr_verify_live_backend_identity --repo-root "$REPO_ROOT" --target-repo "$TARGET_REPO" \
   --target-sha "$TARGET_SHA" --base-url "$BASE_URL" [--backend-ports "$PORTS"] [--container-name "$NAME"]
 ```
@@ -227,14 +232,19 @@ if [ ! -f "$_SC/functions/gh_pr_review.sh" ]; then
     }
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
+# unalias, the output-equality proof, and export-before-load with an undo on
+# the failure arm: harness-skills#35 / #36 / #37 via references/plugin-root.md.
 unset -f _gh_pr_review_resolve_target_repo 2>/dev/null || :
+unalias _gh_pr_review_resolve_target_repo 2>/dev/null || :
+export SHELL_COMMON="$_SC"                                                           # before the load
 [ -f "$_SC/functions/gh_pr_review.sh" ] && . "$_SC/functions/gh_pr_review.sh"
-command -v _gh_pr_review_resolve_target_repo >/dev/null 2>&1 || {                    # tier 5
+[ "$(command -v _gh_pr_review_resolve_target_repo 2>/dev/null)" \
+    = _gh_pr_review_resolve_target_repo ] || {                                       # tier 5
+    unset SHELL_COMMON
     printf '[gh-verify:live] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
 }
-export SHELL_COMMON="$_SC"
 TARGET_REPO=$(_gh_pr_review_resolve_target_repo "${remote:-origin}") || {
   echo "Cannot resolve remote '${remote:-origin}' to a repo" >&2; exit 1; }
 PR=$(_gh_pr_review_resolve_pr_number "$pr")   # 인자 우선, 없으면 현재 브랜치
