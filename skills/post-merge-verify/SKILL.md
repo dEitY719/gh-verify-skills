@@ -37,8 +37,8 @@ Design rationale and alternatives considered: `references/rationale.md`.
 
 ## Step 1: Resolve the target repo + host
 
-Same binding as `gh-pr:merge` — repo **and** host from one remote URL (dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407); see
-`gh-pr:merge`'s `references/github-target.md` (dotfiles `claude/skills/gh-pr-merge/`). No API call is made: the slug is only the registry key and part of the agent name.
+Repo **and** host from one remote URL (dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407): run the block in
+`references/dispatch.sh.md` → "Inputs". It is the same binding `gh-pr:merge` makes, against this plugin's own vendored shell-common; `gh-pr:merge`'s `references/github-target.md` stays the SSOT for *why*. No API call is made: the slug is only the registry key and part of the agent name.
 
 Also bind `HEAD_BRANCH` and `BASE_BRANCH` (the merged PR's head/base branches) plus
 `REMOTE` (the `[remote]` positional, default `origin`). `gh-pr:merge` already read both
