@@ -105,7 +105,11 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   On the issue-flow delegation path this guarantees no dirty tree is left for
   the later rebase steps — a dirty working tree breaks `git rebase`. Step 4
   re-asserts the clean tree rather than pushing anything, since the push
-  already happened before the reviewers were dispatched.
+  already happened before the reviewers were dispatched. A non-empty
+  `git status --porcelain` there means a comment-only lane wrote to the tree,
+  which is a defect in that lane: print exactly
+  `[WARN] working tree dirty after review lanes` and leave the changes in
+  place. Committing hunks of unknown authorship is worse than the dirty tree.
 
 - No emojis anywhere. POSIX-compatible shell snippets (`[ ]`, `>/dev/null 2>&1`).
 

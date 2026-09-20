@@ -23,6 +23,9 @@ knows when the lanes were supposed to be done.
 ## Window
 
 - **`LANES_START_TS`** — `date +%s`, recorded immediately before Step 2.5
+  dispatches its Agent, or — when Step 2.5's clean-tree gate skipped the lane —
+  taken just before Step 3's fan-out instead, so the window always opens before
+  the first child could have started
   substep 2 dispatches the `/simplify` Agent. The incident's leaker was the
   simplify lane, which since #18 runs before Step 3, so a timestamp taken at
   Step 3 would miss the exact case this sweep exists for. Shell state does not
