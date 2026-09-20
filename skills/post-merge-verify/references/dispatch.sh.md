@@ -12,6 +12,35 @@ the dispatch in that first fence — the later snippets are documentation.
 Executable mirror + regression suite:
 dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` and
 `tests/bats/skills/gh_pr_post_merge_verify.bats`. Change one, change both.
+In-repo, `tests/dispatch-fence.sh` extracts the first fence with the consumer's
+own `awk` and asserts the contract it relies on — that the extraction is
+non-empty, that the body parses under `sh`/`bash`/`zsh`/`dash` and shellcheck,
+and that both plugin-root prologues below stop at tier 5 without exporting
+anything.
+
+## Why this stays a fence and not `lib/dispatch.sh`
+
+dEitY719/gh-verify-skills#39 asked for the promotion, on the grounds that no
+cross-plugin path convention existed. One does: `gh-pr:merge`'s
+`lib/post-merge-verify-dispatch.sh` resolves `$GH_VERIFY_ROOT` first — the
+named tier-1 override
+[`harness-skills/references/plugin-root.md`](https://github.com/dEitY719/harness-skills/blob/main/references/plugin-root.md)
+lists — and falls back to a copy of *this file* vendored under its own
+`lib/vendor/gh-verify/`. That premise is settled; the promotion still should
+not happen, for a different reason the issue did not have:
+
+**the consumer does not source this file in place.** It `awk`s the first fence
+into a `mktemp` file and sources *that copy* in a subshell. So these bytes run
+from `/tmp` however they are stored, which makes them a pasted-block carrier —
+tiers 1, 2 and 5, no self-path — exactly as they are today. A `.sh` would gain
+tier 3 only if the consumer sourced it where it lies, and on the vendored tier
+that path is under `gh-pr-skills`' root, so a self-path there resolves to the
+**wrong plugin** — the misresolution #39 opens with, reached from the other
+side.
+
+What the promotion was worth is `sh -n` and shellcheck over real bytes.
+`tests/dispatch-fence.sh` buys that without a coordinated change to two other
+repos.
 
 ```bash
 # --- 0. F-1 gate. Unregistered repo => do nothing at all, no output. -------
@@ -112,14 +141,34 @@ if [ ! -f "$_SC/functions/herdr_agent_name.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
 PMV_NAME_LIB="$_SC/functions/herdr_agent_name.sh"
+# Clear the name BOTH ways before the load, so the test after it proves *this*
+# load defined the function. `unalias` is not optional: a live alias outranks
+# the function the load just defined in sh, dash and zsh (and in zsh stops it
+# being defined at all), turning a good load into a false tier 5.
 unset -f herdr_agent_name 2>/dev/null || :
+unalias herdr_agent_name 2>/dev/null || :
+# Export BEFORE the load, not after (dEitY719/harness-skills#37): every vendored
+# helper resolves its own siblings through ${SHELL_COMMON:-$HOME/dotfiles/...}
+# *at source time*, so on the tier-2 path setting it afterwards is too late for
+# the only consumer that reads it. The tier-5 arm unsets it again, so the
+# observable contract is unchanged: after this block SHELL_COMMON is set if and
+# only if a helper proved out. Leaving a tree that failed to load exported is
+# the poisoned-export bug of dEitY719/gh-resolve-skills#8.
+export SHELL_COMMON="$_SC"
 # shellcheck source=/dev/null
 [ -f "$PMV_NAME_LIB" ] && . "$PMV_NAME_LIB"
-if ! command -v herdr_agent_name >/dev/null 2>&1; then                               # tier 5
+# Compare `command -v`'s OUTPUT to the bare name, not its exit status
+# (dEitY719/harness-skills#36): the exit-status form answers "is this name
+# runnable", so a PATH executable called herdr_agent_name passes it in all four
+# of sh/dash/bash/zsh and an alias passes it in three. POSIX pins the output —
+# a function or built-in prints the bare name, an external command its
+# pathname, an alias a reinput-able string — so one `=` separates them without
+# the non-POSIX `type -t` / `declare -F` that dash does not have.
+if [ "$(command -v herdr_agent_name 2>/dev/null)" != herdr_agent_name ]; then        # tier 5
+    unset SHELL_COMMON
     printf '[WARN] gh-verify:post-merge-verify: %s did not load a usable shell-common — verification skipped. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC"
     return 0 2>/dev/null || exit 0
 fi
-export SHELL_COMMON="$_SC"
 
 pmv_prompt_retryable() {
     case "$1" in
@@ -160,12 +209,19 @@ pmv_escalate_prompt_stall() {
 # nothing is on that path — because an empty answer from herdr is "unknown",
 # never "nothing running", and the caller below branches on that difference.
 PMV_LOOKUP_LIB="$_SC/functions/herdr_agent_lookup.sh"
-if [ ! -r "$PMV_LOOKUP_LIB" ]; then
-    printf '[WARN] gh-verify:post-merge-verify: %s not readable — verification skipped.\n' "$PMV_LOOKUP_LIB"
+# Proved by loading, like the name helper above: `-r` answers "is there a file"
+# and no more, so a helper that sources halfway leaves the two functions below
+# undefined and the dispatch calls a name that is not there
+# (dEitY719/dotfiles#724). $_SC itself is already proven, so this only has to
+# prove the second file.
+unset -f herdr_agent_tab_for_cwd 2>/dev/null || :
+unalias herdr_agent_tab_for_cwd 2>/dev/null || :
+# shellcheck source=/dev/null
+[ -f "$PMV_LOOKUP_LIB" ] && . "$PMV_LOOKUP_LIB"
+if [ "$(command -v herdr_agent_tab_for_cwd 2>/dev/null)" != herdr_agent_tab_for_cwd ]; then
+    printf '[WARN] gh-verify:post-merge-verify: %s did not load a usable herdr_agent_tab_for_cwd — verification skipped.\n' "$PMV_LOOKUP_LIB"
     return 0 2>/dev/null || exit 0
 fi
-# shellcheck source=/dev/null
-. "$PMV_LOOKUP_LIB"
 
 # --- the main checkout (never a worktree) ---------------------------------
 # `path` from the registry when set; otherwise git's common dir,
@@ -458,17 +514,23 @@ if [ ! -f "$_SC/functions/gh_host.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; the
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
 unset -f _gh_resolve_host 2>/dev/null || :
+unalias _gh_resolve_host 2>/dev/null || :
 # Export before sourcing, not after: gh_host.sh resolves its own dependencies
 # through ${SHELL_COMMON:-...}, so setting it afterwards is too late
-# (dEitY719/harness-skills#37).
+# (dEitY719/harness-skills#37). The tier-5 arm unsets it again, so after this
+# block SHELL_COMMON is set if and only if a helper proved out.
 export SHELL_COMMON="$_SC"
 # shellcheck source=/dev/null
 [ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
-REMOTE_URL=$(git remote get-url "${REMOTE:-origin}" 2>/dev/null) || REMOTE_URL=""
-if [ -n "$REMOTE_URL" ] && command -v _gh_resolve_host >/dev/null 2>&1; then
-    TARGET_REPO=$(_gh_parse_owner_repo_url "$REMOTE_URL") || TARGET_REPO=""
-    TARGET_HOST=$(_gh_host_from_url "$REMOTE_URL") || TARGET_HOST=$(_gh_resolve_host)
-    export GH_HOST="$TARGET_HOST" TARGET_REPO TARGET_HOST
+if [ "$(command -v _gh_resolve_host 2>/dev/null)" != _gh_resolve_host ]; then        # tier 5
+    unset SHELL_COMMON
+else
+    REMOTE_URL=$(git remote get-url "${REMOTE:-origin}" 2>/dev/null) || REMOTE_URL=""
+    if [ -n "$REMOTE_URL" ]; then
+        TARGET_REPO=$(_gh_parse_owner_repo_url "$REMOTE_URL") || TARGET_REPO=""
+        TARGET_HOST=$(_gh_host_from_url "$REMOTE_URL") || TARGET_HOST=$(_gh_resolve_host)
+        export GH_HOST="$TARGET_HOST" TARGET_REPO TARGET_HOST
+    fi
 fi
 ```
 
