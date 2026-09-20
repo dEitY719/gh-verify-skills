@@ -39,3 +39,9 @@ for md in sorted(pathlib.Path("skills").glob("*/SKILL.md")):
         print(f"ok    {md} (longest line {widest})")
 sys.exit(fail)
 PY
+
+# skills/post-merge-verify/references/dispatch.sh.md ships ~470 lines of bash
+# as a markdown fence that `gh-pr:merge` extracts and sources. It is checked
+# here rather than beside the skill because CI runs this file and nothing else
+# once it exists (dEitY719/gh-verify-skills#39).
+bash tests/dispatch-fence.sh
