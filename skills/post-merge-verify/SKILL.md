@@ -19,77 +19,69 @@ metadata:
 
 ## Help
 
-If arg #1 is `-h`/`--help`/`help`, output `references/help.md` verbatim and
-stop (no herdr calls, no git calls). That file tables the positionals
-`<pr-number> [remote]`.
+If arg #1 is `-h`/`--help`/`help`, output `references/help.md` verbatim and stop (no herdr calls, no git calls). That
+file tables the positionals `<pr-number> [remote]`.
 
 ## Role
 
-Automates the manual post-merge routine for **registered repos only**: close
-the tab that implemented the PR, bring the main checkout up to date, and hand
-the verification to a fresh session. It never verifies anything itself and
+Automates the manual post-merge routine for **registered repos only**: close the tab that implemented the PR, bring
+the main checkout up to date, and hand the verification to a fresh session. It never verifies anything itself and
 never *writes* to GitHub — `gh-pr:merge` has already merged and reported.
 
-**Every failure is soft** — one `[WARN]` line, exit 0 — because its caller's
-report must print either way (F-6). The one exception is a stale main
-checkout: verifying stale code proves nothing, so that stops the run.
-Design rationale and alternatives considered: `references/rationale.md`.
+**Every failure is soft** — one `[WARN]` line, exit 0 — because its caller's report must print either way (F-6). The
+one exception is a stale main checkout: verifying stale code proves nothing, so that stops the run. Design rationale
+and alternatives considered: `references/rationale.md`.
 
 ## Step 1: Resolve the target repo + host
 
 Repo **and** host from one remote URL (dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407): run the block in
-`references/dispatch.sh.md` → "Inputs". It is the same binding `gh-pr:merge` makes, against this plugin's own vendored shell-common; `gh-pr:merge`'s `references/github-target.md` stays the SSOT for *why*. No API call is made: the slug is only the registry key and part of the agent name.
+`references/dispatch.sh.md` → "Inputs". It is the same binding `gh-pr:merge` makes, against this plugin's own vendored
+shell-common; `gh-pr:merge`'s `references/github-target.md` stays the SSOT for *why*. No API call is made: the slug is
+only the registry key and part of the agent name.
 
-Also bind `HEAD_BRANCH` and `BASE_BRANCH` (the merged PR's head/base branches) plus
-`REMOTE` (the `[remote]` positional, default `origin`). `gh-pr:merge` already read both
-refs in its own Step 2 and passes them down; standalone, recover them with the host-pinned
-`gh pr view` in `references/dispatch.sh.md` → "Inputs". Step 3 fetches and rebases with
-those — never a literal `origin`/`main`.
+Also bind `HEAD_BRANCH` and `BASE_BRANCH` (the merged PR's head/base branches) plus `REMOTE` (the `[remote]`
+positional, default `origin`). `gh-pr:merge` already read both refs in its own Step 2 and passes them down;
+standalone, recover them with the host-pinned `gh pr view` in `references/dispatch.sh.md` → "Inputs". Step 3 fetches
+and rebases with those — never a literal `origin`/`main`.
 
 ## Step 2: Gate on the watched-repos registry (F-1)
 
-Run the block and follow the outcome table in `references/registry-gate.md`:
-it gates on `verify_skill` for `$TARGET_REPO` — Step 1's binding, and the
-registry key, so it must be bound first — from
-`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
-before any output, herdr call, fetch or rebase. Schema and
-registration procedure: `references/watched-repos-schema.md`.
+Run the block and follow the outcome table in `references/registry-gate.md`: it gates on `verify_skill` for
+`$TARGET_REPO` — Step 1's binding, and the registry key, so it must be bound first — from
+`${IW_WATCHED_REPOS:-~/.agent-factory/avatars/issue-watcher/watched-repos.json}`, before any output, herdr call, fetch
+or rebase. Schema and registration procedure: `references/watched-repos-schema.md`.
 
 ## Step 3: Run the dispatch
 
 Paste `references/dispatch.sh.md` verbatim. It performs, in order:
 
 1. `git worktree list --porcelain` → the local path of the merged head branch.
-2. `herdr agent list` → the `tab_id` whose `cwd`/`foreground_cwd` sits on that
-   path → `herdr tab close <tab_id>`. Not found → note it and continue (F-2).
-3. `git -C "$MAIN_ROOT" fetch "$REMOTE" "$BASE_BRANCH"` + `rebase "$REMOTE/$BASE_BRANCH"`,
-   only once `MAIN_ROOT` is a git worktree root and its HEAD is on
-   `BASE_BRANCH`. Dirty tree, wrong/detached branch, or conflict → `[WARN]`,
+2. `herdr agent list` → the `tab_id` whose `cwd`/`foreground_cwd` sits on that path → `herdr tab close <tab_id>`. Not
+   found → note it and continue (F-2).
+3. `git -C "$MAIN_ROOT" fetch "$REMOTE" "$BASE_BRANCH"` + `rebase "$REMOTE/$BASE_BRANCH"`, only once `MAIN_ROOT` is a
+   git worktree root and its HEAD is on `BASE_BRANCH`. Dirty tree, wrong/detached branch, or conflict → `[WARN]`,
    `rebase --abort`, **stop** (F-3).
-4. `git worktree add --detach "$PMV_SCRATCH" "$REMOTE/$BASE_BRANCH"` — created if
-   absent, reused if present, never torn down here — then `herdr tab create` +
-   `herdr agent start mv-<repo>-pr-<N> --kind claude` (F-4). The session does
-   **not** live in `MAIN_ROOT`: that checkout is shared, and step 3 rebases it
-   (dEitY719/dotfiles#1577).
-5. `herdr agent prompt <agent> "/<verify-skill> <N>" --wait --until idle` (F-5),
-   then report the new `tab_id`, the agent name, and the `attach` hint.
+4. `git worktree add --detach "$PMV_SCRATCH" "$REMOTE/$BASE_BRANCH"` — created if absent, reused if present, never
+   torn down here — then `herdr tab create` + `herdr agent start mv-<repo>-pr-<N> --kind claude` (F-4). The session
+   does **not** live in `MAIN_ROOT`: that checkout is shared, and step 3 rebases it (dEitY719/dotfiles#1577).
+5. `herdr agent prompt <agent> "/<verify-skill> <N>" --wait --until idle` (F-5), then report the new `tab_id`, the
+   agent name, and the `attach` hint.
 
-Every decision above is mirrored executably in
-dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` — change one, change both.
+Every decision above is mirrored executably in dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` —
+change one, change both.
 
 ## Constraints
 
 - Never resolve a rebase conflict, and never `--force` anything.
 - Never open more than one session per PR — no batching, no retries.
-- Never *write* to GitHub — the head/base ref read is its only API call, and
-  never touch the unattended `pr_merge_train_cron.sh` path (dEitY719/dotfiles#1511 non-goal).
+- Never *write* to GitHub — the head/base ref read is its only API call, and never touch the unattended
+  `pr_merge_train_cron.sh` path (dEitY719/dotfiles#1511 non-goal).
 - Never act on a repo missing from the watched-repos registry.
 
 ## Related Skills
 
-`gh-pr:merge` reads `references/dispatch.sh.md` and runs it inline at the end of its
-Step 5 — never `Skill(gh-verify:post-merge-verify, ...)`, which vanished inside
-`gh-pr:merge-train`'s loop (dEitY719/dotfiles#1565); this skill stays the standalone
-manual entry point and the SSOT for that block · `gh-verify:merged` / `gh-verify:live`
-are what the dispatched session actually runs (the registry picks which) ·
-`gh-pr:merge-train` shares the herdr workspace→tab→agent→prompt sequence via `pr_merge_train_cron.sh`.
+`gh-pr:merge` reads `references/dispatch.sh.md` and runs it inline at the end of its Step 5 — never
+`Skill(gh-verify:post-merge-verify, ...)`, which vanished inside `gh-pr:merge-train`'s loop (dEitY719/dotfiles#1565);
+this skill stays the standalone manual entry point and the SSOT for that block · `gh-verify:merged` / `gh-verify:live`
+are what the dispatched session actually runs (the registry picks which) · `gh-pr:merge-train` shares the herdr
+workspace→tab→agent→prompt sequence via `pr_merge_train_cron.sh`.

@@ -78,6 +78,29 @@ independent of the ordering choice).
 (#18, "Not in scope"). Everything above is imposed by the dispatch, not by the
 skill being dispatched.
 
+## The three substeps (SKILL.md Step 2.5)
+
+**1 — the clean-tree gate.** `git status --porcelain` must be empty before an
+Agent is dispatched. Non-empty → record `SIMPLIFY=skip`, print exactly
+
+```
+[SKIP] simplify: working tree dirty
+```
+
+and go straight to Step 3. This is the assertion that makes "the agent was the
+only writer" true, so substep 3's `git add -A` can only stage what the agent
+authored; without it the lane reproduces incident 3 above.
+
+**2 — record the window, then dispatch exactly one Agent.** Take
+`LANES_START_TS=$(date +%s)` first and carry it as a literal into Step 3.4's
+sweep (`orphan-sweep.md`); it must be read before the lane starts or the sweep
+cannot tell the lane's children from processes that predate the round. Then
+dispatch **one** Agent running the built-in `/simplify`, **edit-only**, with the
+scope contract above quoted verbatim in its prompt, and nothing else dispatched
+alongside it.
+
+**3 — the orchestrator commits** — the section below.
+
 ## The commit, the push, and the stale label (Step 2.5 substep 3)
 
 The **orchestrator** commits — never the agent. Because the tree was clean

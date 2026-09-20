@@ -163,14 +163,22 @@ reusable workflow owned by
 progressive-disclosure line limits, the Codex description budget, version
 agreement, shellcheck, and an emoji gate.
 
-There are no checks defined in this repo. To change what is validated here, open
-a PR against `harness-skills`; a merge to its `main` ships to all fifteen repos
-at once.
+Shared checks are not defined here. To change what is validated across the
+fleet, open a PR against `harness-skills`; a merge to its `main` ships to all
+fifteen repos at once.
 
 One input is tuned for this repo and documented inline in `validate.yml`:
 `allow-emoji-paths`, for the one reference file that specifies the dotfiles
 ai-metrics footer. `max-skill-lines` is left at the shared default of 100 —
 every `SKILL.md` here is under it.
+
+[`tests/run.sh`](tests/run.sh) is this repo's own self-check, which the shared
+workflow runs automatically for any repo that tracks one. It asserts the other
+half of the progressive-disclosure rule: no `SKILL.md` line over 120
+characters. The shared 100-line limit is a proxy for a file a reader can hold
+in their head, and a 421-character line satisfies the proxy while defeating it
+(dEitY719/gh-verify-skills#34). Override the width with
+`MAX_SKILL_LINE_LENGTH` when running it by hand.
 
 ## Provenance
 

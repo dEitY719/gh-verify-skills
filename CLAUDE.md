@@ -71,11 +71,16 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
   description still lists its dotfiles-era forms (`/devx:pr-verify-live`,
   `/gh-pr-post-merge-verify`, ...) alongside the new one, because muscle memory
   outlives a migration. Removing them is a regression, not a cleanup.
-- **Progressive disclosure.** `SKILL.md` stays under 100 lines and names which
-  `references/` file to read and when. Detail lives in that skill's own
-  `references/`. Do not inline a reference file back into `SKILL.md`. CI
-  enforces the limit with `skill-check`'s shared default — `validate.yml`
-  passes no `max-skill-lines` override, so there is nothing to raise.
+- **Progressive disclosure, on both axes.** `SKILL.md` stays under 100 lines
+  **and** under 120 characters per line, and names which `references/` file to
+  read and when. Detail lives in that skill's own `references/`. Do not inline
+  a reference file back into `SKILL.md`. CI enforces the line count with
+  `skill-check`'s shared default — `validate.yml` passes no `max-skill-lines`
+  override, so there is nothing to raise — and the line width with this repo's
+  own `tests/run.sh`, which the shared workflow runs for us. The width half
+  exists because the count alone was gameable: `review-all/SKILL.md` sat at 99
+  lines carrying 421-character ones (#34). Packing a paragraph horizontally
+  satisfies the count and defeats what it stands for.
 - **Description budget.** CI sums every skill description and fails past 5,440
   characters — Codex's context budget. Keep new descriptions tight.
 - **`review-all`'s parallel fan-out is behaviour, not formatting.** Step 3
