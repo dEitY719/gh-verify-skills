@@ -1,17 +1,29 @@
 # gh-verify:exception-merge-checklist — 10 Checks
 
-Each check below is the SSOT for one row in the report. Format:
+Each check below is the SSOT for **what one row means**. Format:
 
 - **Pass condition** — the exact predicate
-- **Command** — runnable shell that produces the verdict
 - **Recovery hint** — the bullet emitted in the Recovery Actions
   section when the row is WARN or FAIL
 - **Rationale** — the historical regression (from the 2026-05-16
   AgentToolbox PR #727 retrospective) that motivates this check
 
-Run order: C1–C5 and C7–C10 are independent and run in parallel.
-C6 walks every commit and is serial. No fail-fast — every check
-runs to completion.
+**The commands live in `lib/run-checks.sh`, not here**
+(dEitY719/gh-verify-skills#35). This file used to carry a
+**Command** block per check — ten fragments of runnable shell the
+model re-derived from prose on every run, and a fourth place the
+check catalogue could drift from. The script is now the single
+executable statement of each predicate; these pages state what the
+predicate *means* and what to do when it fails, which is the part
+that genuinely needs prose. Read a check's implementation in the
+script; read what it is for here.
+
+Run order, degradation and aggregation belong to the script too:
+C1–C5 and C7–C10 run in parallel, C6 walks every commit and is
+serial, no check fail-fasts, and a check whose tooling is absent
+degrades to `N/A` with the reason rather than to `FAIL`. Those are
+properties of a program now, not instructions to follow — see
+`references/run-checks.sh.md` for the call and the contract.
 
 ---
 
@@ -23,16 +35,6 @@ runs to completion.
 `Fixes #<N>`) AND issue `<N>` exists and is `OPEN`. `Refs #<N>` is
 WARN-not-FAIL because the relation exists but the merge will not
 auto-close the issue.
-
-**Command**
-
-```sh
-gh pr view "$PR" --repo "$TARGET_REPO" --json body --jq .body \
-  | grep -oE '(Closes|Resolves|Fixes|Refs) #[0-9]+' \
-  | head -n 1
-# For each match, verify with:
-gh issue view "$N" --repo "$TARGET_REPO" --json state --jq .state
-```
 
 **Recovery hint** — `PR body 에 \`Closes #<SSOT-issue>\` 추가`
 
@@ -48,15 +50,6 @@ rollup breaks. Detected manually in PR #727.
 (b) GitHub-native sub-issue relation present (queryable via
 `issues/<N>/sub_issues`). N/A when C1 itself is FAIL.
 
-**Command**
-
-```sh
-gh issue view "$N" --repo "$TARGET_REPO" --json body --jq .body \
-  | grep -oE 'Parent( issue)?: #[0-9]+'
-# OR:
-gh api "repos/$TARGET_REPO/issues/$N" --jq '.sub_issues_summary // empty'
-```
-
 **Recovery hint** — `SSOT issue #<N> body 에 \`Parent: #<M>\` 추가
 하거나 GitHub UI 에서 sub-issue 로 연결`
 
@@ -71,12 +64,6 @@ sprint review.
 `MERGEABLE`. `UNKNOWN` is WARN (GitHub is still computing — retry
 once after 5 s). `CONFLICTING` is FAIL.
 
-**Command**
-
-```sh
-gh pr view "$PR" --repo "$TARGET_REPO" --json mergeable --jq .mergeable
-```
-
 **Recovery hint** — `/gh-resolve:conflict <PR#>`
 
 **Rationale** — Standard mergeability check; lumped in here so the
@@ -88,15 +75,6 @@ single audit pass covers everything that would block the merge.
 `conclusion == SUCCESS`. Any `FAILURE`, `CANCELLED`, `TIMED_OUT`,
 or `ACTION_REQUIRED` → FAIL. `PENDING` / `IN_PROGRESS` / `QUEUED`
 → WARN (CI still running).
-
-**Command**
-
-```sh
-gh pr view "$PR" --repo "$TARGET_REPO" \
-  --json statusCheckRollup \
-  --jq '.statusCheckRollup[] | select(.conclusion != "SUCCESS")
-        | "\(.name)\t\(.conclusion // .status)"'
-```
 
 **Recovery hint** — print each failing job's name and:
 `gh run rerun --failed --job <id>` (or PR re-push for required
@@ -112,16 +90,6 @@ a regression that would otherwise be missed in the rush to merge.
 with no branch protection on `baseRefName` → WARN (mirrors
 `gh-pr:merge`'s solo-repo logic). `REVIEW_REQUIRED` /
 `CHANGES_REQUESTED` → FAIL.
-
-**Command**
-
-```sh
-gh pr view "$PR" --repo "$TARGET_REPO" \
-  --json reviewDecision,baseRefName --jq '[.reviewDecision, .baseRefName]'
-# Then, on empty reviewDecision:
-gh api "repos/$TARGET_REPO/branches/$BASE/protection" >/dev/null 2>&1 \
-  && echo PROTECTED || echo UNPROTECTED
-```
 
 **Recovery hint** — name the missing reviewer(s) and suggest
 `/gh-pr:approve <PR#>` for an automated approve flow.
@@ -144,19 +112,6 @@ exits 0 at every commit. `N/A` when `--skip-bisect` is set (the
 report shows `N/A (--skip-bisect)`). Default `<build-cmd>` is
 `bun run build`; override with `--build-cmd`.
 
-**Command**
-
-```sh
-BASE=$(gh pr view "$PR" --repo "$TARGET_REPO" --json baseRefName --jq .baseRefName)
-git fetch origin "$BASE"
-# Run in a throwaway worktree so HEAD is not disturbed:
-git worktree add --detach .audit-bisect HEAD
-( cd .audit-bisect &&
-  git rebase --exec "$BUILD_CMD" "origin/$BASE" )
-RC=$?
-git worktree remove --force .audit-bisect
-```
-
 **Recovery hint** — print the failing commit SHA and:
 ```
 git rebase -i <base>..HEAD
@@ -178,28 +133,6 @@ their build state never reaches `main`.
 `openapi.yaml`. N/A when the repo does not contain `openapi.yaml`
 or a `*.openapi.yaml` glob.
 
-**Command**
-
-```sh
-# Find a free port (portable: lsof works on Linux + macOS + BSD;
-# ss / netstat / `timeout` are GNU-only and unsafe across systems).
-for p in $(seq 4010 4099); do
-  lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1 || { PORT=$p; break; }
-done
-: "${PORT:=4010}"   # last-resort fallback when the range is fully occupied
-# Background-launch Prism; the poll-loop below is the 30 s timeout
-# (intentionally replacing GNU `timeout` for macOS/BSD portability).
-bunx @stoplight/prism-cli mock openapi.yaml --port "$PORT" \
-  >.audit-prism.log 2>&1 &
-PID=$!
-for _ in $(seq 1 30); do
-  grep -q 'listening' .audit-prism.log && break
-  sleep 1
-done
-kill "$PID" 2>/dev/null || true
-grep -q 'listening' .audit-prism.log
-```
-
 **Recovery hint** — print the first 5 non-empty lines of
 `.audit-prism.log` (includes the line number Prism rejected) and:
 `open openapi.yaml:<line>` to fix the indent / schema error.
@@ -214,13 +147,6 @@ exact line.
 
 **Pass when** `sha256sum -c .openapi-lock` exits 0. N/A when the
 repo does not have `.openapi-lock` (not an openapi-bound project).
-
-**Command**
-
-```sh
-[ -f .openapi-lock ] || exit_na
-sha256sum -c .openapi-lock
-```
 
 **Recovery hint** — `bash scripts/update-openapi-lock.sh` (or
 `make openapi-lock`) and commit the regenerated `.openapi-lock`.
@@ -237,18 +163,6 @@ lockfile. Fixed in commit `2452e07` amend after the fact.
 `*.md` / `*.json` / `*.yml` / `*.yaml` files in the PR diff. Source
 code (`*.ts` / `*.tsx` / `*.js`) is intentionally excluded — the
 regression here is over-formatting docs, not code.
-
-**Command**
-
-```sh
-BASE=$(gh pr view "$PR" --repo "$TARGET_REPO" --json baseRefName --jq .baseRefName)
-git fetch origin "$BASE"
-CHANGED=$(git diff --name-only "origin/$BASE..HEAD" -- \
-  '*.md' '*.json' '*.yml' '*.yaml' \
-  | tr '\n' ' ')
-[ -n "$CHANGED" ] || exit_na
-bunx prettier --check $CHANGED
-```
 
 **Recovery hint** — list the offending files and:
 `bunx prettier --write <files>`. `--auto-fix` automates the rewrite
@@ -268,26 +182,6 @@ file in the same PR diff. The heuristic is: for each prod-file
 match, expect a corresponding `vi.mock('next/headers'`,
 `vi.mocked(cookies)`, or `new NextRequest(` in a `*.test.ts(x)` /
 `*.spec.ts(x)` file within the same PR.
-
-**Command**
-
-```sh
-BASE=$(gh pr view "$PR" --repo "$TARGET_REPO" --json baseRefName --jq .baseRefName)
-git fetch origin "$BASE"
-# Pipe-stream both diffs to avoid capturing potentially-large
-# output into shell variables (ARG_MAX / memory concerns).
-# C10 passes when either no prod-side new framework call was
-# introduced, OR a matching mock was also added in the same PR.
-if git diff "origin/$BASE..HEAD" -- \
-        'apps/**/*.ts' 'apps/**/*.tsx' \
-        ':!**/*.test.*' ':!**/*.spec.*' \
-   | grep -qE '^\+.*(cookies\(\)|headers\(\)|new NextRequest\()'; then
-    git diff "origin/$BASE..HEAD" -- \
-            '**/*.test.ts' '**/*.test.tsx' '**/*.spec.ts' '**/*.spec.tsx' \
-       | grep -qE "^\+.*(vi\.mock\('next/headers'|vi\.mocked\((cookies|headers)\)|new NextRequest\()" \
-       || exit 1
-fi
-```
 
 **Recovery hint** — list the prod-side files whose new call has no
 matching test mock and emit a copy-paste template:
@@ -319,3 +213,10 @@ After all 10 checks run, classify the overall outcome:
 
 WARN alone never blocks. The user decides whether to treat WARNs
 as merge-blocking on a case-by-case basis.
+
+`lib/run-checks.sh` computes this and emits it as the last two
+rows — `SCORE` and `VERDICT`, with the exit code above in
+`VERDICT`'s second field — so Step 3 renders the table rather than
+re-counting it. `lib/run-checks.selfcheck.sh` pins the arithmetic,
+including that a board of nothing but WARN still reads `safe to
+merge`.

@@ -58,10 +58,32 @@ Verdict: 3 FAIL, 3 WARN — NOT safe to merge
 Re-run `/gh-verify:exception-merge-checklist <PR#>` after fixes.
 ```
 
+## Rendering from Step 2's rows
+
+Step 2 hands you twelve tab-separated rows. Render them; do not
+recompute them.
+
+| Row | Goes to |
+|-----|---------|
+| `C1`..`C5` | the Gating Checks table — field 2 is `Result`, field 3 is `Notes` |
+| `C6`..`C10` | the Regression Detectors table, same fields |
+| `SCORE` | `Score: <field 2> passed (<field 3>)` |
+| `VERDICT` | `Verdict: <field 3>`, and field 2 is the skill's exit code |
+
+The `Check` column's names are fixed by this template, not carried
+in the rows — `linked SSOT issue`, `parent issue`, `mergeable`,
+`all CI green`, `review APPROVED`, `bisect-safe`,
+`openapi.yaml parses`, `.openapi-lock matches`,
+`prettier scope clean`, `test mocks complete`.
+
 ## Verdict computation
 
 - `0 FAIL` → `safe to merge` → exit code 0
 - `≥ 1 FAIL` → `<F> FAIL, <W> WARN — NOT safe to merge` → exit code 1
+
+`lib/run-checks.sh` already applied this rule and shipped the
+answer in the `VERDICT` row, so the rule is here as documentation
+of what that row means, not as a second place to evaluate it.
 
 WARN alone is never a merge blocker. The user judges whether a
 specific WARN is acceptable for the PR at hand (e.g. C2 missing

@@ -46,19 +46,23 @@ Positional: `[<PR#>]`. Optional flags: `--skip-bisect`, `--auto-fix`, `--build-c
 
 ## Step 2: Run 10 Checks
 
-Read `references/checks.md` for the full definition of each check (pass condition, command, recovery hint, rationale).
-Run C1–C5 and C7–C10 in parallel; C6 is the only serial check because it walks each commit. **No fail-fast** — every
-check runs to completion so the report shows the full picture in one pass.
+Paste the call block from `references/run-checks.sh.md`. It runs `lib/run-checks.sh`, which owns the ten checks and
+the rules that used to be instructions here: the run order (C1–C5 and C7–C10 in parallel, C6 serial because it walks
+every commit), no fail-fast, and `N/A`-with-a-reason rather than `FAIL` when a check's tooling is absent. Twelve
+tab-separated rows come back — ten `C<n>` verdicts of `PASS` / `WARN` / `FAIL` / `N/A`, then `SCORE` and `VERDICT`.
 
-Each check returns one of `PASS` / `WARN` / `FAIL` / `N/A`. C6 is fully opt-out via `--skip-bisect`. C7–C10 are
-**not** opt-outable — they are the core regression detectors derived from the 2026-05-16 PR #727 retrospective (six
-concrete regressions, mapped one-to-one to checks in `references/checks.md`).
+Exit 2 with a `[FATAL]` line and no rows means the helper itself could not run — a missing argument, no `gh`, no git
+worktree. That is not a check verdict: propagate it as the skill's exit 2 rather than reporting ten failures.
+
+`references/checks.md` is what each row *means*: pass condition, recovery hint, and the PR #727 regression behind it.
+C6 is fully opt-out via `--skip-bisect`; C7–C10 are **not** opt-outable — they are the core regression detectors.
 
 ## Step 3: Render Report
 
-Read `references/report-template.md` for the exact format. The report has the PR header, two tables (Gating C1–C5 +
-Regression C6–C10), a Score line, a Verdict line, and a Recovery Actions section with one bullet per WARN / FAIL (PASS
-/ N/A produce no bullet). Do NOT prepend filler prose.
+Read `references/report-template.md` for the exact format, and render Step 2's rows into it — do not re-count them.
+The report has the PR header, two tables (Gating C1–C5 + Regression C6–C10), the `SCORE` row's Score line, the
+`VERDICT` row's Verdict line, and a Recovery Actions section with one bullet per WARN / FAIL (PASS / N/A produce no
+bullet), each taken from that check's recovery hint in `references/checks.md`. Do NOT prepend filler prose.
 
 ## Step 4: Optional Auto-fix (`--auto-fix` only)
 
@@ -81,8 +85,8 @@ Read `references/metrics-footer.md` for the comment format and soft-fail policy.
 - **Read-only default.** Never merge, approve, push, or edit PR body/labels. Only `--auto-fix` mutates, and only as
   far as `git add` (never `git commit`).
 - **No fail-fast; `--skip-bisect` is C6's only opt-out.** Both bind in Step 2, stated there.
-- **Exit codes**: `0` (all PASS or only WARN) / `1` (≥ 1 FAIL) / `2` (bad args, missing remote) / `3` (no PR
-  detected).
+- **Exit codes**: `0` (all PASS or only WARN) / `1` (≥ 1 FAIL) / `2` (bad args, missing remote, or Step 2's helper
+  could not run) / `3` (no PR detected). `0` vs `1` is Step 2's `VERDICT` row, not a recount.
 - **Never silently switch the build command.** If `--build-cmd` is absent and `bun run build` does not exist, mark C6
   `N/A` with the reason — do NOT guess `npm test`.
 
