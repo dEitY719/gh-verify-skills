@@ -39,16 +39,21 @@ if [ ! -f "$_SC/functions/gh_pr_edit_safe.sh" ]; then
     }
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
+# unalias, the output-equality proof, and export-before-load with an undo on
+# the failure arm: harness-skills#35 / #36 / #37 via references/plugin-root.md.
 unset -f _gh_pr_edit_safe_label _gh_resolve_host 2>/dev/null || :
+unalias _gh_pr_edit_safe_label 2>/dev/null || :
+unalias _gh_resolve_host 2>/dev/null || :
+export SHELL_COMMON="$_SC"                                                           # before the load
 [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
 [ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
-if ! command -v _gh_pr_edit_safe_label >/dev/null 2>&1 ||
-    ! command -v _gh_resolve_host >/dev/null 2>&1; then                              # tier 5
+if [ "$(command -v _gh_pr_edit_safe_label 2>/dev/null)" != _gh_pr_edit_safe_label ] ||
+    [ "$(command -v _gh_resolve_host 2>/dev/null)" != _gh_resolve_host ]; then       # tier 5
+    unset SHELL_COMMON
     printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
         "$_SC" >&2
     return 1 2>/dev/null || exit 1
 fi
-export SHELL_COMMON="$_SC"
 
 # 0) host 고정 — repo 와 같은 remote URL 에서, 실패하면 setup-mode 기본값
 TARGET_HOST="${TARGET_HOST:-$(_gh_host_from_url "$(git remote get-url "$remote")" 2>/dev/null)}"
