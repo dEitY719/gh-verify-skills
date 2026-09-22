@@ -1,6 +1,6 @@
 {
   "name": "gh-verify",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Verify a PR before and after it merges: fan out every reviewer in parallel, prove the running app or a fresh clone really is the target commit, audit an exception-track PR before a hand-merge, and dispatch the post-merge verification session.",
   "author": {
     "name": "dEitY719",
