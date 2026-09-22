@@ -13,7 +13,7 @@ real gate was CI.
 
 | side | where | since |
 |---|---|---|
-| marker (`<!-- ai-review:<ai>:<sha> -->`) | `_gh_pr_review_build_comment_body` in `gh_pr_review.sh` | dEitY719/dotfiles#1564 |
+| marker (`<!-- ai-review:<ai>[:<preset>]:<sha> -->`) | `_gh_pr_review_build_comment_body` in `gh_pr_review.sh` | dEitY719/dotfiles#1564, preset field dEitY719/gh-verify-skills#56 |
 | producer of `review-blocked` (parse → aggregate → label) | `gh-verify:review-all` **Step 3.5**, via `devx_pr_review_all_apply_label` | dEitY719/dotfiles#1564 |
 | producer of `review-passed` (own judgment, no re-review) | `gh-pr:reply` **Step 6**, via `_gh_pr_reply_apply_review_passed`, dotfiles `claude/skills/gh-pr-reply/references/review-passed-gate.md` | dEitY719/dotfiles#1636 |
 | shared write primitive (drop-opposite → safe-add → marker) | `devx_pr_review_all_write_label` | dEitY719/dotfiles#1636 |
@@ -90,12 +90,14 @@ neither label has not been shown to pass review. That is what makes a time
 backstop unnecessary here: a stuck PR is one label away from moving, and a
 human can add or remove it at any time.
 
-## The five helpers
+## The six helpers
 
 ```
-devx_pr_review_all_lane_block <ai> [<head-sha>] <expected-login>
+devx_pr_review_all_lane_block <ai> [<head-sha>] <expected-login> [<preset>]
                                                   # RAW comments JSON on stdin
   -> that lane's raw block as written BY <expected-login>, or nothing
+devx_pr_review_all_lane_rows                      # $LANES rows on stdin
+  -> the same rows, normalized to 3-field <ai>:<preset>:<state>
 devx_pr_review_all_verdict                        # one lane's raw text on stdin
   -> blocking | concerns | lgtm | unknown
 devx_pr_review_all_aggregate                      # verdict tokens on stdin,
@@ -137,7 +139,7 @@ parse as `unknown`, never write a label, and skip every PR forever.
 
 Read it from the artifact the lane already wrote instead. `gh-pr:review` Step 6
 posts the reviewer's raw output to the PR wrapped in
-`<!-- ai-review:<ai>:<head-sha> -->` markers, synchronously, before it returns —
+`<!-- ai-review:<ai>[:<preset>]:<head-sha> -->` markers, synchronously, before it returns —
 a durable machine-readable record rather than a summary. Fetch the comments
 **once**, then per lane:
 
@@ -181,7 +183,7 @@ BODIES=$(GH_HOST="$TARGET_HOST" gh api --paginate \
 ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"
 
 verdict=$(printf '%s\n' "$BODIES" |
-    devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
+    devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
     devx_pr_review_all_verdict)
 # -> blocking | concerns | lgtm | unknown
 ```
@@ -190,9 +192,39 @@ verdict=$(printf '%s\n' "$BODIES" |
 so a re-review supersedes an earlier verdict, and it ignores an unterminated
 block — half a review is not a verdict.
 
+### The `<preset>` field (dEitY719/gh-verify-skills#56)
+
+`<preset>` is `lane_block`'s **4th and optional** argument — appended, not
+spliced in after `<ai>` where the issue's sketch put it, so every pre-#56
+3-argument call site keeps working unchanged and reads as `default`. That
+position *is* the backward-compatibility guarantee.
+
+The marker grammar it selects is deliberately asymmetric:
+
+| preset | marker | why |
+|---|---|---|
+| `default` | `<!-- ai-review:<ai>:<sha> -->` | byte-for-byte the pre-#56 form, so every marker already on every live PR keeps resolving |
+| anything else | `<!-- ai-review:<ai>:<preset>:<sha> -->` | a field that exists only where it carries information |
+
+The asymmetry is load-bearing, not an oversight. It is also what makes two
+presets of one AI **two independent lanes rather than one lane racing itself**:
+the sha sits in a different field of the two markers, so a `default` lane can
+never harvest a `thorough` lane's block, and neither can the #1613 dedup guard
+(`duplicate-review-guard.md`) mistake one for the other.
+
+**Always pass `$preset` alongside `$head_sha`.** A `--lanes` run that omits it
+collapses every preset of an AI onto the `default` marker, and the second lane
+then harvests the first's verdict as its own.
+
+> The **no-`<head-sha>`** path is left exactly as loose as it always was: it
+> still prefix-matches `<ai>:` and so can pick up another preset's block. Every
+> caller that makes a freshness claim passes the sha (the guard requires it),
+> and tightening the sha-less path would change what pre-#56 markers resolve
+> to — the one thing this change must not do.
+
 ### Marker authorship (dEitY719/dotfiles#1639)
 
-A `<!-- ai-review:<ai>:<sha> -->` block is plain text in an ordinary PR
+A `<!-- ai-review:<ai>[:<preset>]:<sha> -->` block is plain text in an ordinary PR
 comment, and on most repos anyone who can see the PR can post one. Until
 dEitY719/dotfiles#1639 this harvester was handed pre-extracted body text (`--jq '.[].body'`)
 with the author already discarded, so a hand-forged block from **any**
@@ -243,9 +275,10 @@ left by an earlier round. A run that posted nothing —
 then silently reuse a stale verdict, and a stale verdict can authorize a merge
 of code it never saw.
 
-With a sha given, only `<!-- ai-review:<ai>:<head-sha> -->` … `<!-- /ai-review:<ai>:<head-sha> -->`
+With a sha given, only `<!-- ai-review:<ai>[:<preset>]:<head-sha> -->` …
+`<!-- /ai-review:<ai>[:<preset>]:<head-sha> -->`
 blocks match, both markers must carry the same sha, and a lane with no block for
-that exact ai+sha pair yields nothing — which reads downstream as `unknown`,
+that exact ai+preset+sha triple yields nothing — which reads downstream as `unknown`,
 so no label, so no merge. Fail-closed.
 
 `gh-pr:review`'s marker writer (`_gh_pr_review_build_comment_body` in
@@ -303,19 +336,24 @@ Build the stream with `printf` inside the lane loop and pipe it straight in.
 Never stage the verdicts in a variable and re-expand it:
 
 ```sh
-# $LANES is what Step 3 recorded: one `<ai>:ok|skip|fail` per LINE. Newline-
-# delimited for the same reason the aggregator takes stdin — `for x in $LANES`
-# would need word-splitting, which zsh does not do, and every lane but the
-# first would vanish.
+# $LANES is what Step 3 recorded: one `<ai>:<preset>:ok|skip|fail` per LINE
+# (dEitY719/gh-verify-skills#56). Newline-delimited for the same reason the
+# aggregator takes stdin — `for x in $LANES` would need word-splitting, which
+# zsh does not do, and every lane but the first would vanish.
+#
+# `devx_pr_review_all_lane_rows` normalizes first, so the loop reads exactly
+# one row shape: a 2-field row written before #56 arrives here as
+# `<ai>:default:<state>`. Splitting the 3 fields by hand at each reader is how
+# the compatibility rule drifts into two versions of itself.
 AGG=$(
-    printf '%s\n' "$LANES" | while IFS= read -r spec; do
-        [ -n "$spec" ] || continue
-        ai=${spec%%:*}
-        case "${spec#*:}" in
+    printf '%s\n' "$LANES" | devx_pr_review_all_lane_rows |
+    while IFS=: read -r ai preset state; do
+        [ -n "$ai" ] || continue
+        case "$state" in
         skip) continue ;;              # never dispatched -> NOTHING
         fail) printf 'unknown\n' ;;    # dispatched, could not run
         *)    printf '%s\n' "$BODIES" |
-                  devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
+                  devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
                   devx_pr_review_all_verdict ;;
         esac
     done | devx_pr_review_all_aggregate
@@ -339,6 +377,13 @@ directly only when you want the verdict *without* writing a label.
 | ≥1 lane, all `lgtm`/`concerns` | passed | `review-passed` |
 | ≥1 lane, any `unknown` (unparseable verdict, **or a lane that could not run**) | verdict not established | *(empty)* |
 | zero | nothing was checked | *(empty)* |
+
+`devx_pr_review_all_aggregate` itself is **unchanged** by #56 and needed no
+change: it already counted each stdin line as one independent lane, so an AI
+contributing `concerns` from one preset and `blocking` from another has always
+aggregated to `review-blocked`. What #56 added is a regression test pinning
+that, not new code — do not describe the aggregator as preset-aware, it never
+sees a preset at all.
 
 `우려있음`/`CONCERNS` is a **pass** — a non-blocking opinion, which `gh-pr:reply`
 still answers. `unknown` is not, because a lane whose output stopped parsing is
@@ -366,7 +411,13 @@ reads downstream as "not verified". Fail-closed, and visibly so.
 
 **Where the lane state lives.** Nothing on the PR records it, so Step 3 — the
 only step that watched the lanes — writes it down as it dispatches, one
-`<ai>:ok|skip|fail` per **line** (`$LANES` in the blocks below). Step
+`<ai>:<preset>:ok|skip|fail` per **line** (`$LANES` in the blocks below; the
+3rd field arrived with dEitY719/gh-verify-skills#56, and every reader takes it
+through `devx_pr_review_all_lane_rows` rather than splitting it by hand).
+`<preset>` is what makes the row identify a *lane* rather than an *AI*: without
+it, `opencode:default` and `opencode:thorough` collapse into one row and the
+second lane's verdict is silently lost — the same failure the marker's preset
+field prevents one level down. Step
 3.5 walks that list; it never re-derives the outcomes, because they are not
 re-derivable. This is deliberately a shell variable inside one skill run and
 not a file or a PR marker: the two steps are the same run by construction, so
@@ -390,14 +441,14 @@ owns this. Build the verdict stream and pipe it in — do **not** stage the
 verdicts in a variable and re-expand it (same zsh rule as the section above):
 
 ```sh
-printf '%s\n' "$LANES" | while IFS= read -r spec; do   # one <ai>:<state> per line
-    [ -n "$spec" ] || continue
-    ai=${spec%%:*}
-    case "${spec#*:}" in
+printf '%s\n' "$LANES" | devx_pr_review_all_lane_rows |
+while IFS=: read -r ai preset state; do   # one <ai>:<preset>:<state> per line
+    [ -n "$ai" ] || continue
+    case "$state" in
     skip) continue ;;                   # never dispatched -> NOTHING
     fail) printf 'unknown\n' ;;         # dispatched, could not run
     *)    printf '%s\n' "$BODIES" |
-              devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" |
+              devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
               devx_pr_review_all_verdict ;;
     esac
 done | devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"

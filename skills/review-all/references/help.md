@@ -1,8 +1,9 @@
 # gh-verify:review-all — Help
 
 Run a `/simplify` auto-fix pass first, then fan out **every available reviewer**
-on one PR in parallel — `agy` ∥ `codex` ∥ `opencode` ∥ `hermes` second opinions
-— then run a reply pass over the resulting review comments. A
+on one PR in parallel — `agy` ∥ `codex` ∥ `opencode` ∥ `hermes` second opinions,
+or any `<ai>:<preset>` set `--lanes` names — then run a reply pass over the
+resulting review comments. A
 composition skill: it
 orchestrates several reviewers plus a reply, unlike `gh-pr:review` (a single
 external AI, one aggregate comment). It submits **no decision** (approve /
@@ -21,7 +22,8 @@ request-changes) — that is `gh-pr:approve`.
 |------|---------|-------------|
 | `--defer-reply M` / `--defer-reply=M` | off (inline) | Schedule `/gh-pr:reply` M **minutes** later via `session:schedule` instead of replying inline. |
 | `--no-reply` | off | Skip the reply step entirely. |
-| `--force-review` | off | Bypass the duplicate-review guard and re-run every reviewer lane (agy/codex/opencode/hermes) even if the current head sha was already reviewed. Does not affect `/simplify`, which runs first regardless of this flag whenever it is dispatched at all (a dirty tree gives `simplify:skip`). |
+| `--lanes L` / `--lanes=L` | `agy:default,codex:default,opencode:default,hermes:default` | Comma-separated `<ai>:<preset>` lanes to fan out, one Agent each. The same AI may appear under several presets — `opencode:default,opencode:thorough` is two independent lanes, each with its own marker, its own dedup entry and its own verdict (dEitY719/gh-verify-skills#56). Each side is one `[A-Za-z0-9_-]` token; validation is shape-only, so the authoritative AI and preset lists stay in `gh-pr:review`'s `--ai` / `--review`. A Korean preset alias (`꼼꼼`) is rejected — `--review` would normalize it to `thorough` and post a marker this skill could never find again. An empty, colon-less or repeated entry exits 2. |
+| `--force-review` | off | Bypass the duplicate-review guard and re-run every `--lanes` lane even if the current head sha was already reviewed. Does not affect `/simplify`, which runs first regardless of this flag whenever it is dispatched at all (a dirty tree gives `simplify:skip`). |
 | `-h` / `--help` / `help` | — | Print this help and stop. |
 
 `--defer-reply` and `--no-reply` together → `--no-reply` wins (reply skipped).
@@ -33,11 +35,13 @@ request-changes) — that is `gh-pr:approve`.
 - `/gh-verify:review-all 99 --defer-reply 8` — review now, schedule the reply 8 min later
 - `/gh-verify:review-all 99 --no-reply` — review only; skip the reply pass
 - `/gh-verify:review-all 99 --force-review` — force every lane to re-run even if this head was already reviewed
+- `/gh-verify:review-all 99 --lanes "opencode:default,opencode:thorough,hermes:default,hermes:performance"` — two
+  presets each for the two internal CLIs; four independent lanes, four comments, four verdicts
 - `/gh-verify:review-all -h` / `--help` / `help` — print this help
 
 ## What the skill does
 
-1. Parse args via `devx_pr_review_all_parse`; record `START_TS`.
+1. Parse args via `devx_pr_review_all_parse`; record `START_TS` and the resolved `lanes` list.
 2. Pre-flight: PR must be `OPEN` and non-draft, `gh auth` must be live, and
    check out the PR head branch if not already on it (so `/simplify` acts on
    the right tree).
@@ -50,14 +54,15 @@ request-changes) — that is `gh-pr:approve`.
    author. **If that push fails, the run stops here** — no reviewer lane is
    dispatched, since one would review a tree that no longer matches the remote
    head (codex, PR #28 BLOCKER). Spec: `references/simplify-lane.md`.
-4. Reviewer fan-out — first skip any lane that already posted a review for the
-   PR's current head sha (the duplicate-review guard, dEitY719/dotfiles#1613;
+4. Reviewer fan-out — one lane per `<ai>:<preset>` in `--lanes`. First skip any
+   lane that already posted a review for the PR's current head sha **under that
+   preset** (the duplicate-review guard, dEitY719/dotfiles#1613;
    `--force-review` bypasses it), then dispatch the remaining lanes as Agent
-   subagents **in one turn**. agy/codex/opencode/hermes delegate to
-   `gh-pr:review --ai <name>` (streams findings + posts a PR comment), run
-   fully in parallel and are **comment-only**. opencode and hermes run only on
-   internal PCs. Each lane is soft-fail, ending `OK`, `SKIP` (never dispatched)
-   or `FAIL` (dispatched, exited non-zero).
+   subagents **in one turn**. Each delegates to
+   `gh-pr:review --ai <ai> --review <preset>` (streams findings + posts a PR
+   comment), runs fully in parallel and is **comment-only**. opencode and
+   hermes run only on internal PCs. Each lane is soft-fail, ending `OK`, `SKIP`
+   (never dispatched) or `FAIL` (dispatched, exited non-zero).
 5. Aggregate the lanes' closing verdict lines into one merge-gate label —
    `review-blocked` if any lane blocked, no label at all otherwise. A `FAIL`ed
    lane counts as an unestablished verdict, so a PR that lost a reviewer is
@@ -99,7 +104,7 @@ request-changes) — that is `gh-pr:approve`.
 |------|-------|
 | 0 | Review gate ran and the reply step completed / was scheduled / was skipped. |
 | 1 | PR not `OPEN`/non-draft, or `gh` not authenticated. |
-| 2 | Argument error: missing `<PR#>`, non-integer `<PR#>`, unknown flag, or bad `--defer-reply` value. |
+| 2 | Argument error: missing `<PR#>`, non-integer `<PR#>`, unknown flag, bad `--defer-reply` value, or a `--lanes` list that is empty, has an empty/colon-less/multi-colon entry, carries a non-`[A-Za-z0-9_-]` token, or repeats a lane. |
 
 ## Good vs. bad invocation
 
@@ -107,3 +112,6 @@ request-changes) — that is `gh-pr:approve`.
 - **Good**: `/gh-verify:review-all 99 --defer-reply 8` — issue-flow-style deferred reply.
 - **Bad**: `/gh-verify:review-all` — exits 2 (missing `<PR#>`).
 - **Bad**: `/gh-verify:review-all abc` — exits 2 (PR# must be a positive integer).
+- **Bad**: `/gh-verify:review-all 99 --lanes "opencode:default,opencode:default"` — exits 2 (repeated lane; the
+  second copy would only be skipped by the duplicate-review guard, silently dispatching fewer lanes than asked).
+- **Bad**: `/gh-verify:review-all 99 --lanes "opencode"` — exits 2 (an entry must be `<ai>:<preset>`).

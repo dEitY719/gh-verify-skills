@@ -84,11 +84,15 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
 - **Description budget.** CI sums every skill description and fails past 5,440
   characters — Codex's context budget. Keep new descriptions tight.
 - **`review-all`'s parallel fan-out is behaviour, not formatting.** Step 3
-  dispatches the four **reviewer** lanes — agy, codex, opencode, hermes —
-  **in one turn**, and Step 3.5 aggregates their verdicts only after every lane
-  has returned. The parallelism is load-bearing (dEitY719/dotfiles#1613,
-  dEitY719/dotfiles#1636, PR dEitY719/dotfiles#1598); a rewrite that serialises
-  those four lanes changes what the merge gate certifies.
+  dispatches every **reviewer** lane `--lanes` resolves to — by default the
+  four `agy:default`, `codex:default`, `opencode:default`, `hermes:default`
+  (dEitY719/gh-verify-skills#56) — **in one turn**, and Step 3.5 aggregates
+  their verdicts only after every lane has returned. The parallelism is
+  load-bearing (dEitY719/dotfiles#1613, dEitY719/dotfiles#1636, PR
+  dEitY719/dotfiles#1598); a rewrite that serialises those lanes changes what
+  the merge gate certifies. Two presets of one AI are two independent lanes,
+  not one lane racing itself: that is what the `[:<preset>]` marker field and
+  the preset-aware dedup guard exist to keep true.
 - **`/simplify` is not one of them, and must never be dispatched beside them**
   (dEitY719/gh-verify-skills#18). It is the only lane that writes to the
   working tree, so it runs alone in Step 2.5 — before the fan-out, on a tree

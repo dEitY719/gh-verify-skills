@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/herdr_agent_lookup.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-22T12:50Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/herdr_agent_lookup.sh
 # SSOT for "is a herdr agent sitting on this worktree?" (issue #1569).
 #
@@ -9,11 +9,11 @@
 # hand-copied answer:
 #
 #   shell-common/tools/custom/issue_watcher_cron.sh        _iw_live_agents
-#   claude/skills/gh-pr-post-merge-verify/references/
-#       dispatch.sh.md                                     pmv_tab_for_cwd
-#   claude/skills/gh-pr-merge/references/
+#   dEitY719/gh-verify-skills  skills/post-merge-verify/
+#       references/dispatch.sh.md                          pmv_tab_for_cwd
+#   dEitY719/gh-pr-skills  skills/merge/references/
 #       herdr-tab-notify.sh.md                             an inline jq block
-#   claude/skills/gh-pr-merge-train/references/
+#   dEitY719/gh-pr-skills  skills/merge-train/references/
 #       train-loop.md                                      an inline jq block
 #
 # They had already drifted into three different predicates. The newest copy —

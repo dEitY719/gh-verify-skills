@@ -13,9 +13,26 @@ Exactly one line, `[OK]` / `[SKIP]` / `[WARN]`:
 ```
 
 - **Lane rows** come from `$LANES`, the record Step 3 wrote as it dispatched —
-  one `<ai>:ok|skip|fail` per line. `simplify:<value>` is `$SIMPLIFY` from Step
-  2.5 (`committed`, `skip`, ...); see `simplify-lane.md`.
-- **A `fail` lane is named `<ai>:FAIL(<reason>)`** — never `SKIP`, never
+  one `<ai>:<preset>:ok|skip|fail` per line since
+  dEitY719/gh-verify-skills#56. Pipe the variable through
+  `devx_pr_review_all_lane_rows` before rendering: it fills `preset=default`
+  into any 2-field row, so this file has exactly one row shape to read and
+  does not re-derive the compatibility rule. `simplify:<value>` is `$SIMPLIFY`
+  from Step 2.5 (`committed`, `skip`, ...); see `simplify-lane.md`.
+- **The rendering is this repo's, not the helper's.** `lane_rows` emits
+  lowercase `<ai>:<preset>:ok|skip|fail`; Step 6 upper-cases the state (and
+  expands a `fail` into `FAIL(<reason>)`) when it prints. Nothing in
+  `shell-common` renders this line.
+- **A `default` lane prints `<ai>:<STATE>`; any other preset prints
+  `<ai>:<preset>:<STATE>`** (#56). Same asymmetry, same reason, as the
+  `<!-- ai-review:<ai>[:<preset>]:<sha> -->` marker grammar one level down
+  (`review-verdict-label.md`): omitting `--lanes` must leave this line
+  byte-for-byte what it was, and `agy:default:OK` is not that. A run with
+  `--lanes "opencode:default,opencode:thorough"` therefore reads
+  `(opencode:OK opencode:thorough:OK simplify:committed)` — the preset field
+  appears exactly where it is the only thing telling two lanes apart, which is
+  the one place it carries information.
+- **A `fail` lane is named `<ai>[:<preset>]:FAIL(<reason>)`** — never `SKIP`, never
   omitted (dEitY719/gh-verify-skills#14). A lane that failed and a lane that was
   never available are different facts, and collapsing them is how a round
   reports coverage it never had. `review-verdict-label.md` → "Aggregating the

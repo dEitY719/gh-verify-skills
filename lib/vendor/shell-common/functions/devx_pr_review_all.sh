@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_review_all.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-09-22T12:50Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_review_all.sh
 # Pure arg parser for the devx:pr-review-all skill. Mirrors the
@@ -55,9 +55,26 @@ devx_pr_review_all_parse() {
     local _no_reply=0
     local _remote_set=0
     local _force_review=0
+    # The legacy four-lane fan-out, spelled out as `<ai>:<preset>` pairs
+    # (gh-verify-skills#56). Omitting --lanes must reproduce today's dispatch
+    # exactly, so this default IS the old behaviour, not an approximation.
+    local lanes="agy:default,codex:default,opencode:default,hermes:default"
+    local _lane_rest="" _lane_item="" _lane_ai="" _lane_preset="" _lane_seen=""
 
     while [ "$#" -gt 0 ]; do
         case "$1" in
+        --lanes)
+            [ "$#" -lt 2 ] && {
+                echo "missing value for --lanes" >&2
+                return 2
+            }
+            lanes="$2"
+            shift 2
+            ;;
+        --lanes=*)
+            lanes="${1#--lanes=}"
+            shift
+            ;;
         --defer-reply)
             [ "$#" -lt 2 ] && {
                 echo "missing value for --defer-reply" >&2
@@ -135,11 +152,96 @@ devx_pr_review_all_parse() {
         esac
     fi
 
+    # --lanes is validated by SHAPE only — `<ai>:<preset>`, one ASCII token
+    # each, no duplicates — and deliberately NOT against a list of known AI
+    # names or presets. Those two lists already live in gh_pr_review.sh
+    # (`--ai` / `--review`), which is the process that actually runs the lane
+    # and rejects an unknown value loudly; a second copy here could only drift
+    # out of sync with it and start refusing a reviewer the CLI supports.
+    #
+    # The ASCII-only charset is load-bearing, not cosmetic: `--review` accepts
+    # Korean aliases (꼼꼼 -> thorough) and NORMALIZES them, so a lane spelled
+    # `opencode:꼼꼼` would dispatch fine and then post an
+    # `<!-- ai-review:opencode:thorough:<sha> -->` marker that this skill's
+    # dedup guard and verdict harvester — both looking for `꼼꼼` — would never
+    # find. That is a silently lost lane, so the alias is refused up front and
+    # the canonical preset name is the only thing that reaches the wire format.
+    if [ -z "$lanes" ]; then
+        echo "--lanes must list at least one <ai>:<preset> lane" >&2
+        return 2
+    fi
+    # An empty entry — leading, trailing or doubled comma — is caught HERE
+    # rather than in the loop below, which walks entries by consuming up to
+    # the next comma and would simply never see a trailing empty one. A
+    # dropped entry is exactly the silent lane loss this validation exists to
+    # prevent.
+    case ",$lanes," in
+    *,,*)
+        echo "--lanes has an empty entry: '$lanes'" >&2
+        return 2
+        ;;
+    esac
+    _lane_rest="$lanes"
+    while [ -n "$_lane_rest" ]; do
+        case "$_lane_rest" in
+        *,*)
+            _lane_item="${_lane_rest%%,*}"
+            _lane_rest="${_lane_rest#*,}"
+            ;;
+        *)
+            _lane_item="$_lane_rest"
+            _lane_rest=""
+            ;;
+        esac
+        _lane_ai="${_lane_item%%:*}"
+        _lane_preset="${_lane_item#*:}"
+        # Exactly one colon: no colon at all is not a lane, and a second one
+        # would make `<preset>` carry a field the marker grammar has no slot
+        # for.
+        case "$_lane_item" in
+        *:*) ;;
+        *)
+            echo "--lanes entry must be <ai>:<preset>: '$_lane_item'" >&2
+            return 2
+            ;;
+        esac
+        case "$_lane_preset" in
+        *:*)
+            echo "--lanes entry must be <ai>:<preset>: '$_lane_item'" >&2
+            return 2
+            ;;
+        esac
+        case "$_lane_ai" in
+        '' | *[!A-Za-z0-9_-]*)
+            echo "--lanes AI name must be a non-empty [A-Za-z0-9_-] token: '$_lane_item'" >&2
+            return 2
+            ;;
+        esac
+        case "$_lane_preset" in
+        '' | *[!A-Za-z0-9_-]*)
+            echo "--lanes preset must be a non-empty [A-Za-z0-9_-] token: '$_lane_item'" >&2
+            return 2
+            ;;
+        esac
+        # A repeated lane is rejected rather than deduped: the second copy
+        # would be skipped by the #1613 duplicate-review guard after the first
+        # one posts, so accepting it would silently dispatch fewer lanes than
+        # the caller asked for.
+        case ",$_lane_seen," in
+        *",$_lane_item,"*)
+            echo "--lanes entry repeated: '$_lane_item'" >&2
+            return 2
+            ;;
+        esac
+        _lane_seen="$_lane_seen,$_lane_item"
+    done
+
     printf '%s\n' "pr=$pr"
     printf '%s\n' "remote=$remote"
     printf '%s\n' "reply_mode=$reply_mode"
     printf '%s\n' "reply_delay=$reply_delay"
     printf '%s\n' "force_review=$_force_review"
+    printf '%s\n' "lanes=$lanes"
     return 0
 }
 
@@ -363,7 +465,24 @@ _devx_pr_review_all_login_bodies() {
 # is made. The awk parser below is unchanged by the author check: it just
 # sees a login-scoped body stream instead of an everyone stream.
 #
-#   devx_pr_review_all_lane_block <ai> [<head-sha>] <expected-login>
+# <preset> (gh-verify-skills#56) is the 4th, OPTIONAL argument and defaults to
+# `default`. It is appended rather than spliced in after <ai> — where the
+# issue's sketch put it — so every existing 3-argument call site keeps working
+# unchanged, which is the backward-compatibility requirement itself.
+# `default` matches the UNCHANGED `<!-- ai-review:<ai>:<sha> -->` marker,
+# byte for byte; any other preset matches `<!-- ai-review:<ai>:<preset>:<sha> -->`.
+# That asymmetry is what lets a PR's existing comments keep resolving, and it
+# also means a `default` lane never harvests a `thorough` lane's block (the sha
+# sits in a different field), which is what makes two presets of the same AI
+# two independent lanes rather than one lane racing itself.
+#
+# The no-<head-sha> path is left exactly as loose as it always was — it still
+# prefix-matches `<ai>:` and so can pick up another preset's block. Every
+# caller that makes a freshness claim passes the sha (the guard below requires
+# it), and tightening the sha-less path would change what pre-#56 markers
+# resolve to, which is the one thing this change must not do.
+#
+#   devx_pr_review_all_lane_block <ai> [<head-sha>] <expected-login> [<preset>]
 devx_pr_review_all_lane_block() {
     # Only <ai> ($1) needs an upfront check. An empty/invalid <expected-login>
     # ($3) is already fail-closed inside `_devx_pr_review_all_login_bodies`
@@ -375,7 +494,7 @@ devx_pr_review_all_lane_block() {
         return 0
     fi
     _devx_pr_review_all_login_bodies "$3" |
-    awk -v ai="$1" -v sha="${2-}" '
+    awk -v ai="$1" -v sha="${2-}" -v preset="${4-}" '
         function tagof(line, pre, plen,   p, rest, e) {
             p = index(line, pre)
             if (p == 0) return ""
@@ -385,10 +504,16 @@ devx_pr_review_all_lane_block() {
             return substr(rest, 1, e - 1)
         }
         function wanted(t) {
-            if (sha != "") return (t == ai ":" sha)
-            return (t == ai || substr(t, 1, length(ai) + 1) == ai ":")
+            if (sha != "") return (t == lane ":" sha)
+            return (t == lane || substr(t, 1, length(lane) + 1) == lane ":")
         }
         BEGIN {
+            # The marker field the lane owns: `<ai>` for the default preset
+            # (unchanged wire format), `<ai>:<preset>` for any other. Every
+            # match below goes through this one string, so the grammar still
+            # has exactly one parser.
+            lane = ai
+            if (preset != "" && preset != "default") lane = ai ":" preset
             # `beg`/`fin`, not `open`/`close`: `close` is an awk built-in and
             # using it as a variable is a syntax error in POSIX awk.
             beg = "<!-- ai-review:"
@@ -453,16 +578,49 @@ devx_pr_review_all_lane_block() {
 # needless duplicate review costs budget, a wrongly skipped lane costs a
 # verdict.
 #
-#   devx_pr_review_all_already_reviewed <ai> <head-sha> <expected-login>
+# <preset> (gh-verify-skills#56) is optional and defaults to `default`, and is
+# threaded straight through to the harvester for the same "one parser" reason
+# this wrapper exists. Without it the SECOND preset of an AI would read the
+# FIRST preset's marker as its own evidence and skip itself forever — the same
+# AI could then never contribute more than one lane's verdict.
+#
+#   devx_pr_review_all_already_reviewed <ai> <head-sha> <expected-login> [<preset>]
 devx_pr_review_all_already_reviewed() {
-    local _ai="${1-}" _sha="${2-}" _login="${3-}" _block
+    local _ai="${1-}" _sha="${2-}" _login="${3-}" _preset="${4-}" _block
 
     [ -n "$_ai" ] || return 1
     [ -n "$_sha" ] || return 1
     [ -n "$_login" ] || return 1
 
-    _block=$(devx_pr_review_all_lane_block "$_ai" "$_sha" "$_login")
+    _block=$(devx_pr_review_all_lane_block "$_ai" "$_sha" "$_login" "$_preset")
     [ -n "$_block" ]
+}
+
+# `$LANES` row normalizer (gh-verify-skills#56). The skill accumulates one
+# `<ai>:<preset>:ok|skip|fail` row per dispatched lane and renders them into
+# its report line; rows written before #56 are 2-field `<ai>:ok|skip|fail`.
+#
+#   <rows on stdin> | devx_pr_review_all_lane_rows   -> 3-field rows
+#
+# A 2-field row is read as `preset=default` — the same compatibility rule the
+# marker grammar uses, expressed once here rather than re-derived by every
+# reader of the variable. Blank rows are dropped (a
+# skipped lane contributes no row); a row that is neither 2- nor 3-field is
+# passed through verbatim, so malformed input shows up in the report instead
+# of being silently reshaped into a plausible-looking lane.
+devx_pr_review_all_lane_rows() {
+    local _row
+
+    # `|| [ -n "$_row" ]` so a final row with no trailing newline still counts.
+    while IFS= read -r _row || [ -n "$_row" ]; do
+        [ -n "$_row" ] || continue
+        case "$_row" in
+        *:*:*) printf '%s\n' "$_row" ;;
+        *:*) printf '%s:default:%s\n' "${_row%%:*}" "${_row#*:}" ;;
+        *) printf '%s\n' "$_row" ;;
+        esac
+    done
+    return 0
 }
 
 # Delete one label from a PR, host-pinned and soft-fail. Internal: the two
@@ -807,6 +965,7 @@ for _dpra_selfcheck_fn in \
     devx_pr_review_all_aggregate \
     devx_pr_review_all_lane_block \
     devx_pr_review_all_already_reviewed \
+    devx_pr_review_all_lane_rows \
     devx_pr_review_all_write_label \
     devx_pr_review_all_report_write_result \
     devx_pr_review_all_apply_label; do
