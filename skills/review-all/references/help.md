@@ -92,8 +92,8 @@ request-changes) — that is `gh-pr:approve`.
   codex, and the closing `gh-pr:reply` pass cover the same ground here.
 - Hard-fail because a reviewer CLI is missing or errors — each lane is soft-fail.
 - **Hide** a lane that errored. A `FAIL`ed lane is named in the report as
-  `<ai>:FAIL(<reason>)` and blocks the verdict from being established
-  (dEitY719/gh-verify-skills#14).
+  `<ai>[:<preset>]:FAIL(<reason>)` and blocks the verdict from being
+  established (dEitY719/gh-verify-skills#14).
 - Run a bare `git commit` — an editor prompt would hang the non-interactive shell.
 - Schedule sub-minute delays — `session:schedule` is minutes-only; for tight
   ordering use the deterministic inline reply.

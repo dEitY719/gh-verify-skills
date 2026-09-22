@@ -79,20 +79,16 @@ would be skipped forever.
 ### The `<preset>` argument (dEitY719/gh-verify-skills#56)
 
 `<preset>` is the **4th and optional** argument, appended rather than spliced
-in after `<ai>` where the issue's sketch put it. That position is the
-backward-compatibility guarantee itself: every pre-#56 3-argument call site
-keeps working unchanged and reads as `preset=default`.
+in after `<ai>` where the issue's sketch put it — same position, same
+backward-compatibility reason, and the same marker grammar as
+`devx_pr_review_all_lane_block`'s own `<preset>` argument; see
+`review-verdict-label.md` → "The `<preset>` field" for why the grammar is
+asymmetric and how it keeps two presets of one AI as two independent lanes.
 
-Passing it is not optional for a `--lanes` run, and omitting it is the one way
-to break multi-preset fan-out. The guard's evidence is the marker, and
-`default` deliberately matches the unchanged `<!-- ai-review:<ai>:<sha> -->`
-form while any other preset matches `<!-- ai-review:<ai>:<preset>:<sha> -->`.
-Hand the `thorough` lane no preset and it reads the `default` lane's marker as
-its own evidence, skips itself, and keeps skipping itself forever — the same AI
-could then never contribute more than one lane's verdict, which is the whole
-feature. The sha sits in a different field of the two markers, so with the
-preset threaded through, two presets of one AI are two independent lanes rather
-than one lane racing itself.
+Passing it is not optional for a `--lanes` run: hand the `thorough` lane no
+preset here and it reads the `default` lane's marker as its own evidence,
+skips itself, and keeps skipping itself forever — the same AI could then never
+contribute more than one lane's verdict.
 
 A guard-skipped lane reports `[SKIP]`, but — unlike a lane skipped for a
 missing CLI — it still **must** contribute a verdict line to Step 3.5 (agy +
