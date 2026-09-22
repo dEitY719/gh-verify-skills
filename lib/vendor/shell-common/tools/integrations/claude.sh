@@ -11,11 +11,11 @@
 # upstream claude.sh (claude_yolo, account routing, ux_lib) is deliberately not
 # vendored — only the one function this plugin's gates read.
 #
-# `# Bridges:` is the sync tool's liveness check on the SSOT — the names
-# claude.sh itself must still define — not a list of what this stub re-exports.
-# _dotfiles_setup_mode moved upstream to shell-common/util/setup_mode_read.sh
-# (dEitY719/dotfiles#1810), so the name asserted here is _claude_resolve_account,
-# which claude.sh still defines and gh_pr_review.sh:311 recovers the same way.
+# `# Bridges:` names what the SSOT must still define, not what this stub
+# re-exports. _dotfiles_setup_mode moved upstream into
+# shell-common/util/setup_mode_read.sh (dEitY719/dotfiles#1810); the name
+# left to assert is _claude_resolve_account, which claude.sh still defines
+# and _gh_pr_review_resolve_claude_account recovers from it the same way.
 # Bridges: _claude_resolve_account
 
 # shellcheck source=/dev/null
