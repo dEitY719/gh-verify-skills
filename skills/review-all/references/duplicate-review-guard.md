@@ -55,23 +55,44 @@ BODIES=$(GH_HOST="$TARGET_HOST" gh api --paginate \
 ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"
 ```
 
-Then per lane, before dispatching its Agent:
+Then per lane, before dispatching its Agent. `$ai` and `$preset` are the two
+halves of that lane's `--lanes` entry:
 
 ```sh
 if [ "$force_review" != "1" ] &&
-    printf '%s\n' "$BODIES" | devx_pr_review_all_already_reviewed "$ai" "$head_sha" "$ME"; then
-    echo "[SKIP] $ai already reviewed head $head_sha — pass --force-review to re-run"
+    printf '%s\n' "$BODIES" |
+        devx_pr_review_all_already_reviewed "$ai" "$head_sha" "$ME" "$preset"; then
+    echo "[SKIP] $ai:$preset already reviewed head $head_sha — pass --force-review to re-run"
     continue
 fi
 ```
 
 `devx_pr_review_all_already_reviewed` is a thin wrapper over
-`devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"`: rc 0 when that lane has a
-complete `<!-- ai-review:<ai>:<head-sha> -->` block, rc 1 otherwise. One parser
+`devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset"`: rc 0 when that
+lane has a complete `<!-- ai-review:<ai>[:<preset>]:<head-sha> -->` block, rc 1
+otherwise. One parser
 for the marker grammar, so the guard and Step 3.5's verdict harvester can never
 disagree about what "already reviewed" means. The `<head-sha>` is mandatory
 here — without it an older, untagged block would match and every re-review
 would be skipped forever.
+
+### The `<preset>` argument (dEitY719/gh-verify-skills#56)
+
+`<preset>` is the **4th and optional** argument, appended rather than spliced
+in after `<ai>` where the issue's sketch put it. That position is the
+backward-compatibility guarantee itself: every pre-#56 3-argument call site
+keeps working unchanged and reads as `preset=default`.
+
+Passing it is not optional for a `--lanes` run, and omitting it is the one way
+to break multi-preset fan-out. The guard's evidence is the marker, and
+`default` deliberately matches the unchanged `<!-- ai-review:<ai>:<sha> -->`
+form while any other preset matches `<!-- ai-review:<ai>:<preset>:<sha> -->`.
+Hand the `thorough` lane no preset and it reads the `default` lane's marker as
+its own evidence, skips itself, and keeps skipping itself forever — the same AI
+could then never contribute more than one lane's verdict, which is the whole
+feature. The sha sits in a different field of the two markers, so with the
+preset threaded through, two presets of one AI are two independent lanes rather
+than one lane racing itself.
 
 A guard-skipped lane reports `[SKIP]`, but — unlike a lane skipped for a
 missing CLI — it still **must** contribute a verdict line to Step 3.5 (agy +
@@ -81,7 +102,7 @@ a guard-skipped lane from the aggregation stream would let a partial re-run —
 say, only one lane force-re-reviewed while the rest sit guard-skipped — silently
 overwrite an existing `review-blocked` verdict with `review-passed`, because
 the aggregator only ever sees the lanes actually fed to it. Since
-`devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME"` reads whatever marker
+`devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset"` reads whatever marker
 already exists in `$BODIES` from that login, regardless of which run posted it,
 feeding a guard-skipped
 lane through the same harvester the fresh lanes use costs nothing extra — the

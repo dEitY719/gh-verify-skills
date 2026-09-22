@@ -31,7 +31,8 @@ Arg #1 `-h` / `--help` / `help` → output `references/help.md` verbatim and sto
 ## Step 1: Parse Args
 
 Paste `references/shell-common-source.md`'s loader block, then `devx_pr_review_all_parse "$@"`. On help follow Help;
-on exit 2 print stderr and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`, `START_TS`.
+on exit 2 print stderr and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`, `lanes`,
+`START_TS`.
 
 ## Step 2: Pre-flight
 
@@ -48,15 +49,16 @@ orchestrator — never the agent — commits and pushes. **A failed `git push` s
 
 ## Step 3: Reviewer fan-out (dispatch all reviewer lanes in ONE turn)
 
-Run `references/duplicate-review-guard.md` first (dEitY719/dotfiles#1613), then dispatch the four lanes **together in
-a single turn**; all are comment-only and `/simplify` is never dispatched here (#18). Record `$LANES` as you dispatch
-— one `<ai>:ok|skip|fail` per **line**, never space-separated (`references/review-verdict-label.md`).
+Run `references/duplicate-review-guard.md` first (dEitY719/dotfiles#1613), then dispatch **every** `$lanes` entry
+**together in a single turn** — one Agent per `<ai>:<preset>`, so two presets of one AI are two independent lanes
+(#56). All are comment-only and `/simplify` is never dispatched here (#18). Record `$LANES` as you dispatch — one
+`<ai>:<preset>:ok|skip|fail` per **line**, never space-separated (`references/review-verdict-label.md`).
 
-- **agy**, **codex** — CLI present → an Agent runs `Skill(gh-pr:review, "--ai <agy|codex> <pr> <remote>")`; absent →
-  SKIP, non-zero exit → FAIL.
-- **opencode**, **hermes** — the same with `--ai opencode` / `--ai hermes`, and each also requires
-  `_dotfiles_setup_mode` = `internal` (loader: `references/shell-common-source.md`, pasted **inside the same Bash call
-  that gates on it**); absent or non-internal → SKIP, non-zero exit → FAIL.
+- Per lane: CLI present → an Agent runs `Skill(gh-pr:review, "--ai <ai> <pr> <remote> --review <preset>")`; absent →
+  SKIP, non-zero exit → FAIL. Omitting `--lanes` gives today's four: `agy`, `codex`, `opencode`, `hermes` `:default`.
+- An **opencode** or **hermes** lane additionally requires `_dotfiles_setup_mode` = `internal` (loader:
+  `references/shell-common-source.md`, pasted **inside the same Bash call that gates on it**); absent or
+  non-internal → SKIP, non-zero exit → FAIL.
 
 ## Step 3.4: Orphan sweep (after every lane returns; soft-fail, WARN only)
 
