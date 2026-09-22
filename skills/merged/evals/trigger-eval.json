@@ -54,7 +54,7 @@
   {
     "query": "http://localhost:3001 에 앱이 돌고 있는데 그게 이번 머지 커밋을 서빙하는 게 맞는지부터 짚고, PR 주장대로 동작하는지까지 확인하는 절차로 가줘",
     "should_trigger": false,
-    "note": "cross-pair: should_trigger:true for gh-verify:live"
+    "note": "cross-pair: should_trigger:true for gh-verify:live. Port is 3001 here and 3000 in live's copy on purpose (#54): the two files must not share a URL, or CROSS_SKILL_SHARED_URL fires. The port is not what the trigger turns on - a running app plus a merge commit is."
   },
   {
     "query": "the app is already running, dont restart it. click through the screens this pr touched and tell me which of its claims actually hold",

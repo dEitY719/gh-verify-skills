@@ -60,7 +60,7 @@ full` 로 한 번 더 돌릴지 판단하게 한다.
 # locale 축은 로케일이 실제로 설치돼 있을 때만 의미가 있다
 locale -a 2>/dev/null | grep -qi '^ko_KR\.utf-\?8$' || axis_unverified locale "ko_KR.UTF-8 not installed"
 # eol 축은 클론을 건드리지 않고 사본에서 돈다
-cp -r "$CLONE" "$CLONE.eol" && find "$CLONE.eol" -name '*.md' -print0 | xargs -0 sed -i 's/$/\r/'
+cp -r "$CLONE" "$CLONE.eol" && find "$CLONE.eol" -name '*.md' -print0 | xargs -0 -r sed -i 's/$/\r/'
 ```
 
 ## 3. 결과 비교는 정규화해서 한다
