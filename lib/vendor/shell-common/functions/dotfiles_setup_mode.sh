@@ -1,12 +1,13 @@
 #!/bin/sh
 # VENDORED — do not edit here.
-# SSOT: dEitY719/dotfiles shell-common/tools/integrations/claude.sh (_dotfiles_setup_mode)
+# SSOT: dEitY719/dotfiles shell-common/util/setup_mode_read.sh (_dotfiles_setup_mode)
 # Synced 2026-09-05T02:32Z by scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/dotfiles_setup_mode.sh
 #
-# Extracted, not copied whole: upstream defines _dotfiles_setup_mode inside
-# claude.sh, a 1500-line interactive integration file the rest of which this
-# plugin does not need. Only this function is load-bearing here —
+# Extracted, not copied whole: upstream keeps _dotfiles_setup_mode in
+# shell-common/util/setup_mode_read.sh (moved there out of the 1500-line
+# claude.sh by dEitY719/dotfiles#1810), alongside that file's own header and
+# notes this plugin does not need. Only this function is load-bearing here —
 # gh-verify:review-all Step 3 gates its opencode and hermes lanes on it, and
 # lib/vendor/shell-common/functions/gh_pr_review.sh's
 # _gh_pr_review_require_internal_cli recovers through it. Undefined, both

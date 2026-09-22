@@ -145,6 +145,12 @@ one, and a vendored copy inherits the code but not the config. CI's emoji gate i
 prefixes in `allow-emoji-paths` for exactly those reasons. Do not widen the
 allowlist further; do not add emoji anywhere else.
 
+The one hand edit that tree does take is a `# SSOT:` / `# Bridges:` banner
+repoint when upstream moves a function: the sync script only refreshes banners
+files already carry and never writes one, so what this repo vendors and from
+where is this repo's own declaration to keep true (#58). Executable content
+below the banner still comes from the sync script, never from here.
+
 ## Version bumps
 
 The version appears in seven manifests: `.claude-plugin/marketplace.json`,
