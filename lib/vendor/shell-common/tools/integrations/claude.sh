@@ -10,7 +10,13 @@
 # CLI reports the misleading "~/.dotfiles-setup-mode != internal". The rest of
 # upstream claude.sh (claude_yolo, account routing, ux_lib) is deliberately not
 # vendored — only the one function this plugin's gates read.
-# Bridges: _dotfiles_setup_mode
+#
+# `# Bridges:` is the sync tool's liveness check on the SSOT — the names
+# claude.sh itself must still define — not a list of what this stub re-exports.
+# _dotfiles_setup_mode moved upstream to shell-common/util/setup_mode_read.sh
+# (dEitY719/dotfiles#1810), so the name asserted here is _claude_resolve_account,
+# which claude.sh still defines and gh_pr_review.sh:311 recovers the same way.
+# Bridges: _claude_resolve_account
 
 # shellcheck source=/dev/null
 . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/dotfiles_setup_mode.sh"
