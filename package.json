@@ -1,6 +1,6 @@
 {
   "name": "gh-verify-skills",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Skills that gate a PR — reviewer fan-out, live and fresh-clone verification, pre-merge audit, post-merge dispatch",
   "type": "module",
   "main": ".opencode/plugins/gh-verify.js",
