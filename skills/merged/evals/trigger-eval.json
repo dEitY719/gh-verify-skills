@@ -52,7 +52,7 @@
     "note": "cross-pair: should_trigger:true for gh-verify:live"
   },
   {
-    "query": "http://localhost:3000 에 앱이 돌고 있는데 그게 이번 머지 커밋을 서빙하는 게 맞는지부터 짚고, PR 주장대로 동작하는지까지 확인하는 절차로 가줘",
+    "query": "http://localhost:3001 에 앱이 돌고 있는데 그게 이번 머지 커밋을 서빙하는 게 맞는지부터 짚고, PR 주장대로 동작하는지까지 확인하는 절차로 가줘",
     "should_trigger": false,
     "note": "cross-pair: should_trigger:true for gh-verify:live"
   },
