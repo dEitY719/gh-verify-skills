@@ -26,7 +26,8 @@ metadata:
 
 **올바른 체크아웃을 서빙 중인 앱에 붙어 · PR/이슈가 지정한 화면을 몰아 보며 · 기계 판독 가능한 단언으로 확인하고 · 자기 반증에서 살아남은 발견만 대상 레포의 신규 이슈로 넘긴다.** 막으려는 실패
 클래스는 **화면은 멀쩡히 뜨는데 검증이 무효인 상태**(잘못된 체크아웃 · no-op 전환 · 오버레이에 가린 대상 · 일부 분기만 보고 전부 봤다는 착각) 하나다. 머지 직후가 주 용도지만 **미머지 PR
-브랜치에도 쓴다**. 이슈 본문·라벨·메트릭은 `gh-issue:create` 가 SSOT — 이 스킬은 **게이트만** 책임진다. 실측 출처: `references/provenance.md` · 6줄 공통
+브랜치에도 쓴다**. 이슈 본문·라벨·메트릭은 `gh-issue:issue-create` 가 SSOT — 이 스킬은 **게이트만** 책임진다. 실측 출처: `references/provenance.md` · 6줄
+공통
 계약(유일한 사본): `references/verify-contract.md`.
 
 ## Help
@@ -76,7 +77,8 @@ fetch(`$PR_JSON`, Step 4 까지 재사용)해 미머지 PR 일 때만 폴백한�
 ## Step 7: Findings → issues (`references/findings.md`)
 
 후보 1건마다 **자기 반증 3가설**(하네스 오류 · 데이터 상태 · 의도된 동작)을 먼저 세워 반증하고, 그다음 게이트 5개를 건다. 통과한 것만 발견 1건 = 이슈 1건으로
-`Skill(gh-issue:create, "--assignee @me")` 에 넘기되 생성 직전 **대상 레포를 출력**한다. 회귀와 기존 결함을 갈라 적고, PR 의 근거가 반증됐으면 그 정정도 수정안에
+`Skill(gh-issue:issue-create, "--assignee @me")` 에 넘기되 생성 직전 **대상 레포를 출력**한다. 회귀와 기존 결함을 갈라 적고, PR 의 근거가 반증됐으면 그 정정도
+수정안에
 포함한다. `issue_mode` 가 `dry-run` 이면 본문만 출력, `none` 이면 초안조차 쓰지 않는다.
 
 ## Step 8-9: Report, then post it (`references/report-template.md` · `references/pr-comment.md`)
@@ -93,5 +95,6 @@ Step 8 은 그 양식으로 한 블록을 출력한다 — `Checks:` 만 적지 
 
 ## Related Skills
 
-자매 스킬 `gh-verify:merged` — 같은 머지 후 슬롯, 다른 증명 대상(live=서빙 체크아웃 신원, merged=신선한 클론 신원). 발견 등록은 `gh-issue:create`, 머지 **전**
+자매 스킬 `gh-verify:merged` — 같은 머지 후 슬롯, 다른 증명 대상(live=서빙 체크아웃 신원, merged=신선한 클론 신원). 발견 등록은 `gh-issue:issue-create`,
+머지 **전**
 정적 게이트는 `gh-verify:review-all`. 전체 표: `references/help.md`.

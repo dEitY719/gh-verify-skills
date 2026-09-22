@@ -26,7 +26,7 @@ metadata:
 **머지 커밋의 신선한 클론 안에서만 · PR·이슈의 AC 를 · 기계 판독 가능한 단언으로 확인하고 · 자기 반증에서 살아남은 발견만 이슈로 넘긴다** — 사용자의 작업 트리와 **독립적으로** 깨끗한
 체크아웃이 주장대로 동작함을 증명한다. 막으려는 실패 클래스는 **작업 worktree 에서는 초록인데 다른 모든 클론과 CI 에서는 그 검사가 존재하지도 않는 상태** 하나다. 대상은 **띄울 앱이 없는
 레포**(shell 스크립트 · CLI · 라이브러리) — 머지 후 점검이 더러운 worktree 에서 돌아 untracked-artifact 버그를 숨기는 곳이다. 두 스킬의 6줄 공통 계약은
-`../live/references/verify-contract.md` — 이슈 본문·라벨·메트릭은 `gh-issue:create` 가 SSOT.
+`../live/references/verify-contract.md` — 이슈 본문·라벨·메트릭은 `gh-issue:issue-create` 가 SSOT.
 
 ## Help
 
@@ -71,7 +71,8 @@ locale·셸·줄 끝 축은 diff 에서 유도한 **후보**로 리포트에 적
 ## Step 7: 자기 반증 후 이슈화 (F-8)
 
 후보 1건마다 반증 가설 4종(하네스 오류 · 환경 특수성 · 의도된 동작 · PR 과 무관한 기존 결함)을 먼저 세워 반증하고, 살아남은 것만 발견 1건 = 이슈 1건으로
-`Skill(gh-issue:create, "--assignee @me")` 에 넘기되 **생성 직전 대상 레포를 출력**한다. `--dry-run` 은 본문만, `--no-issue` 는 초안도 안 쓰며, 생성
+`Skill(gh-issue:issue-create, "--assignee @me")` 에 넘기되 **생성 직전 대상 레포를 출력**한다. `--dry-run` 은 본문만, `--no-issue` 는 초안도 안
+쓰며, 생성
 실패는 본문을 stdout 에 남기고 `[WARN]`.
 
 ## Step 8: 리포트와 PR 코멘트 게시 (`references/report-template.md`)
@@ -89,5 +90,6 @@ locale·셸·줄 끝 축은 diff 에서 유도한 **후보**로 리포트에 적
 
 ## Related Skills
 
-자매 스킬 `gh-verify:live` — 같은 머지 후 슬롯, 다른 증명 대상(merged=신선한 클론 신원, live=서빙 체크아웃 신원). 발견 등록은 `gh-issue:create`, 테스트 러너 탐지
+자매 스킬 `gh-verify:live` — 같은 머지 후 슬롯, 다른 증명 대상(merged=신선한 클론 신원, live=서빙 체크아웃 신원). 발견 등록은 `gh-issue:issue-create`, 테스트
+러너 탐지
 사다리는 `gh-issue:implement`, 머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표와 플래그: `references/help.md`.

@@ -98,7 +98,7 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
   codex BLOCKER fix. Moving it back into Step 3's turn reopens all four:
   `skills/review-all/references/simplify-lane.md`.
 - **Honour each skill's safety contract.** `live` and `merged` are read-only on
-  source: findings leave as new issues via `gh-issue:create`, never as edits.
+  source: findings leave as new issues via `gh-issue:issue-create`, never as edits.
   `exception-merge-checklist` mutates only as far as `git add` under
   `--auto-fix` and never commits. `post-merge-verify` never writes to GitHub.
   `review-all` never approves.
@@ -110,7 +110,7 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
 ## References to skills that live elsewhere
 
 These five skills name skills that are **not** in this repo — `gh-pr:reply`,
-`gh-pr:merge`, `gh-pr:merge-train`, `gh-issue:create`, `gh-flow:issue`,
+`gh-pr:merge`, `gh-pr:merge-train`, `gh-issue:issue-create`, `gh-flow:issue`,
 `gh-pr:review`, `gh-setup:label-bootstrap`, `/simplify`, `/code-review`. All
 sixteen sibling repos exist, so **write each one in its own repo's namespace**
 — the spelling above, taken from that repo's `.claude-plugin/plugin.json`
