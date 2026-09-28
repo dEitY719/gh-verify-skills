@@ -10,7 +10,7 @@ SKILL.md **Step 3** 을 뒷받침한다. 이 절의 두 단언은 **하드 정�
 
 - **체크아웃은 반드시 `mergeCommit.oid`** 다. `headRefOid` 를 쓰지 않는다 — rebase/squash
   머지는 head sha 를 base 에 남기지 않으므로 **정상 머지된 PR 에서 100% 오정지**한다
-  (실측 대조표: `../live/references/discovery.md` §2-1).
+  (실측 대조표: `gh-verify:live` 의 `references/discovery.md` §2-1).
 - 클론 소스는 **로컬 레포 루트여도 된다** (`git clone <repo-root>`) — 빠르고 네트워크가 없어도
   된다. 다만 로컬이 그 커밋을 아직 모를 수 있으므로, 없으면 **클론 안에서** 원격을 붙여
   fetch 한다. **사용자 레포로 fetch 하지 않는다** (NF-1 — 남의 refs/objects 를 늘리지 않는다).

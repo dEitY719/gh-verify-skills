@@ -75,4 +75,4 @@ F-2/F-3 단언이 막으면 **측정하지 않고** 정지한다. 무엇이 왜 
 ## PR 코멘트
 
 이 블록을 **한 글자도 바꾸지 않고** 대상 PR 코멘트로 옮긴다 (`[OK]`/`[WARN]` 만).
-절차는 `../live/references/pr-comment.md` 와 동일하다.
+절차는 `gh-verify:live` 의 `references/pr-comment.md` 와 동일하다.
