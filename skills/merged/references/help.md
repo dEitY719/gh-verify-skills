@@ -105,7 +105,7 @@ remote 만 지정**하는 호출이 가능하다. `12a` 는 숫자로 시작하�
 
 | 스킬 | 관계 |
 |---|---|
-| `gh-verify:live` | **sister skill**. 같은 머지 후 슬롯, 다른 증명 대상(서빙 체크아웃 동일성). 공통 계약은 `../live/references/verify-contract.md` 한 파일 |
+| `gh-verify:live` | **sister skill**. 같은 머지 후 슬롯, 다른 증명 대상(서빙 체크아웃 동일성). 공통 계약은 `gh-verify:live` 의 `references/verify-contract.md` 한 파일 |
 | `gh-issue:issue-create` | 발견 1건마다 호출. 본문 골격 · 라벨 · ai-metrics 의 SSOT |
 | `gh-issue:implement` | 테스트 러너 탐지 사다리의 출처. 여기서 그대로 재사용한다 |
 | `gh-verify:review-all` | 머지 **전** 정적 리뷰 게이트. 이쪽은 머지 **후** 재현성 검증 |

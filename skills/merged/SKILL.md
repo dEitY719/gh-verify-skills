@@ -26,7 +26,7 @@ metadata:
 **머지 커밋의 신선한 클론 안에서만 · PR·이슈의 AC 를 · 기계 판독 가능한 단언으로 확인하고 · 자기 반증에서 살아남은 발견만 이슈로 넘긴다** — 사용자의 작업 트리와 **독립적으로** 깨끗한
 체크아웃이 주장대로 동작함을 증명한다. 막으려는 실패 클래스는 **작업 worktree 에서는 초록인데 다른 모든 클론과 CI 에서는 그 검사가 존재하지도 않는 상태** 하나다. 대상은 **띄울 앱이 없는
 레포**(shell 스크립트 · CLI · 라이브러리) — 머지 후 점검이 더러운 worktree 에서 돌아 untracked-artifact 버그를 숨기는 곳이다. 두 스킬의 6줄 공통 계약은
-`../live/references/verify-contract.md` — 이슈 본문·라벨·메트릭은 `gh-issue:issue-create` 가 SSOT.
+`gh-verify:live` 의 `references/verify-contract.md` — 이슈 본문·라벨·메트릭은 `gh-issue:issue-create` 가 SSOT.
 
 ## Help
 
@@ -42,13 +42,13 @@ clone.
 
 `DOTFILES_FORCE_INIT=1` 을 export 한 뒤 `gh_pr_review.sh` 를 source 해 `_gh_pr_review_resolve_target_repo` ·
 `_gh_pr_review_resolve_pr_number` 를 쓴다 — **그 변수 없이 source 하면 인터랙티브 가드에 막혀 함수가 정의되지 않는다** (복사할 블록:
-`../live/references/discovery.md` §3). `gh pr view` 로 `state` `mergedAt` `mergeCommit` `baseRefName` `body` `files`
-`closingIssuesReferences` 를 **1회만** fetch 해 Step 6 까지 재사용하고, `state != MERGED` 또는 `.mergeCommit.oid == null` 이면
-**정지**한다.
+`gh-verify:live` 의 `references/discovery.md` §3). `gh pr view` 로 `state` `mergedAt` `mergeCommit` `baseRefName`
+`body` `files` `closingIssuesReferences` 를 **1회만** fetch 해 Step 6 까지 재사용하고, `state != MERGED` 또는
+`.mergeCommit.oid == null` 이면 **정지**한다.
 
 ## Step 3: 검증 전 단언 — 신선한 클론과 그 무결성 (`references/clone-gate.md`)
 
-`mergeCommit.oid`(기준은 `../live/references/verify-contract.md` 2번) 를 체크아웃한 클론을 임시 디렉터리에 만들고, 이후 **모든 실행은 그 클론 안에서만**
+`mergeCommit.oid`(기준은 공통 계약 2번) 를 체크아웃한 클론을 임시 디렉터리에 만들고, 이후 **모든 실행은 그 클론 안에서만**
 한다. 클론 실패 · HEAD 불일치 · `git status --porcelain` 이 비어 있지 않음은 **측정하지 않고 정지**다. 이어서 클론과 작업 트리에서 **실제로 실행되는 테스트 케이스의
 이름·개수를 비교**해 한쪽에만 있는 케이스를 발견으로 올린다 — 이 스킬의 존재 이유다.
 
@@ -79,7 +79,7 @@ locale·셸·줄 끝 축은 diff 에서 유도한 **후보**로 리포트에 적
 
 `[OK]`/`[WARN]`/`[FAIL]` 한 블록 — `Clone:` `Claims:` `Matrix:` `Unproven:` `Unverified:` `Rejected:` `Findings:` 가 모두
 있어야 하고 마지막 줄은 항상 `Next:` 다. 게시는 live 와 **같은 규칙**이고 경로도 `_gh_pr_review_post_comment` 하나다 — 게시 여부 표와 절차는
-`../live/references/pr-comment.md` 가 SSOT.
+`gh-verify:live` 의 `references/pr-comment.md` 가 SSOT.
 
 ## Constraints (전체 목록과 근거: `references/constraints.md`)
 
