@@ -47,10 +47,19 @@ SKILL.md Step 8 을 뒷받침한다. 리포트의 설계 목표는 하나다 —
 
 ```
 [FAIL] PR #<N> not verified — serving checkout does not contain the target commit
-  Serving:  <path> @ <sha>  (behind by <n> commits)
-  Target:   <mergeCommit.oid>
-  Next:     그 디렉터리에서 rebase 후 재기동하거나, --url 로 다른 서버를 지정하세요
+  PR:       state=<OPEN|MERGED|CLOSED>
+  Target:   TARGET_SHA=<sha> (source=mergeCommit|headRefOid)
+  Serving:  <path> @ <HEAD sha>  (behind by <n> commits | target commit not in this checkout)
+  Content:  absent from <module-url>: <symbol>  |  not checked — 기능 부재를 단정하지 않는다
+  Next:     그 디렉터리에서 rebase(또는 fetch) 후 재기동하거나, --url 로 다른 서버를 지정하세요
 ```
+
+네 행은 `discovery.md` §2-1 의 헬퍼(`lib/serving-identity.sh`) 출력에서 그대로 옮긴다 (#63 F-4).
+`PR:` 과 `Target:` 의 출처가 빠지면 "기억 속 head SHA 로 비교했다" 같은 오판이 리포트만으로는
+드러나지 않는다. "기능이 앱에 없다" 는 `Content: absent …` 일 때만 쓴다.
+
+SHA 는 불일치하지만 서빙 원본에 diff 심볼이 있으면 정지가 아니다 — 헬퍼의
+`[WARN] SHA 불일치, 내용 일치 …` 줄을 `Serving:` 행에 그대로 싣고 측정으로 진행한다.
 
 ```
 [FAIL] PR #<N> not verified — locale switch is a no-op

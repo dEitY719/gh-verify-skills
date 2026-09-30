@@ -42,9 +42,10 @@ clone.
 
 `DOTFILES_FORCE_INIT=1` 을 export 한 뒤 `gh_pr_review.sh` 를 source 해 `_gh_pr_review_resolve_target_repo` ·
 `_gh_pr_review_resolve_pr_number` 를 쓴다 — **그 변수 없이 source 하면 인터랙티브 가드에 막혀 함수가 정의되지 않는다** (복사할 블록:
-`gh-verify:live` 의 `references/discovery.md` §3). `gh pr view` 로 `state` `mergedAt` `mergeCommit` `baseRefName`
-`body` `files` `closingIssuesReferences` 를 **1회만** fetch 해 Step 6 까지 재사용하고, `state != MERGED` 또는
-`.mergeCommit.oid == null` 이면 **정지**한다.
+`gh-verify:live` 의 `references/discovery.md` §3). PR 번호가 나오면 **첫 동작**으로 `gh pr view` 로 `state` `mergedAt`
+`mergeCommit` `headRefOid` `baseRefName` `body` `files` `closingIssuesReferences` 를 **1회만** fetch 해 Step 6 까지 재사용하고
+`TARGET_SHA=<sha> (source=mergeCommit|headRefOid, state=…)` 한 줄을 출력한다 — **대화·기억 속 SHA 는 쓰지 않는다**(rebase
+merge 가 재작성한다). `state != MERGED` 또는 `.mergeCommit.oid == null` 이면 그 줄을 실어 **정지**한다(`report-template.md`).
 
 ## Step 3: 검증 전 단언 — 신선한 클론과 그 무결성 (`references/clone-gate.md`)
 

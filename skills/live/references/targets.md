@@ -6,7 +6,7 @@ SKILL.md Step 4 — 브라우저를 켜기 전에 검증 항목과 그 항목에
 ## 1. 입력 우선순위
 
 입력은 Step 2 에서 이미 받아 둔 `$PR_JSON` 이다 (`discovery.md` §2-1). **다시 받지 않는다** —
-`title,body,files,mergeCommit,headRefOid,closingIssuesReferences` 가 그 한 번에 다 들어 있다.
+`state,mergeCommit,headRefOid,baseRefName,title,body,files,closingIssuesReferences` 가 그 한 번에 다 들어 있다.
 
 | 순위 | 원천 | 뽑는 것 |
 |---|---|---|

@@ -43,13 +43,18 @@ F-2/F-3 단언이 막으면 **측정하지 않고** 정지한다. 무엇이 왜 
 
 ```
 [FAIL] PR #<N> not verified — clone HEAD does not match the merge commit
-  Clone:   <path> @ <sha>   (kept for post-mortem)
-  Target:  <mergeCommit.oid>
+  PR:      state=<state>
+  Target:  TARGET_SHA=<mergeCommit.oid> (source=mergeCommit)
+  Clone:   <path> @ <HEAD sha>   (kept for post-mortem)
   Next:    git -C <path> fetch origin <oid> 후 재실행하거나 --clone-dir 로 기존 클론을 지정하세요
 ```
 
+`PR:` · `Target:` 은 Step 2 첫 동작이 출력한 `TARGET_SHA=… (source=…, state=…)` 줄에서 옮긴다 —
+live 의 정지 블록과 같은 행이다(gh-verify-skills#63 F-4). 대화·기억 속 SHA 가 끼어들 자리를 남기지 않는다.
+
 ```
 [FAIL] PR #<N> state=OPEN — 머지된 PR 이 대상이다
+  Target:  TARGET_SHA=<headRefOid> (source=headRefOid)
   Next:    머지 후 다시 부르거나, 실행 중인 앱이 있으면 /gh-verify:live 를 쓰세요
 ```
 
