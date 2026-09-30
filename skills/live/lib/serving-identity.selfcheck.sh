@@ -80,6 +80,10 @@ out=$(run "$MERGED" "$R" --content-url "file://$TMP/served.js" --symbol useSyncE
 has "content absent -> mismatch" "$out" "SERVING_IDENTITY=mismatch"
 has "content absent names the symbol" "$out" "absent from file://$TMP/served.js: NotThere"
 
+# Symbols are matched literally: a glob character in --symbol is not a pattern.
+out=$(run "$MERGED" "$R" --content-url "file://$TMP/served.js" --symbol 'use*Store')
+has "glob chars in --symbol match literally" "$out" "SERVING_IDENTITY=mismatch"
+
 # Not a git checkout -> unverified with a reason.
 out=$(run "$MERGED" "$TMP")
 has "non-git serving root -> unverified" "$out" "SERVING_IDENTITY=unverified"
