@@ -150,6 +150,10 @@ page.goto(BASE_URL, wait_until="domcontentloaded")
    diff 의 대표 심볼이 있는지가 독립 근거다. dev 서버(Vite 등)는 모듈 URL 이 곧 원본이므로
    `--content-url` 에 diff 가 바꾼 파일의 모듈 URL, `--symbol` 에 그 diff 가 추가한 식별자 1~2개를
    넘긴다(실측 #63: `CurationGuideModal.tsx` 의 `useSyncExternalStore`).
+   **minify/번들된 빌드(프로덕션 번들 등)는 식별자가 맹글링된다** — 그때는 식별자 대신 minify 를
+   거쳐도 남는 문자열 리터럴(문구·키·라우트 경로)을 `--symbol` 로 고른다. 그래도 못 찾으면 헬퍼는
+   `mismatch`(정지)로 남는다 — 안전한 쪽이다. 단 맹글링 가능성이 있는 번들에서 `absent` 가 나왔다면
+   "기능이 앱에 없다"가 아니라 "내용 교차 확인 불가"로 적는다.
 
    | 헬퍼 출력 | 처리 |
    |---|---|
