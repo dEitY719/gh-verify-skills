@@ -29,16 +29,15 @@
 # Self-check: lib/serving-identity.selfcheck.sh
 
 devx_pr_verify_live_serving_identity() {
-    _json=$(cat)
-    _line=$(printf '%s' "$_json" | jq -r '
+    _line=$(jq -r '
         (if (.mergeCommit.oid // "") != "" then "mergeCommit" else "headRefOid" end) as $src
         | (.mergeCommit.oid // .headRefOid // "") as $sha
         | if $sha == "" then empty
           else "\($sha)\t\($src)\t\(.state // "UNKNOWN")" end') || _line=''
     [ -n "$_line" ] || { echo '[FATAL] stdin carries neither mergeCommit.oid nor headRefOid' >&2; return 2; }
-    _sha=$(printf '%s' "$_line" | cut -f1)
-    _src=$(printf '%s' "$_line" | cut -f2)
-    _state=$(printf '%s' "$_line" | cut -f3)
+    IFS='	' read -r _sha _src _state <<EOF
+$_line
+EOF
     echo "TARGET_SHA=$_sha (source=$_src, state=$_state)"
     [ $# -gt 0 ] || return 0
 
