@@ -27,13 +27,11 @@ metadata:
 **올바른 체크아웃을 서빙 중인 앱에 붙어 · PR/이슈가 지정한 화면을 몰아 보며 · 기계 판독 가능한 단언으로 확인하고 · 자기 반증에서 살아남은 발견만 대상 레포의 신규 이슈로 넘긴다.** 막으려는 실패
 클래스는 **화면은 멀쩡히 뜨는데 검증이 무효인 상태**(잘못된 체크아웃 · no-op 전환 · 오버레이에 가린 대상 · 일부 분기만 보고 전부 봤다는 착각) 하나다. 머지 직후가 주 용도지만 **미머지 PR
 브랜치에도 쓴다**. 이슈 본문·라벨·메트릭은 `gh-issue:issue-create` 가 SSOT — 이 스킬은 **게이트만** 책임진다. 실측
-출처: `references/provenance.md` · 6줄 공통
-계약(유일한 사본): `references/verify-contract.md`.
+출처: `references/provenance.md` · 6줄 공통 계약(유일한 사본): `references/verify-contract.md`.
 
 ## Help
 
-If arg #1 is `-h`, `--help`, or `help`, read `references/help.md` and output it verbatim, then stop. No API calls, no
-browser.
+If arg #1 is `-h`, `--help`, or `help`, output `references/help.md` verbatim and stop. No API calls, no browser.
 
 ## Step 1: Parse Args
 
@@ -46,16 +44,20 @@ Record `START_TS=$(date +%s)`.
 
 - `discovery.md` §3 의 소스 블록(`DOTFILES_FORCE_INIT=1` 필수)으로 `_gh_pr_review_resolve_target_repo` ·
   `_gh_pr_review_resolve_pr_number` 를 쓴다; 브랜치가 `[gone]` 이면 커밋 → PR 역추적.
+- **PR 번호가 나오면 첫 동작**: `gh pr view "$PR" --json state,mergeCommit,headRefOid,baseRefName,…` 를 `$PR_JSON`
+  으로 1회 받고(Step 4 까지 재사용) `lib/serving-identity.sh` 로 `TARGET_SHA=<sha> (source=mergeCommit|headRefOid,
+  state=…)` 한 줄을 출력한다 — 블록: `discovery.md` §2-1 4번. **대화·기억 속 SHA 는 쓰지 않는다**(rebase merge 가 재작성).
 - base URL / API origin 발견 (`--url`·`--api-url` 이 있으면 건너뛴다). 후보가 여럿이면 `AskUserQuestion` — **추측 금지**.
 - **호스트 가드**: 대상이 로컬(`localhost` · `127.0.0.0/8` · `::1` · `0.0.0.0`)이 아니면 `--allow-remote-host` 없이 정지 (Step 6 은 앱
   데이터에 쓰기를 한다). `--start` 를 준 경우에만 레포 루트에서 기동하고 종료 시 정리한다.
 
 ## Step 3: Pre-verification assertion 1 — serving checkout
 
-**변경된 코드를 서빙하는 모든 프로세스**에 대해 cwd → repo root → ancestry 를 돌린다. 비교 기준은 `references/verify-contract.md` 2번이고, PR 메타는 1회
-fetch(`$PR_JSON`, Step 4 까지 재사용)해 미머지 PR 일 때만 폴백한다. 불일치면 몇 커밋 뒤처졌는지와 함께 **정지**한다. dirty 워킹 트리는 경고이다. 컨테이너 백엔드는
-`devx_pr_verify_live_backend_identity.sh` 헬퍼로 검증한다 — 호출 규약·폴백 블록·판정 (verified/mismatch/unverified) 의 유일한 사본은
-`references/discovery.md` §2-4.
+**변경된 코드를 서빙하는 모든 프로세스**의 repo root 마다 같은 헬퍼에 루트와 `--content-url <모듈 URL> --symbol <diff 심볼>`
+을 넘긴다(기준 `mergeCommit.oid // headRefOid`, `references/verify-contract.md` 2번). `verified` → 진행, `[WARN] SHA 불일치,
+내용 일치` → 리포트에 싣고 진행, `mismatch` → **정지**하고 헬퍼 출력(state · TARGET_SHA 와 출처 · 서빙 HEAD · 뒤처진 커밋 수)을
+`report-template.md` 정지 블록으로 낸다; "기능이 앱에 없다"는 내용 부재를 확인했을 때만. dirty 워킹 트리는 경고. 컨테이너
+백엔드는 `devx_pr_verify_live_backend_identity.sh` — 호출 규약·판정 (verified/mismatch/unverified) 의 유일한 사본은 `discovery.md` §2-4.
 
 ## Step 4: Decide what to verify (`references/targets.md`)
 
@@ -77,9 +79,8 @@ fetch(`$PR_JSON`, Step 4 까지 재사용)해 미머지 PR 일 때만 폴백한�
 ## Step 7: Findings → issues (`references/findings.md`)
 
 후보 1건마다 **자기 반증 3가설**(하네스 오류 · 데이터 상태 · 의도된 동작)을 먼저 세워 반증하고, 그다음 게이트 5개를 건다. 통과한 것만 발견 1건 = 이슈 1건으로
-`Skill(gh-issue:issue-create, "--assignee @me")` 에 넘기되 생성 직전 **대상 레포를 출력**한다. 회귀와 기존 결함을 갈라 적고, PR 의 근거가 반증됐으면 그 정정도
-수정안에
-포함한다. `issue_mode` 가 `dry-run` 이면 본문만 출력, `none` 이면 초안조차 쓰지 않는다.
+`Skill(gh-issue:issue-create, "--assignee @me")` 에 넘기되 생성 직전 **대상 레포를 출력**한다. 회귀와 기존 결함을 갈라 적고, PR 의 근거가 반증됐으면
+그 정정도 수정안에 포함한다. `issue_mode` 가 `dry-run` 이면 본문만 출력, `none` 이면 초안조차 쓰지 않는다.
 
 ## Step 8-9: Report, then post it (`references/report-template.md` · `references/pr-comment.md`)
 
@@ -95,6 +96,5 @@ Step 8 은 그 양식으로 한 블록을 출력한다 — `Checks:` 만 적지 
 
 ## Related Skills
 
-자매 스킬 `gh-verify:merged` — 같은 머지 후 슬롯, 다른 증명 대상(live=서빙 체크아웃 신원, merged=신선한 클론 신원). 발견 등록은 `gh-issue:issue-create`,
-머지 **전**
-정적 게이트는 `gh-verify:review-all`. 전체 표: `references/help.md`.
+자매 스킬 `gh-verify:merged`(live=서빙 체크아웃 신원, merged=신선한 클론 신원). 발견 등록은 `gh-issue:issue-create`,
+머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표: `references/help.md`.

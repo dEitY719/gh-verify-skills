@@ -104,14 +104,32 @@ page.goto(BASE_URL, wait_until="domcontentloaded")
 3. cwd 가 **하위 디렉터리**여도 상관없다 — `git -C "$CWD" rev-parse --show-toplevel` 이
    레포 루트로 정확히 해소된다. 실측: `readlink /proc/3982320/cwd` →
    `.../agent-toolbox/apps/web` (**Vite 는 `apps/web` 에서 뜬다**).
-4. ancestry 검사는 **`mergeCommit.oid`** 로 한다.
+4. ancestry 검사는 **`mergeCommit.oid`** 로 한다 — 명령은 `lib/serving-identity.sh`
+   (`devx_pr_verify_live_serving_identity`) 하나이고, 이 블록 그대로 붙여 쓴다.
+
+   **Step 2 의 첫 동작 (F-1).** PR 번호가 해소되면 다른 무엇보다 먼저 PR 메타를 받고 대상 한 줄을
+   출력한다. **대화·기억 속 SHA 는 쓰지 않는다** — 같은 세션이 PR 을 만들었어도 그 사이 rebase merge 로
+   head SHA 가 재작성됐을 수 있다(#63: `/live 3167` 이 기억 속 `headRefOid` 로 정상 체크아웃을 정지시켰다).
 
    ```sh
-   # PR 메타는 여기서 한 번만 받아 Step 4(targets.md §1)까지 재사용한다 — 왕복 3회 → 1회.
+   # 한 번만 받아 Step 4(targets.md §1)까지 재사용한다 — 왕복 3회 → 1회.
    PR_JSON=$(gh pr view "$PR" -R "$TARGET_REPO" \
-     --json title,body,files,mergeCommit,headRefOid,closingIssuesReferences)
-   TARGET_SHA=$(printf '%s' "$PR_JSON" | jq -r '.mergeCommit.oid // .headRefOid')
-   git -C "$SERVING_ROOT" merge-base --is-ancestor "$TARGET_SHA" HEAD
+     --json state,mergeCommit,headRefOid,baseRefName,title,body,files,closingIssuesReferences)
+   _SI="${GH_VERIFY_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"                    # no $PWD tier (harness-skills#22)
+   [ -n "$_SI" ] && _SI="$_SI/skills/live/lib/serving-identity.sh" && [ -r "$_SI" ] || {
+       printf '[gh-verify:live] lib/serving-identity.sh not found. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' >&2
+       return 1 2>/dev/null || exit 1
+   }
+   printf '%s' "$PR_JSON" | sh "$_SI"
+   # -> TARGET_SHA=<sha> (source=mergeCommit|headRefOid, state=<OPEN|MERGED|CLOSED>)
+   ```
+
+   **Step 3.** 서빙 루트마다 같은 헬퍼에 루트를 넘긴다. 마지막 줄이 판정이다.
+
+   ```sh
+   printf '%s' "$PR_JSON" | sh "$_SI" "$SERVING_ROOT" \
+     [--content-url "$BASE_URL/<diff 가 바꾼 모듈 경로>" --symbol <심볼> [--symbol <심볼>]]
+   # -> ... / SERVING_IDENTITY=verified|mismatch|unverified
    ```
 
    `headRefOid` 를 쓰면 rebase/squash merge 레포에서 **100% 오정지**한다. 실측 sha 대조:
@@ -121,15 +139,29 @@ page.goto(BASE_URL, wait_until="domcontentloaded")
    | #2483 | `6f2daea26…` | `19ae738f7…` | 실패 (정상 상태인데 정지) |
    | #2484 | `8be3480d8…` | `4c053740f…` | 실패 (정상 상태인데 정지) |
    | #2476 | `8f537623b…` | `ec61107b5…` | 실패 (정상 상태인데 정지) |
+   | AgentToolbox#3167 | `617ff883e…` | `f0b8271a9…` | 실패 — 기억 속 SHA 로 검사해 정지 (#63) |
 
    머지 방식(merge/rebase/squash)을 스킬이 알 필요는 없다 — `mergeCommit` 하나로 세 경우가
    다 덮인다. `mergeCommit` 이 `null`(미머지 PR 검증)일 때만 `headRefOid` 로 떨어진다.
+   `lib/serving-identity.selfcheck.sh` 가 rebase 로 SHA 가 재작성된 픽스처에서 이 셋(mergeCommit →
+   verified, headRefOid → mismatch, 미머지 → headRefOid 폴백)을 함께 단언한다.
 
-5. 정지 메시지에 **몇 커밋 뒤처졌는지**를 실어 사용자가 rebase 만 하면 되는지 판단하게 한다.
+5. **불일치면 정지 전에 내용을 한 번 교차 확인한다 (F-3).** SHA 는 간접 근거다 — 서빙 원본에
+   diff 의 대표 심볼이 있는지가 독립 근거다. dev 서버(Vite 등)는 모듈 URL 이 곧 원본이므로
+   `--content-url` 에 diff 가 바꾼 파일의 모듈 URL, `--symbol` 에 그 diff 가 추가한 식별자 1~2개를
+   넘긴다(실측 #63: `CurationGuideModal.tsx` 의 `useSyncExternalStore`).
 
-   ```sh
-   git -C "$SERVING_ROOT" rev-list --count "$TARGET_SHA"..HEAD
-   ```
+   | 헬퍼 출력 | 처리 |
+   |---|---|
+   | `SERVING_IDENTITY=verified` | 진행 |
+   | `[WARN] SHA 불일치, 내용 일치` + `unverified` | **정지하지 않고** 진행, 그 `[WARN]` 줄을 리포트 `Serving:` 행에 그대로 싣는다 |
+   | `mismatch` + `content absent from …` | 정지 — 이때만 "기능이 앱에 없다"고 쓸 수 있다 |
+   | `mismatch` + `content not checked` | 정지 — 기능 부재를 단정하지 않는다(확인한 적이 없다) |
+   | `unverified` (git 체크아웃 아님) | §2-4 와 같이 사유를 남기고 진행 |
+
+6. 정지 메시지(F-4)는 `report-template.md` 의 정지 블록 그대로 — `state`, `TARGET_SHA` 와 그 출처,
+   서빙 HEAD, 뒤처진 커밋 수(`HEAD..TARGET_SHA`; 대상 객체가 그 체크아웃에 없으면 헬퍼가 그렇다고 적는다)를
+   헬퍼 출력에서 옮겨 적는다. 사용자는 그것만 보고 rebase·fetch 만 하면 되는지 판단한다.
 
 ### 2-2. dirty 워킹 트리는 경고, 정지 아님
 
