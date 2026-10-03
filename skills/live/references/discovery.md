@@ -104,8 +104,10 @@ page.goto(BASE_URL, wait_until="domcontentloaded")
 3. cwd 가 **하위 디렉터리**여도 상관없다 — `git -C "$CWD" rev-parse --show-toplevel` 이
    레포 루트로 정확히 해소된다. 실측: `readlink /proc/3982320/cwd` →
    `.../agent-toolbox/apps/web` (**Vite 는 `apps/web` 에서 뜬다**).
-4. ancestry 검사는 **`mergeCommit.oid`** 로 한다 — 명령은 `lib/serving-identity.sh`
-   (`devx_pr_verify_live_serving_identity`) 하나이고, 이 블록 그대로 붙여 쓴다.
+4. ancestry 검사는 **`mergeCommit.oid`** 로 한다 — 명령은 `devx_pr_verify_live_serving_identity`
+   (SSOT: dotfiles `shell-common/functions/devx_pr_verify_live_serving_identity.sh`) 하나이고,
+   이 블록 그대로 붙여 쓴다. 헬퍼는 실행하지 않고 **소스한다** — §2-4 와 같은 폴백 사다리
+   (dotfiles -> vendored -> 정지)다.
 
    **Step 2 의 첫 동작 (F-1).** PR 번호가 해소되면 다른 무엇보다 먼저 PR 메타를 받고 대상 한 줄을
    출력한다. **대화·기억 속 SHA 는 쓰지 않는다** — 같은 세션이 PR 을 만들었어도 그 사이 rebase merge 로
@@ -115,19 +117,41 @@ page.goto(BASE_URL, wait_until="domcontentloaded")
    # 한 번만 받아 Step 4(targets.md §1)까지 재사용한다 — 왕복 3회 → 1회.
    PR_JSON=$(gh pr view "$PR" -R "$TARGET_REPO" \
      --json state,mergeCommit,headRefOid,baseRefName,title,body,files,closingIssuesReferences)
-   _SI="${GH_VERIFY_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"                    # no $PWD tier (harness-skills#22)
-   [ -n "$_SI" ] && _SI="$_SI/skills/live/lib/serving-identity.sh" && [ -r "$_SI" ] || {
-       printf '[gh-verify:live] lib/serving-identity.sh not found. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' >&2
+   # DOTFILES_FORCE_INIT=1 은 load-bearing 이다: 헬퍼 파일의 인터랙티브 가드가
+   # 비대화형 셸에서 조기 return 하면 함수가 아예 정의되지 않는다.
+   export DOTFILES_FORCE_INIT=1
+   _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
+   if [ ! -f "$_SC/functions/devx_pr_verify_live_serving_identity.sh" ]; then
+       [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
+           printf '[gh-verify:live] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+               "$_SC" >&2
+           return 1 2>/dev/null || exit 1
+       }
+       _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
+   fi
+   # unalias, the output-equality proof, and export-before-load with an undo on
+   # the failure arm: harness-skills#35 / #36 / #37 via references/plugin-root.md.
+   unset -f devx_pr_verify_live_serving_identity 2>/dev/null || :
+   unalias devx_pr_verify_live_serving_identity 2>/dev/null || :
+   export SHELL_COMMON="$_SC"                                                           # before the load
+   [ -f "$_SC/functions/devx_pr_verify_live_serving_identity.sh" ] \
+       && . "$_SC/functions/devx_pr_verify_live_serving_identity.sh"
+   [ "$(command -v devx_pr_verify_live_serving_identity 2>/dev/null)" \
+       = devx_pr_verify_live_serving_identity ] || {                                    # tier 5
+       unset SHELL_COMMON
+       printf '[gh-verify:live] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
+           "$_SC" >&2
        return 1 2>/dev/null || exit 1
    }
-   printf '%s' "$PR_JSON" | sh "$_SI"
+   printf '%s' "$PR_JSON" | devx_pr_verify_live_serving_identity
    # -> TARGET_SHA=<sha> (source=mergeCommit|headRefOid, state=<OPEN|MERGED|CLOSED>)
    ```
 
-   **Step 3.** 서빙 루트마다 같은 헬퍼에 루트를 넘긴다. 마지막 줄이 판정이다.
+   **Step 3.** 서빙 루트마다 같은 헬퍼에 루트를 넘긴다. 마지막 줄이 판정이다. 새 셸이면
+   (Bash 호출마다 셸이 새로 뜨는 하네스) 위 로더 블록을 먼저 다시 돌린다 — 함수는 셸을 넘지 않는다.
 
    ```sh
-   printf '%s' "$PR_JSON" | sh "$_SI" "$SERVING_ROOT" \
+   printf '%s' "$PR_JSON" | devx_pr_verify_live_serving_identity "$SERVING_ROOT" \
      [--content-url "$BASE_URL/<diff 가 바꾼 모듈 경로>" --symbol <심볼> [--symbol <심볼>]]
    # -> ... / SERVING_IDENTITY=verified|mismatch|unverified
    ```
@@ -143,8 +167,8 @@ page.goto(BASE_URL, wait_until="domcontentloaded")
 
    머지 방식(merge/rebase/squash)을 스킬이 알 필요는 없다 — `mergeCommit` 하나로 세 경우가
    다 덮인다. `mergeCommit` 이 `null`(미머지 PR 검증)일 때만 `headRefOid` 로 떨어진다.
-   `lib/serving-identity.selfcheck.sh` 가 rebase 로 SHA 가 재작성된 픽스처에서 이 셋(mergeCommit →
-   verified, headRefOid → mismatch, 미머지 → headRefOid 폴백)을 함께 단언한다.
+   dotfiles 의 bats 테스트(`tests/bats/`, dEitY719/dotfiles)가 rebase 로 SHA 가 재작성된 픽스처에서 이 셋
+   (mergeCommit → verified, headRefOid → mismatch, 미머지 → headRefOid 폴백)을 함께 단언한다.
 
 5. **불일치면 정지 전에 내용을 한 번 교차 확인한다 (F-3).** SHA 는 간접 근거다 — 서빙 원본에
    diff 의 대표 심볼이 있는지가 독립 근거다. dev 서버(Vite 등)는 모듈 URL 이 곧 원본이므로

@@ -45,7 +45,7 @@ Record `START_TS=$(date +%s)`.
 - `discovery.md` §3 의 소스 블록(`DOTFILES_FORCE_INIT=1` 필수)으로 `_gh_pr_review_resolve_target_repo` ·
   `_gh_pr_review_resolve_pr_number` 를 쓴다; 브랜치가 `[gone]` 이면 커밋 → PR 역추적.
 - **PR 번호가 나오면 첫 동작**: `gh pr view "$PR" --json state,mergeCommit,headRefOid,baseRefName,…` 를 `$PR_JSON`
-  으로 1회 받고(Step 4 까지 재사용) `lib/serving-identity.sh` 로 `TARGET_SHA=<sha> (source=mergeCommit|headRefOid,
+  으로 1회 받고(Step 4 까지 재사용) `devx_pr_verify_live_serving_identity` 로 `TARGET_SHA=<sha> (source=…,
   state=…)` 한 줄을 출력한다 — 블록: `discovery.md` §2-1 4번. **대화·기억 속 SHA 는 쓰지 않는다**(rebase merge 가 재작성).
 - base URL / API origin 발견 (`--url`·`--api-url` 이 있으면 건너뛴다). 후보가 여럿이면 `AskUserQuestion` — **추측 금지**.
 - **호스트 가드**: 대상이 로컬(`localhost` · `127.0.0.0/8` · `::1` · `0.0.0.0`)이 아니면 `--allow-remote-host` 없이 정지 (Step 6 은 앱
