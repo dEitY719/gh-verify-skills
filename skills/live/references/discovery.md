@@ -229,6 +229,9 @@ docker-published 포트는 `ss -ltnp` 에 PID 가 안 잡힌다(docker-proxy). �
 그때 `SHELL_COMMON` 을 vendor 루트로 export 해야 헬퍼가 자기 `.py` 형제(`$SHELL_COMMON/functions/`)도 찾는다.
 
 ```sh
+# DOTFILES_FORCE_INIT=1 은 load-bearing 이다: 헬퍼 파일의 인터랙티브 가드가
+# 비대화형 셸에서 조기 return 하면 함수가 아예 정의되지 않는다.
+export DOTFILES_FORCE_INIT=1
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
 if [ ! -f "$_SC/functions/devx_pr_verify_live_backend_identity.sh" ]; then
     [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
