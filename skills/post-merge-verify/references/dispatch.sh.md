@@ -440,9 +440,10 @@ else
 fi
 
 # --- 6. F-5: hand the verification over -----------------------------------
-# The registry stores the skill id (`gh-verify:merged`); a pane is typed
-# the dash form, which is what a Claude session accepts as a slash command.
-VERIFY_PROMPT="/$(printf '%s' "$VERIFY_SKILL" | tr ':' '-') ${PR_NUMBER}"
+# The registry stores the skill id (`gh-verify:merged`); a pane is typed that
+# id verbatim. Plugin skills are registered under the colon name only — the
+# dash form (`/gh-verify-merged`) is "Unknown command" (#69).
+VERIFY_PROMPT="/${VERIFY_SKILL} ${PR_NUMBER}"
 PROMPT_TRY=1
 while :; do
     PROMPT_JSON=$(herdr agent prompt "$PMV_AGENT" "$VERIFY_PROMPT" \
