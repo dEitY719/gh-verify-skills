@@ -54,7 +54,7 @@ SKILL.md Step 8 을 뒷받침한다. 리포트의 설계 목표는 하나다 —
   Next:     그 디렉터리에서 rebase(또는 fetch) 후 재기동하거나, --url 로 다른 서버를 지정하세요
 ```
 
-네 행은 `discovery.md` §2-1 의 헬퍼(`lib/serving-identity.sh`) 출력에서 그대로 옮긴다 (#63 F-4).
+네 행은 `discovery.md` §2-1 의 헬퍼(`devx_pr_verify_live_serving_identity`) 출력에서 그대로 옮긴다 (#63 F-4).
 `PR:` 과 `Target:` 의 출처가 빠지면 "기억 속 head SHA 로 비교했다" 같은 오판이 리포트만으로는
 드러나지 않는다. "기능이 앱에 없다" 는 `Content: absent …` 일 때만 쓴다.
 

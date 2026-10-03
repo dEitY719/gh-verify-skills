@@ -10,7 +10,7 @@
 1. 머지된 PR 과 그 **merge commit** 을 해석한다.
 2. **검증 대상이 그 커밋을 담고 있음을 다른 무엇보다 먼저 증명한다** — live = 서빙 체크아웃
    동일성, merged = 신선한 클론 동일성. 비교 기준은 `mergeCommit.oid` 이고 `headRefOid` 는
-   쓰지 않는다(rebase/squash 가 재작성한다). live 의 실행 사본: `lib/serving-identity.sh`
+   쓰지 않는다(rebase/squash 가 재작성한다). live 의 실행 사본: `devx_pr_verify_live_serving_identity`
    (`discovery.md` §2-1).
 3. 주장은 diff 가 아니라 **PR·이슈의 Acceptance Criteria** 에서 뽑는다. diff 는 무엇이
    바뀌었는지만 말할 뿐 무엇이 참이어야 하는지는 말하지 않는다.
