@@ -45,7 +45,7 @@ empty (silent no-op), not an error.
 | `repo` | yes | `owner/repo` slug. The lookup key both dispatchers match on. |
 | `path` | yes (for issue-watcher) | Absolute or `~`-relative path of the original checkout. `gh-verify:post-merge-verify` rebases this path when present; a `~`-prefix is expanded. A missing/empty `path` falls back to `git rev-parse --path-format=absolute --git-common-dir` (with `/.git` stripped), which still resolves the main checkout from inside a linked worktree. |
 | `host` | no | Defaults to `github.com`. Read by issue-watcher; not consulted by `gh-verify:post-merge-verify` (host comes from the PR's own remote resolution). |
-| `verify_skill` | no | **Allowlisted**: `gh-verify:merged` or `gh-verify:live`, nothing else. Typed into the new session as its dash form (`/gh-verify:merged <N>`). An entry with no `verify_skill` (or one whose repo isn't in this file at all) means `gh-verify:post-merge-verify` no-ops for that repo — issue-watcher watches it just the same. |
+| `verify_skill` | no | **Allowlisted**: `gh-verify:merged` or `gh-verify:live`, nothing else. Typed into the new session verbatim (`/gh-verify:merged <N>`). An entry with no `verify_skill` (or one whose repo isn't in this file at all) means `gh-verify:post-merge-verify` no-ops for that repo — issue-watcher watches it just the same. |
 
 ## Why `verify_skill` is an allowlist, not free text
 
