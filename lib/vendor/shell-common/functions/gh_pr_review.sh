@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T05:04Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -249,7 +249,7 @@ _gh_pr_review_require_ai_cli() {
 # _gh_pr_review_require_internal_cli — fail closed unless the dotfiles
 # setup-mode SSOT says this is an internal PC. Shared gate for AI CLIs
 # that only reach their provider from inside the corporate network:
-# opencode (Code Mate) and hermes (Samsung DS internal AI coding CLI). A
+# opencode and hermes (internal AI coding CLI). A
 # personal/public install of either binary is not enough on its own.
 # Args: $1 = ai name, used only to build the error message.
 _gh_pr_review_require_internal_cli() {
@@ -1215,7 +1215,7 @@ OpenCode:
                                isolated temporary directory
 
 Hermes:
-  --ai hermes                  internal-PC only; Samsung DS internal CLI;
+  --ai hermes                  internal-PC only; internal AI coding CLI;
                                prompt is attached with --file (invocation
                                shape unverified — see ai-cli-invocation.md)
 

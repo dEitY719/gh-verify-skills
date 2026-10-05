@@ -1,14 +1,14 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_host.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T05:04Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/gh_host.sh
 # Resolve the active GitHub host and parse owner/repo from remote URLs.
 #
 # SSOT for host routing based on `_dotfiles_setup_mode` (issue #703).
 # `github.com` is hard-coded in several hooks and scripts; that breaks
-# the `internal` PC where the real target is `github.samsungds.net`
-# (GHE). Replacing those hard-coded literals with `_gh_resolve_host`
+# the `internal` PC where the real target is the GHES host
+# (`$DOTFILES_GHES_HOST`, #1965). Replacing those hard-coded literals with `_gh_resolve_host`
 # keeps `external` / `public` / missing-file environments on
 # `github.com` (regression-zero) while routing `internal` to GHE.
 #
@@ -16,14 +16,16 @@
 #
 #   _dotfiles_setup_mode | Host
 #   ---------------------+--------------------------
-#   internal             | github.samsungds.net
+#   internal             | $DOTFILES_GHES_HOST (unset: warn, github.com)
 #   external             | github.com
 #   public               | github.com
 #   "" (file missing)    | github.com
 #   <anything else>      | github.com (fail-safe)
 #
-# When a future GHE domain appears, edit this file only — no other
-# script should grow a second copy of the mapping.
+# The GHES host name is an internal identifier, so it never appears in
+# this public repo (#1944/#1965): it comes from `DOTFILES_GHES_HOST`, set
+# by the gitignored shell-common/env/internal.local.sh. No other script
+# should grow a second copy of the mapping.
 #
 # PR #704 review (gemini-code-assist) — no interactive guard.
 # CLAUDE.md only mandates the guard for files that produce output at
@@ -66,6 +68,26 @@ else
 fi
 unset _drg_self _drg_helper
 
+# _gh_ghes_host — print the internal GHES host, or nothing when unknown.
+#
+# `$DOTFILES_GHES_HOST` wins. Hooks and one-shot scripts source this file
+# without the loaders (so env/internal.sh never ran and the variable is not
+# exported); for them, read the assignment out of internal.local.sh. The
+# file is parsed, never sourced, so a hook does not execute it. Public PCs
+# have no such file and get empty output — github.com behavior unchanged.
+_gh_ghes_host() {
+    if [ -n "${DOTFILES_GHES_HOST-}" ]; then
+        printf '%s\n' "$DOTFILES_GHES_HOST"
+        return 0
+    fi
+    _ggh_file="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/env/internal.local.sh"
+    if [ -r "$_ggh_file" ]; then
+        sed -n "s/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}DOTFILES_GHES_HOST=[\"']\{0,1\}\([A-Za-z0-9.-]*\).*/\2/p" \
+            "$_ggh_file" 2>/dev/null | sed -n '$p'
+    fi
+    unset _ggh_file
+}
+
 # _gh_resolve_host — print the active GitHub host on stdout.
 #
 # Reads `_dotfiles_setup_mode` (defined in
@@ -96,11 +118,21 @@ _gh_resolve_host() {
         fi
         unset _grh_file
     fi
-    case "$_grh_mode" in
-        internal)           echo "github.samsungds.net" ;;
-        external|public|"") echo "github.com" ;;
-        *)                  echo "github.com" ;;
-    esac
+    if [ "$_grh_mode" = "internal" ]; then
+        _grh_ghes=$(_gh_ghes_host)
+        if [ -n "$_grh_ghes" ]; then
+            printf '%s\n' "$_grh_ghes"
+        else
+            # Never hard-fail and never route silently: say why gh will
+            # talk to github.com instead of the GHES host.
+            printf '[gh_host] internal mode but DOTFILES_GHES_HOST is unset (see shell-common/env/internal.local.example) — falling back to github.com\n' >&2
+            echo "github.com"
+        fi
+        unset _grh_ghes
+    else
+        # external / public / "" (file missing) / unknown -> github.com
+        echo "github.com"
+    fi
     unset _grh_mode
 }
 
@@ -120,16 +152,24 @@ _gh_resolve_host() {
 # file. The host must be preceded by `://`, `@`, or the start of the
 # string, and followed by `:`, `/`, or the end of the string.
 #
-# When a new GHE domain is added, extend both `case` branches below (and
-# the sed regex in `_gh_parse_owner_repo_url`, which still needs its own
-# stripping pattern) — no other function should grow a second copy of
-# the matching logic.
+# The GHE host comes from `_gh_ghes_host` (quoted in the patterns, so its
+# dots are literal); when it is unknown only github.com is recognized.
+# `_gh_parse_owner_repo_url` strips the matched host this function prints,
+# so no other function grows a second copy of the matching logic.
 _gh_match_known_host() {
+    _gmk_ghes=$(_gh_ghes_host)
+    if [ -n "$_gmk_ghes" ]; then
+        case "${1:-}" in
+            *://"$_gmk_ghes"/*|*://"$_gmk_ghes"|\
+            *@"$_gmk_ghes":*|*@"$_gmk_ghes"/*|*@"$_gmk_ghes"|\
+            "$_gmk_ghes"/*|"$_gmk_ghes":*|"$_gmk_ghes")
+                printf '%s\n' "$_gmk_ghes"
+                unset _gmk_ghes
+                return 0 ;;
+        esac
+    fi
+    unset _gmk_ghes
     case "${1:-}" in
-        *://github.samsungds.net/*|*://github.samsungds.net|\
-        *@github.samsungds.net:*|*@github.samsungds.net/*|*@github.samsungds.net|\
-        github.samsungds.net/*|github.samsungds.net:*|github.samsungds.net)
-            echo "github.samsungds.net" ;;
         *://github.com/*|*://github.com|\
         *@github.com:*|*@github.com/*|*@github.com|\
         github.com/*|github.com:*|github.com)
@@ -147,7 +187,7 @@ _gh_match_known_host() {
 #   ssh://git@github.com/owner/repo(.git)
 #   git+https://github.com/owner/repo
 #
-# and the GHE equivalents at `github.samsungds.net`. Returns 0 with
+# and the GHE equivalents at `$DOTFILES_GHES_HOST`. Returns 0 with
 # `owner/repo` on stdout, or 1 with an error message on stderr when
 # the URL is empty, points at a non-github host, or doesn't yield a
 # clean two-segment slug.
@@ -159,19 +199,22 @@ _gh_parse_owner_repo_url() {
         echo "empty remote URL" >&2
         return 1
     fi
-    if ! _gh_match_known_host "$_gpu_url" >/dev/null; then
+    if ! _gpu_host=$(_gh_match_known_host "$_gpu_url"); then
         echo "remote URL is not a github remote: $_gpu_url" >&2
+        unset _gpu_url _gpu_host
         return 1
     fi
-    _gpu_slug=$(printf '%s' "$_gpu_url" |
-        sed -E 's#^.*(github\.com|github\.samsungds\.net)[:/]+##; s#\.git/?$##; s#/$##')
+    # Strip through the last occurrence of the matched host (quoted: dots
+    # literal), then the [:/] separators.
+    _gpu_slug=$(printf '%s' "${_gpu_url##*"$_gpu_host"}" |
+        sed -E 's#^[:/]+##; s#\.git/?$##; s#/$##')
     if ! printf '%s' "$_gpu_slug" | grep -qE '^[^/[:space:]]+/[^/[:space:]]+$'; then
         echo "Could not parse owner/repo from remote URL: $_gpu_url" >&2
-        unset _gpu_url _gpu_slug
+        unset _gpu_url _gpu_slug _gpu_host
         return 1
     fi
     printf '%s\n' "$_gpu_slug"
-    unset _gpu_url _gpu_slug
+    unset _gpu_url _gpu_slug _gpu_host
 }
 
 # _gh_host_from_url — print the GitHub host a git remote URL points at.
@@ -183,7 +226,7 @@ _gh_parse_owner_repo_url() {
 # remote while `upstream` is a pull-only `github.com` remote (see
 # `docs/.ssot/pc-environment.md` section 3), so a skill that resolved
 # `owner/repo` from `upstream` must send `GH_HOST=github.com`, not the
-# setup-mode's `github.samsungds.net`.
+# setup-mode's GHES host.
 #
 # This is the fix for issue #1403: `gh` without `--repo`/`GH_HOST` follows
 # its own `gh repo set-default`, not git's `origin`, so on a dual-host
