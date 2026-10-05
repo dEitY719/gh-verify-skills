@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_project_status.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T05:04Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/gh_project_status.sh
 # Push a projectV2 Status transition for an Issue or PR. Auto-discovers every
@@ -111,7 +111,7 @@ fi
 unset _drg_self _drg_helper
 
 # Ensure GH_HOST is set before any `gh` call so requests route to the
-# correct host. On the internal PC (GHE = github.samsungds.net) a caller
+# correct host. On the internal PC (GHE = $DOTFILES_GHES_HOST) a caller
 # that does not export GH_HOST would otherwise let `gh` default to
 # github.com, silently failing every ProjectV2 lookup and skipping the
 # board sync (issue #804). We source the gh_host.sh SSOT and resolve the
