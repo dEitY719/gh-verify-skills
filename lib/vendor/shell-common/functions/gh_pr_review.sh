@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-05T05:04Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T05:25Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -272,6 +272,24 @@ _gh_pr_review_require_internal_cli() {
     return 0
 }
 
+# _gh_pr_review_opencode_model — print the opencode review model, or
+# nothing when unconfigured (issue #2007). Same lookup as _gh_ghes_host in
+# gh_host.sh, copied locally because this file is vendored standalone:
+# `$DOTFILES_OPENCODE_REVIEW_MODEL` wins, else the assignment is parsed (never
+# sourced) out of the gitignored env/internal.local.sh.
+_gh_pr_review_opencode_model() {
+    if [ -n "${DOTFILES_OPENCODE_REVIEW_MODEL-}" ]; then
+        printf '%s\n' "$DOTFILES_OPENCODE_REVIEW_MODEL"
+        return 0
+    fi
+    _gpom_file="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/env/internal.local.sh"
+    if [ -r "$_gpom_file" ]; then
+        sed -n "s/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}DOTFILES_OPENCODE_REVIEW_MODEL=[\"']\{0,1\}\([A-Za-z0-9._/:-]*\).*/\2/p" \
+            "$_gpom_file" 2>/dev/null | sed -n '$p'
+    fi
+    unset _gpom_file
+}
+
 # _gh_pr_review_argv_prompt_or_fail — MAX_ARG_STRLEN guard for AI CLIs that
 # take the whole prompt as a value argument instead of --file or stdin. The
 # kernel caps a single argv string at MAX_ARG_STRLEN (32 pages = 131072 bytes
@@ -481,6 +499,7 @@ _gh_pr_review_run_ai() {
     local _prompt_content
     local _opencode_workdir
     local _opencode_prompt
+    local _opencode_model
     # Issue #1506: opencode / hermes routinely run 8-10 minutes and had no
     # bounded exit path at all. Without this the only bound is whatever
     # ambient timeout the *caller* (a Bash tool call, a CI step) happens to
@@ -563,6 +582,15 @@ _gh_pr_review_run_ai() {
             }
         fi
         if [ "$_rc" -eq 0 ]; then
+            _opencode_model=$(_gh_pr_review_opencode_model)
+            if [ -z "$_opencode_model" ]; then
+                # Unconfigured: skip like any unavailable reviewer rather
+                # than silently fall back to opencode's default model.
+                echo "[WARN] --ai opencode skipped: DOTFILES_OPENCODE_REVIEW_MODEL is not set (env or shell-common/env/internal.local.sh)" >"$_stderr_file"
+                _rc=1
+            fi
+        fi
+        if [ "$_rc" -eq 0 ]; then
             # opencode-guard auto-rejects, in non-interactive mode, any
             # --file path outside --dir (issue #1763) — PROMPT_FILE always
             # lives in a sibling /tmp dir, never under $_opencode_workdir, so
@@ -575,7 +603,7 @@ _gh_pr_review_run_ai() {
         if [ "$_rc" -eq 0 ]; then
             _gh_pr_review_timeout "$_slow_cli_timeout_sec" \
                 opencode run "$_ai_file_instruction" \
-                --model codemate/CodeLLMPro \
+                --model "$_opencode_model" \
                 --dir "$_opencode_workdir" \
                 --file "$_opencode_prompt" 2>"$_stderr_file" || _rc=$?
         fi
@@ -1209,8 +1237,9 @@ Flags:
                                whole PR is. No match -> exit 1 (#1616)
 
 OpenCode:
-  --ai opencode                internal-PC only; fixed model
-                               codemate/CodeLLMPro; prompt is attached
+  --ai opencode                internal-PC only; model from
+                               DOTFILES_OPENCODE_REVIEW_MODEL (unset ->
+                               skipped); prompt is attached
                                with --file; execution runs in an
                                isolated temporary directory
 
