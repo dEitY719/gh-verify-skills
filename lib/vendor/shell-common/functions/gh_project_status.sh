@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_project_status.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/gh_project_status.sh
 # Push a projectV2 Status transition for an Issue or PR. Auto-discovers every
@@ -135,6 +135,7 @@ _gh_project_status_ensure_host() {
 }
 
 _gh_project_status_sync() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _kind="$1" _num="$2" _target="$3"
     [ "$#" -ge 3 ] && shift 3
 
@@ -368,6 +369,7 @@ EOF
 #                                     be observed (default 1).
 # Both default to 0 in bats tests via env override.
 _gh_project_status_set_and_verify() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _kind="$1" _num="$2"
     local _proj="$3" _item="$4" _field="$5" _option="$6" _target="$7"
     local _repo_arg="${8-}"
@@ -467,6 +469,7 @@ _gh_project_status_set_and_verify() {
 # board attached", or a gate built on this helper would silently open
 # on its own misuse. Reviewer follow-up, PR #1355 (agy).
 _gh_project_status_query_current() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _kind="$1" _num="$2" _repo_arg="${3-}" _proj_arg="${4-}"
     [ -z "$_kind" ] && return 1
     [ -z "$_num" ] && return 1
@@ -579,6 +582,7 @@ _gh_project_status_query_current() {
 # Returns: 0 on success, 1 on anything that is not a valid slug — empty,
 #          no slash, more than three segments, or any empty segment.
 _gh_project_status_normalize_repo() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _val="$1"
 
     case "$_val" in
@@ -628,6 +632,7 @@ _gh_project_status_normalize_repo() {
 # the mutation step's single-retry pattern (issue #341): without retry, one
 # transient `gh repo view` socket reset silently aborts the sync.
 _gh_project_status_resolve_owner_repo() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _output _owner _repo _explicit=""
 
     if [ -n "${1-}" ]; then
@@ -696,6 +701,7 @@ _gh_project_status_mutate() {
 #
 # Args: <pr-number> <owner/repo>
 _gh_pr_closing_issue_numbers() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _pr="$1" _repo="$2"
     [ -z "$_pr" ] && return 0
     [ -z "$_repo" ] && return 0
@@ -731,6 +737,7 @@ _gh_pr_closing_issue_numbers() {
 # Uses pure parameter expansion to keep Status names with internal spaces
 # (e.g. "In progress") intact. Empty $1 never matches.
 _gh_project_status_in_list() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _val="$1" _list="$2"
     [ -z "$_val" ] && return 1
     case ",${_list}," in
