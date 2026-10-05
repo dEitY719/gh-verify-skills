@@ -1,8 +1,9 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-09-22T12:50Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
+case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
 # gh-pr-review — synchronous PR review delegation to an external AI CLI.
 # Sibling of gh-pr-approve (gh_pr_approve.sh) and gh-pr-reply
@@ -17,8 +18,6 @@
 # Steps 1, 4 (PROMPT_FILE path allocation only), 5, and 6. The bats fixture
 # tests/bats/skills/_fixtures/gh_pr_review_arg_parse.sh sources this
 # file so the arg-parse contract has exactly one definition.
-
-case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 
 # Advisory only (issue #1454): a stale copy of this file living in another
 # directory named `dotfiles` once got sourced instead of this one, surfacing
@@ -67,6 +66,7 @@ unset _drg_self _drg_helper
 # the parser stays pure so the bats fixture can exercise it in isolation.
 
 gh_pr_review_parse() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local ai=""
     local review="default"
     local user=""
@@ -214,6 +214,7 @@ EOF
 # is missing (matches references/ai-cli-invocation.md § "PATH pre-flight").
 # Exits 2 with `Unknown --ai value: '...'` if the value is unknown.
 _gh_pr_review_require_ai_cli() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local ai="$1"
     case "$ai" in
     codex | agy | claude | opencode | hermes) ;;
@@ -252,6 +253,7 @@ _gh_pr_review_require_ai_cli() {
 # personal/public install of either binary is not enough on its own.
 # Args: $1 = ai name, used only to build the error message.
 _gh_pr_review_require_internal_cli() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local ai="$1"
     if ! command -v _dotfiles_setup_mode >/dev/null 2>&1; then
         local _helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/tools/integrations/claude.sh"
@@ -286,6 +288,7 @@ _gh_pr_review_require_internal_cli() {
 # On success prints the prompt content on stdout and returns 0; on
 # failure returns 1 with nothing on stdout.
 _gh_pr_review_argv_prompt_or_fail() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _cli_label="$1"
     local _prompt_file="$2"
     local _err_file="$3"
@@ -307,6 +310,7 @@ _gh_pr_review_argv_prompt_or_fail() {
 # returns the resolved CLAUDE_CONFIG_DIR on stdout. Exits 1 with the
 # canonical "Unknown claude account" line on unknown names.
 _gh_pr_review_resolve_claude_account() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local user="$1"
     if ! command -v _claude_resolve_account >/dev/null 2>&1; then
         local _helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/tools/integrations/claude.sh"
@@ -356,6 +360,7 @@ _gh_pr_review_stderr_is_noise() {
 # aborts instead of writing through it. A genuine PID-reuse collision
 # fails the same way, which is the safe outcome.
 _gh_pr_review_mktemp_safe() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _template="$1"
     # Fallback is derived from the template so the two can never drift:
     # strip the mktemp placeholder, append this shell's PID.
@@ -398,6 +403,7 @@ _gh_pr_review_mktemp_safe() {
 # an unvalidated PR token (e.g. containing `/`) could otherwise steer
 # the mktemp template outside /tmp (codex review, PR #1282 / issue #1276).
 _gh_pr_review_mktemp_prompt() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local ai pr
     ai=$(printf '%s' "${1:-unknown}" | tr -cd 'A-Za-z0-9_-')
     pr=$(printf '%s' "${2:-0}" | tr -cd 'A-Za-z0-9_-')
@@ -445,6 +451,7 @@ _gh_pr_review_timeout() {
 # the stream has to survive to be re-read — see that lane's comment);
 # stderr is captured for the failure summary.
 _gh_pr_review_run_ai() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local ai="$1"
     local prompt_file="$2"
     local cfg_dir="${3:-}"
@@ -778,6 +785,7 @@ EOF
 # than at the API. The `a/X b/Y` split takes the FIRST ` b/`, which is
 # unambiguous for every path that does not itself contain " b/".
 _gh_pr_review_filter_diff_paths() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     if [ "$#" -eq 0 ]; then
         echo 'usage: _gh_pr_review_filter_diff_paths <path>...' >&2
         return 2
@@ -821,6 +829,7 @@ _gh_pr_review_filter_diff_paths() {
 # opine on nothing and answer LGTM, and that answer is exactly what the
 # lane would read as "the blocker is cleared".
 _gh_pr_review_build_prompt() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local preset="$1"
     local out="$2"
     local pr="$3"
@@ -895,6 +904,7 @@ _gh_pr_review_human_h() {
 # file while it still exists and owns reporting a read failure — see the
 # measurement right after _gh_pr_review_build_prompt.
 _gh_pr_review_estimate_tokens() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local raw="$1"
     local tokens
     tokens=$((raw / 4))
@@ -920,6 +930,7 @@ _gh_pr_review_estimate_tokens() {
 # `headRefOid`, and a marker claiming freshness it cannot prove is worse
 # than one making no claim at all.
 _gh_pr_review_build_comment_body() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local out="$1"
     local ai="$2"
     local preset="$3"
@@ -967,6 +978,7 @@ _gh_pr_review_build_comment_body() {
 # (1=on, 0=off). Echoes one of: "<url>", "skipped (--no-post-comment)",
 # "skipped (GH_DISABLE_AI_METRICS=1)", "[WARN] post failed".
 _gh_pr_review_post_comment() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local pr="$1"
     local repo="$2"
     local body_file="$3"
@@ -1030,6 +1042,7 @@ _gh_pr_review_parse_remote_url() {
 # round-trips are avoided entirely; gh's auth state and default-repo
 # cache no longer affect this step (Bug C from issue #694).
 _gh_pr_review_resolve_target_repo() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local _remote="${1:-origin}"
     local _url
     if ! _url=$(git remote get-url "$_remote" 2>&1); then
@@ -1068,7 +1081,32 @@ _gh_pr_review_ensure_host() {
     fi
 }
 
+# _gh_pr_review_require_auth — fail unless gh is authenticated for the host of
+# <remote>'s URL. A bare `gh auth status` checks EVERY host in hosts.yml, so a
+# dead login for an unrelated host (e.g. a stale internal-GHES stub on a public
+# PC) fails the gate although the target host is fine (#1905). Falls back to the
+# unscoped check when the host cannot be derived from the remote.
+_gh_pr_review_require_auth() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
+    local _remote="${1:-origin}" _url _host
+    _url=$(git remote get-url "$_remote" 2>/dev/null) || _url=""
+    # shellcheck disable=SC1091
+    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_host.sh" 2>/dev/null || :
+    _host=$(_gh_host_from_url "$_url" 2>/dev/null) || _host=""
+    if [ -n "$_host" ]; then
+        if ! gh auth status --hostname "$_host" >/dev/null 2>&1; then
+            echo "gh CLI not authenticated for $_host; run 'gh auth login -h $_host'" >&2
+            return 1
+        fi
+    elif ! gh auth status >/dev/null 2>&1; then
+        echo "gh CLI not authenticated; run 'gh auth login'" >&2
+        return 1
+    fi
+    return 0
+}
+
 _gh_pr_review_resolve_pr_number() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     # Echoes the PR number; non-zero exit if neither arg nor branch resolves.
     local explicit="${1:-}"
     if [ -n "$explicit" ]; then
@@ -1103,6 +1141,7 @@ _gh_pr_review_resolve_pr_number() {
 # is only needed to tag the Step 6 comment marker (#1564), which is the
 # same reason the other four are consolidated here.
 _gh_pr_review_fetch_meta() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local pr="$1" repo="$2"
     gh pr view "$pr" --repo "$repo" \
         --json state,isDraft,baseRefName,headRefName,headRefOid 2>/dev/null
@@ -1115,6 +1154,7 @@ _gh_pr_review_fetch_meta() {
 #
 # Args: $1 = pr_number, $2 = state, $3 = isDraft ("true"/"false"/empty).
 _gh_pr_review_preflight_pr_state() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local pr="$1" state="$2" draft="$3"
     case "$state" in
     OPEN) ;;
@@ -1285,8 +1325,7 @@ EOF
     if [ "$_ai_cli_rc" -ne 0 ]; then
         return "$_ai_cli_rc"
     fi
-    if ! gh auth status >/dev/null 2>&1; then
-        echo "gh CLI not authenticated; run 'gh auth login'" >&2
+    if ! _gh_pr_review_require_auth "$remote"; then
         return 1
     fi
 

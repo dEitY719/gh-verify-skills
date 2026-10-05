@@ -1,8 +1,9 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live_serving_identity.sh
-# Synced 2026-10-03T02:17Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
+case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/devx_pr_verify_live_serving_identity.sh
 # gh-verify:live assertion 1: is the PR's target commit in the serving checkout?
 # Ported from dEitY719/gh-verify-skills skills/live/lib/serving-identity.sh (#1859).
@@ -27,9 +28,8 @@
 #                       not a git checkout
 # return  0 for every verdict (a verdict is data); 2 on bad input.
 
-case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
-
 devx_pr_verify_live_serving_identity() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local line sha src state root url syms top head n behind body found missing s
 
     line=$(jq -r '
@@ -41,7 +41,7 @@ devx_pr_verify_live_serving_identity() {
     IFS='	' read -r sha src state <<EOF
 $line
 EOF
-    echo "TARGET_SHA=$sha (source=$src, state=$state)"
+    printf '%s\n' "TARGET_SHA=$sha (source=$src, state=$state)"
     [ $# -gt 0 ] || return 0
 
     root=$1; shift
@@ -74,7 +74,7 @@ EOF
     else
         behind="target commit not in this checkout — fetch, then retry"
     fi
-    echo "serving    $top @ $head ($behind)"
+    printf '%s\n' "serving    $top @ $head ($behind)"
 
     # One independent look at the served source before stopping.
     if [ -z "$url" ] || [ -z "$syms" ]; then

@@ -1,8 +1,9 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live_backend_identity.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
+case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/devx_pr_verify_live_backend_identity.sh
 # Shell function wrapper for container-backend identity verification.
 #
@@ -12,8 +13,6 @@
 # User-facing command: devx-pr-verify-live-backend-identity (dash-form)
 # Internal function: devx_pr_verify_live_backend_identity() (snake_case)
 # ═══════════════════════════════════════════════════════════════════════════════
-
-case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 
 # Source UX library
 _UX_LIB_PATH="${SHELL_COMMON:-${HOME}/.local/dotfiles/shell-common}/tools/ux_lib/ux_lib.sh"
@@ -34,6 +33,7 @@ fi
 unset _UX_LIB_PATH
 
 devx_pr_verify_live_backend_identity() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local repo_root=""
     local target_repo=""
     local target_sha=""

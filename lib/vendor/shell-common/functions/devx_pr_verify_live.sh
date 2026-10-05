@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_verify_live.sh
 # Pure arg parser for the devx:pr-verify-live skill. Mirrors the
@@ -56,6 +56,7 @@ _devx_pr_verify_live_pos_int() {
 }
 
 devx_pr_verify_live_parse() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local pr=""
     local remote="origin"
     local url=""
