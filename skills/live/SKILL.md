@@ -97,4 +97,4 @@ Step 8 은 그 양식으로 한 블록을 출력한다 — `Checks:` 만 적지 
 ## Related Skills
 
 자매 스킬 `gh-verify:merged`(live=서빙 체크아웃 신원, merged=신선한 클론 신원). 발견 등록은 `gh-issue:issue-create`,
-머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표: `references/help.md`.
+머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표: `references/help.md`. 설명 길이 근거: `references/description-rationale.md`.
