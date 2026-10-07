@@ -92,5 +92,5 @@ locale·셸·줄 끝 축은 diff 에서 유도한 **후보**로 리포트에 적
 ## Related Skills
 
 자매 스킬 `gh-verify:live` — 같은 머지 후 슬롯, 다른 증명 대상(merged=신선한 클론 신원, live=서빙 체크아웃 신원). 발견 등록은 `gh-issue:issue-create`, 테스트
-러너 탐지
-사다리는 `gh-issue:implement`, 머지 **전** 정적 게이트는 `gh-verify:review-all`. 전체 표와 플래그: `references/help.md`.
+러너 탐지 사다리는 `gh-issue:implement`, 머지 **전** 정적 게이트는 `gh-verify:review-all`.
+전체 표와 플래그: `references/help.md`. 설명 길이 근거: `references/description-rationale.md`.
