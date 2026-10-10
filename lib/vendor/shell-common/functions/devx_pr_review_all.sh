@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_review_all.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-10T02:44Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_review_all.sh
 # Pure arg parser for the devx:pr-review-all skill. Mirrors the
@@ -56,10 +56,11 @@ devx_pr_review_all_parse() {
     local _no_reply=0
     local _remote_set=0
     local _force_review=0
-    # The legacy four-lane fan-out, spelled out as `<ai>:<preset>` pairs
-    # (gh-verify-skills#56). Omitting --lanes must reproduce today's dispatch
-    # exactly, so this default IS the old behaviour, not an approximation.
-    local lanes="agy:default,codex:default,opencode:default,hermes:default"
+    # The default fan-out, spelled out as `<ai>:<preset>` pairs
+    # (gh-verify-skills#56). Five lanes since #2069: claude joins so the
+    # running harness reviews too, and a lane that errors is skipped rather
+    # than gated up front (devx_pr_review_all_fanout).
+    local lanes="claude:default,codex:default,opencode:default,agy:default,hermes:default"
     local _lane_rest="" _lane_item="" _lane_ai="" _lane_preset="" _lane_seen=""
 
     while [ "$#" -gt 0 ]; do
@@ -246,6 +247,93 @@ devx_pr_review_all_parse() {
     return 0
 }
 
+# ── Parallel lane fan-out (#2069) ──
+#
+# devx_pr_review_all_fanout <pr> <remote> <lanes>
+# Runs `gh_pr_review --ai <ai> --review <preset> <pr> <remote>` for every
+# `<ai>:<preset>` lane at once, each in a fresh `sh` that sources
+# gh_pr_review.sh, bounded by _gh_pr_review_timeout at the same cap as the
+# opencode / hermes CLIs (GH_PR_REVIEW_SLOW_CLI_TIMEOUT_SEC, default 540s) —
+# so a hung codex / agy / claude cannot outlive the caller's 600s Bash budget.
+# Once every lane has exited, prints one line per lane, in <lanes> order:
+#   <ai>:<preset>:ok               rc 0
+#   <ai>:<preset>:skip<TAB><why>   any other rc. <why> is the first non-blank
+#                                  stderr line, whitespace squeezed; `exit
+#                                  <rc>` when stderr was empty; `timeout <N>s`
+#                                  when the cap fired (rc 124).
+# skip and fail are one state on purpose (gh-verify-skills#77 D-5): the
+# caller feeds only ok lanes to the verdict harvest, whose fail-closed rules
+# (#1639) stay as they are. Each lane's stdout / stderr / rc goes to its own
+# `<ai>.<preset>.*` file under one private mktemp dir, never a shared fixed
+# path (#1276). Returns 0; 2 on an argument error (usage on stderr); 1 only
+# when the temp dir cannot be created.
+devx_pr_review_all_fanout() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
+    local pr="${1-}" remote="${2-}" lanes="${3-}"
+    local _src="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_pr_review.sh"
+    local _sec="${GH_PR_REVIEW_SLOW_CLI_TIMEOUT_SEC:-540}"
+    local _dir="" _rest="" _lane="" _f="" _order="" _pids="" _pid="" _rc="" _why=""
+
+    # Lane shape and PR# validation is the parser's; reuse it, don't copy it.
+    if [ "$#" -ne 3 ] || [ -z "$remote" ] ||
+        ! devx_pr_review_all_parse "$pr" "$remote" --lanes "$lanes" >/dev/null; then
+        echo "usage: <pr> <remote> <ai>:<preset>[,<ai>:<preset>...]" >&2
+        return 2
+    fi
+    case "$_sec" in "" | *[!0-9]*) _sec=540 ;; esac
+    if ! command -v _gh_pr_review_timeout >/dev/null 2>&1 && [ -r "$_src" ]; then
+        # shellcheck disable=SC1090
+        DOTFILES_FORCE_INIT=1 . "$_src"
+    fi
+    _dir=$(mktemp -d "${TMPDIR:-/tmp}/devx-pr-review-all-fanout.$pr.XXXXXX") || {
+        echo "Could not create fanout run directory under ${TMPDIR:-/tmp}" >&2
+        return 1
+    }
+
+    _rest="$lanes"
+    while [ -n "$_rest" ]; do
+        _lane="${_rest%%,*}"
+        case "$_rest" in *,*) _rest="${_rest#*,}" ;; *) _rest="" ;; esac
+        _order="$_order $_lane"
+        _f="$_dir/${_lane%%:*}.${_lane#*:}"
+        (
+            # gh_pr_review.sh returns early in a non-interactive shell.
+            export DOTFILES_FORCE_INIT=1
+            # shellcheck disable=SC2016  # $1/$@ belong to the inner sh
+            _gh_pr_review_timeout "$_sec" sh -c '. "$1" || exit 1; shift; gh_pr_review "$@"' \
+                devx-pr-review-all-fanout "$_src" \
+                --ai "${_lane%%:*}" --review "${_lane#*:}" "$pr" "$remote" \
+                </dev/null >"$_f.out" 2>"$_f.err"
+            echo "$?" >"$_f.rc"
+        ) &
+        _pids="$_pids $!"
+    done
+    # Our own PIDs only — a bare `wait` would also block on the caller's jobs.
+    for _pid in $_pids; do
+        wait "$_pid"
+    done
+
+    # Parser-validated lanes are [A-Za-z0-9_-] tokens, safe to word-split.
+    for _lane in $_order; do
+        _f="$_dir/${_lane%%:*}.${_lane#*:}"
+        _rc=$(cat "$_f.rc" 2>/dev/null)
+        if [ "$_rc" = 0 ]; then
+            printf '%s:ok\n' "$_lane"
+            continue
+        fi
+        if [ "$_rc" = 124 ]; then
+            _why="timeout ${_sec}s"
+        else
+            _why=$(tr '\t\r' '  ' <"$_f.err" 2>/dev/null |
+                sed -n '/[^[:space:]]/{s/[[:space:]][[:space:]]*/ /g;s/^ //;s/ $//;p;q;}')
+            [ -n "$_why" ] || _why="exit ${_rc:-unknown}"
+        fi
+        printf '%s:skip\t%s\n' "$_lane" "$_why"
+    done
+    rm -rf "$_dir"
+    return 0
+}
+
 # ── Review verdict -> merge-gate label (issue #1527, fixed in #1562) ──
 #
 # Turns a reviewer lane's mandatory closing verdict line (`판정: ...` /
@@ -257,6 +345,8 @@ devx_pr_review_all_parse() {
 #
 #   devx_pr_review_all_lane_block <ai> [<head-sha>] <expected-login>  # raw
 #     comments JSON on stdin (#1639) -> that lane's raw block, or nothing
+#   devx_pr_review_all_fanout <pr> <remote> <lanes>  # #2069 parallel run
+#     -> one `<ai>:<preset>:ok` / `:skip<TAB><why>` line per lane
 #   devx_pr_review_all_verdict                       # lane output on stdin
 #     -> blocking | concerns | lgtm | unknown
 #   devx_pr_review_all_aggregate                     # verdict tokens on stdin,

@@ -1,7 +1,8 @@
 # gh-verify:review-all — Duplicate-review guard
 
 SSOT for how Step 3 avoids re-running a reviewer lane that already reviewed the
-PR's current head. Implementation: `devx_pr_review_all_already_reviewed` in
+PR's current head, and — since dEitY719/gh-verify-skills#77 — for the one
+`devx_pr_review_all_fanout` call that dispatches the lanes it did not skip. Implementation: `devx_pr_review_all_already_reviewed` in
 `shell-common/functions/devx_pr_review_all.sh`; regression suite:
 `tests/bats/functions/devx_pr_review_all_dedupe.bats`. Issue: dEitY719/dotfiles#1613.
 
@@ -55,17 +56,43 @@ BODIES=$(GH_HOST="$TARGET_HOST" gh api --paginate \
 ME="${DEVX_PR_REVIEW_ALL_TRUSTED_LOGIN:-${ME:-$(GH_HOST="$TARGET_HOST" gh api user -q .login)}}"
 ```
 
-Then per lane, before dispatching its Agent. `$ai` and `$preset` are the two
-halves of that lane's `--lanes` entry:
+Then, in the **same** Bash call (Bash tool timeout 600000 — the fan-out runs
+up to 540s), walk `$lanes`, guard each `<ai>:<preset>` entry, and hand every
+lane the guard did not skip to **one** fan-out call. That call runs all of them
+in parallel — each `gh_pr_review --ai <ai> --review <preset>` in its own
+`sh`, bounded by `_gh_pr_review_timeout` — and returns only after every lane
+has exited, so the parallelism CLAUDE.md requires is preserved without one
+Agent per lane (#77 D-8, harness-agnostic). It needs `SHELL_COMMON`, which the
+loader above already exported.
 
 ```sh
-if [ "$force_review" != "1" ] &&
-    printf '%s\n' "$BODIES" |
-        devx_pr_review_all_already_reviewed "$ai" "$head_sha" "$ME" "$preset"; then
-    echo "[SKIP] $ai:$preset already reviewed head $head_sha — pass --force-review to re-run"
-    continue
-fi
+TODO=""; GUARDED=""; _rest="$lanes"
+while [ -n "$_rest" ]; do
+    _lane="${_rest%%,*}"
+    case "$_rest" in *,*) _rest="${_rest#*,}" ;; *) _rest="" ;; esac
+    ai="${_lane%%:*}"; preset="${_lane#*:}"
+    if [ "$force_review" != "1" ] &&
+        printf '%s\n' "$BODIES" |
+            devx_pr_review_all_already_reviewed "$ai" "$head_sha" "$ME" "$preset"; then
+        echo "[SKIP] $ai:$preset already reviewed head $head_sha — pass --force-review to re-run" >&2
+        GUARDED="$GUARDED$_lane:ok
+"                                     # its marker is on the PR: Step 3.5 harvests it
+        continue
+    fi
+    TODO="${TODO:+$TODO,}$_lane"
+done
+# One row per lane: <ai>:<preset>:ok, or <ai>:<preset>:skip<TAB><reason>.
+# TAB -> space so the rows survive being carried to Step 3.5 as a literal.
+LANES="$GUARDED"
+[ -z "$TODO" ] || LANES="$LANES$(devx_pr_review_all_fanout "$pr" "$remote" "$TODO" | tr '\t' ' ')"
+printf '%s\n' "$LANES"
 ```
+
+`devx_pr_review_all_fanout` (dotfiles#2069, vendored) maps rc 0 to `ok` and
+anything else — missing CLI, 402, network reset, unset
+`DOTFILES_OPENCODE_REVIEW_MODEL`, the 540s cap (`timeout 540s`) — to `skip`
+with the lane's first stderr line as the reason. There is no `fail` state any
+more (#77 D-5); `review-verdict-label.md` has what each state feeds Step 3.5.
 
 `devx_pr_review_all_already_reviewed` is a thin wrapper over
 `devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset"`: rc 0 when that
@@ -90,8 +117,8 @@ preset here and it reads the `default` lane's marker as its own evidence,
 skips itself, and keeps skipping itself forever — the same AI could then never
 contribute more than one lane's verdict.
 
-A guard-skipped lane reports `[SKIP]`, but — unlike a lane skipped for a
-missing CLI — it still **must** contribute a verdict line to Step 3.5 (agy +
+A guard-skipped lane reports `[SKIP]` on stderr and is recorded as `ok` in
+`$LANES`, because — unlike a lane that errored — it still **must** contribute a verdict line to Step 3.5 (agy +
 codex, PR dEitY719/dotfiles#1623 BLOCKER): its earlier verdict is still on the PR under the
 same head sha, and Step 3.5's aggregator has no other way to see it. Dropping
 a guard-skipped lane from the aggregation stream would let a partial re-run —

@@ -2,25 +2,31 @@
 
 The SKILL.md body lists these as terse rules; the full rationale lives here.
 
-- **Every reviewer lane is soft-fail — never hard-fail.** A missing `agy`,
-  `codex`, `opencode`, or `hermes` CLI (`command -v` empty), a rate-limit, or
-  any non-zero exit from `gh-pr:review` stops only that lane; the other lanes
-  and the rest of the flow continue. `opencode` and `hermes` also skip softly
-  unless `_dotfiles_setup_mode` is `internal`. `/simplify` has already run in
-  Step 2.5 either way. `gh-pr:review` already does its own
-  `command -v`/OPEN/draft pre-flight, so do **not** duplicate those as
-  hard-fails here — always wrap the lane softly.
+- **Every reviewer lane is soft-fail — never hard-fail.** A missing CLI
+  (`command -v` empty), an unset `DOTFILES_OPENCODE_REVIEW_MODEL`, a 402, a
+  network reset, the 540s cap, or any other non-zero exit from `gh_pr_review`
+  stops only that lane; `devx_pr_review_all_fanout` records it as
+  `<ai>:<preset>:skip <reason>` and the other lanes and the rest of the flow
+  continue. There is **no** internal-PC gate any more (#77 D-6,
+  dEitY719/dotfiles#2069): `opencode` and `hermes` are tried on every PC and
+  skip only if they actually fail. The Step 2.5 writers have already run
+  either way. `gh-pr:review` does its own `command -v`/OPEN/draft pre-flight,
+  so do **not** duplicate those as hard-fails here.
 
-- **Soft-fail is not silence (dEitY719/gh-verify-skills#14).** A lane that was
-  never dispatched (`SKIP`) and a lane that was dispatched and exited non-zero
-  (`FAIL`) are different facts, and the second one is a *lost reviewer*. Report
-  a FAILed lane as `<ai>:FAIL(<reason>)` in Step 6 and feed it an `unknown`
-  verdict line in Step 3.5, so the PR is left unlabelled rather than certified
-  off whichever lanes survived. The failure this comes from: agy hit
-  `prompt 131746B > 131072B argv limit` on a 62-file PR, the flow absorbed it
-  as a skip, and the verdict gate reasoned from one reviewer while the report
-  presented two. Soft-fail means "the flow continues", never "the reader is not
-  told". (The argv ceiling itself is upstream — `dEitY719/dotfiles#1761`.)
+- **An erroring lane is a SKIP, not a lost verdict (#77 D-5 — reverses
+  dEitY719/gh-verify-skills#14).** #14 split a lane that was never dispatched
+  (`SKIP`) from one that ran and exited non-zero (`FAIL`), fed the second an
+  `unknown` verdict in Step 3.5 and downgraded the report to `[WARN]`, so a PR
+  that lost a reviewer stayed unlabelled. The trigger was agy hitting
+  `prompt 131746B > 131072B argv limit` on a 62-file PR. #77 drops that on the
+  user's explicit rule — "an error is a skip; do not dwell on it" — because
+  with a reviewer subscription lapsed every PR would stay unlabelled and every
+  report `[WARN]`. Now both cases are one `skip` row, fed nothing in Step 3.5,
+  printed `<ai>:SKIP(<reason>)` in Step 6, and never a `[WARN]` cause on their
+  own. Soft-fail still means "the reader is told": the reason is on the line.
+  No false pass can result — `review-passed` is still `gh-pr:reply`'s alone
+  (dEitY719/dotfiles#1636). The accepted cost: a lane that would have blocked
+  and errored instead leaves no `review-blocked`.
 
 - **Never run a bare `git commit`.** In a non-interactive AI shell a bare
   commit opens an editor for the message and hangs. Always pass `-m` with a
@@ -34,40 +40,51 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   here only because Step 2.5's clean-tree gate ran first — see
   `references/simplify-lane.md`.
 
-- **`/code-review --fix` is NOT a lane here, and must not be re-added.**
-  Claude Code v2.1.215 made `/code-review` (and `/verify`) user-invocation-only:
-  the docs mark it `disable-model-invocation`, so a skill calling
-  `Skill(code-review, ...)` is rejected outright. Two reasons Anthropic gives,
-  both sound: the review fans out a fleet of agents (the managed cloud variant
-  bills $15-25 per run), and `--fix` writes to the working tree from a
-  background subagent **outside the session's checkpoints** — `/rewind` cannot
-  undo those edits, only git can. A model firing that autonomously is exactly
-  the failure mode the restriction prevents.
+- **`/code-review --fix` is still NOT a fan-out lane — it is the claude
+  self-fix, run as a `claude -p` child (#77 D-3 / D-4).** Claude Code v2.1.215
+  made `/code-review` (and `/verify`) user-invocation-only: the docs mark it
+  `disable-model-invocation`, so a skill calling `Skill(code-review, ...)` is
+  rejected outright. Anthropic's two reasons stand: the review fans out a fleet
+  of agents (the managed cloud `ultra` bills $15-25 per run), and `--fix`
+  writes the working tree **outside the session's checkpoints** — `/rewind`
+  cannot undo it, only git can.
 
-  Before this was understood, the lane sat here silently soft-failing on every
-  single run. Two workarounds were considered and rejected: shadowing the
-  bundled skill with a same-named override (it would mask a maintained,
-  more capable tool — working-diff scoping, `--fix`, `--comment`, `ultra`,
-  effort tuning — with a frozen fork), and prompting the user mid-flow (breaks
-  the unattended issue-flow contract). Removal is the honest fix.
+  Until #77 that closed the question: the lane had sat here silently
+  soft-failing on every run, and removal was the honest fix (shadowing the
+  built-in with a same-named skill and prompting the user mid-flow were both
+  rejected, and both stay rejected). #77 D-4 re-admits it by the user's
+  explicit decision, but **only** as Step 2.5 substep c when `SELF=claude`,
+  and in a form that answers both objections:
 
-  **Nothing meaningful is lost.** Bug-hunting is covered by the agy, codex,
-  opencode, and hermes
-  lanes, which post real PR comments; cleanup is covered by `/simplify`; and
-  the apply-fixes-and-commit behaviour still happens at the end of the flow,
-  where `gh-pr:reply` evaluates each review comment and commits the valid
-  fixes. Users who want the bundled reviewer can type `/code-review --fix`
-  themselves at any point — it runs in the background and does not block.
+  - It is never a `Skill()` call. The skill runs
+    `claude -p "/code-review high --fix <baseRefName>" --permission-mode acceptEdits`
+    as a separate process, where a slash command in the prompt takes the
+    user-input path. The AC-1 spike (#77 comment) proved it: 4 findings, 3
+    fixed in the tree, no commit, rc 0 under `timeout 580` — D-3 path 1.
+  - The checkpoint gap is closed by git: it runs only on a tree asserted clean,
+    and its edits become their own `fix(<scope>): apply self-review findings
+    (claude)` commit, so one `git revert` undoes it.
+  - Only `high` (local, session tokens). `ultra` is out of scope.
+  - Its stdout/stderr go to `mktemp` files **outside** the worktree: in the
+    spike, `out.txt`/`err.txt` written to cwd were untracked and would have
+    been swept into the orchestrator's `git add -A`.
 
-- **The auto-fix commit is its own commit.** `refactor(<scope>): simplify per
-  /simplify` lands separately from any fix commits `gh-pr:reply` makes later,
-  keeping `git blame`/revert granular — a bad cleanup can be reverted without
-  touching a review-driven correctness fix. Step 2.5 pushes it before any
-  reviewer is dispatched.
+  It is still never in the Step 3 fan-out: it writes the tree, and the fan-out
+  is comment-only by construction (#18). The claude **reviewer** lane in Step 3
+  is a different thing — `gh-pr:review --ai claude`, comment-only. Full
+  procedure: `references/self-fix-pass.md`.
+
+- **Each self-fix writer gets its own commit.** `fix(<scope>): apply
+  self-review findings (<SELF>)` (substep c) and `refactor(<scope>): simplify
+  per /simplify` (substep d) land separately from each other and from any fix
+  commits `gh-pr:reply` makes later, keeping `git blame`/revert granular — a
+  bad cleanup can be reverted without touching a correctness fix. Step 2.5
+  pushes them in **one** push before any reviewer is dispatched.
 
 - **`/simplify` runs alone, first, and never commits its own work**
-  (dEitY719/gh-verify-skills#18). It is the only lane that writes to the tree,
-  so it is dispatched by itself in Step 2.5 — before the Step 3 reviewer
+  (dEitY719/gh-verify-skills#18). It writes to the tree, so it is dispatched
+  by itself in Step 2.5 substep d — after the self-fix commit (substep c,
+  #77), never alongside it, and before the Step 3 reviewer
   fan-out, which is entirely comment-only. It is dispatched **edit-only**: the
   prompt forbids `git revert`, `git reset`, `git checkout --`, `git stash`,
   `git commit` and `git push`, and forbids touching any hunk it did not author.
@@ -80,8 +97,8 @@ The SKILL.md body lists these as terse rules; the full rationale lives here.
   `references/simplify-lane.md`.
 
 - **Delay is not a guarantee — inline reply is the deterministic path.**
-  agy/codex/opencode/hermes reviews are synchronous `gh-pr:review` CLI calls: they post the
-  PR comment before returning. Because Step 3 awaits all four reviewer Agents, the
+  Every reviewer lane is a synchronous `gh_pr_review` CLI call: it posts the
+  PR comment before returning. Because Step 3's fan-out waits for every lane, the
   comments exist by the time Step 5 runs, so an **inline** `gh-pr:reply` sees
   them with deterministic ordering — no fixed delay needed. `--defer-reply` is
   a convenience for the issue-flow path (short turns), not a correctness

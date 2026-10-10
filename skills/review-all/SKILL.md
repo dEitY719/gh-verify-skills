@@ -20,9 +20,9 @@ metadata:
 
 ## Role
 
-Take one PR through a `/simplify` auto-fix pass, then every available reviewer at once — agy, codex, opencode, hermes
-— record the aggregate verdict as a merge-gate label, then reply inline or deferred. No approve decision, no
-per-comment authoring, every lane soft-fail. The **only** writer of `review-blocked`, never of `review-passed`.
+Harness-agnostic (#77): the running harness self-reviews and fixes the PR, then all reviewers at once — claude, codex,
+opencode, agy, hermes — record a merge-gate verdict label, then a reply pass. Never approves; an erroring lane is
+SKIPped. Sole writer of `review-blocked`, never of `review-passed`.
 
 ## Help
 
@@ -40,25 +40,24 @@ on exit 2 print stderr and stop. Capture `pr`, `remote`, `reply_mode`, `reply_de
 - PR must be `OPEN` and not draft (`gh pr view <pr> -R <TARGET_REPO>`) → else exit 1 `PR #<pr> is <state>; aborting`;
   `gh auth status` must return 0 → else exit 1 with its error line.
 - **auto-fix branch context**: not on the PR head branch → `gh pr checkout <pr> -R <TARGET_REPO>`.
+- **Step 2.4 — bind SELF**: declare your harness, `SELF` = `claude|codex|opencode|agy|hermes`, else `unknown`
+  (self-fix skips, fan-out runs). Self-declared, never env-sniffed (`references/self-fix-pass.md`).
 
-## Step 2.5: Auto-fix pass — `/simplify` runs FIRST, alone (dEitY719/gh-verify-skills#18)
+## Step 2.5: Self-fix pass — writers run FIRST, one at a time (#77, #18)
 
-**Read `references/simplify-lane.md` before dispatching**; it owns all three substeps verbatim. In order: the
-clean-tree gate; `LANES_START_TS` plus **exactly one** edit-only `/simplify` Agent, nothing alongside it; then the
-orchestrator — never the agent — commits and pushes. **A failed `git push` stops the run** (only hard-fail).
+**Read `references/self-fix-pass.md` before starting**; it owns substeps a-e. a: clean-tree gate (dirty → skip all,
+go to Step 3). b: `LANES_START_TS`. c: `SELF=claude` → `claude -p "/code-review high --fix <base>"` child; other SELF →
+in-session `thorough` review, edit-only; orchestrator commits `fix(<scope>): apply self-review findings (<SELF>)`.
+d: `SELF=claude` only — exactly one edit-only `/simplify` Agent (`references/simplify-lane.md`), orchestrator commits;
+else `simplify:n/a`. e: **one** push; **a failed `git push` stops the run** (only hard-fail); drop `review-passed`.
 
-## Step 3: Reviewer fan-out (dispatch all reviewer lanes in ONE turn)
+## Step 3: Reviewer fan-out (every lane in parallel, ONE shell call)
 
-Run `references/duplicate-review-guard.md` first (dEitY719/dotfiles#1613), then dispatch **every** `$lanes` entry
-**together in a single turn** — one Agent per `<ai>:<preset>`, so two presets of one AI are two independent lanes
-(#56). All are comment-only and `/simplify` is never dispatched here (#18). Record `$LANES` as you dispatch — one
-`<ai>:<preset>:ok|skip|fail` per **line**, never space-separated (`references/review-verdict-label.md`).
-
-- Per lane: CLI present → an Agent runs `Skill(gh-pr:review, "--ai <ai> <pr> <remote> --review <preset>")`; absent →
-  SKIP, non-zero exit → FAIL. Omitting `--lanes` gives today's four: `agy`, `codex`, `opencode`, `hermes` `:default`.
-- An **opencode** or **hermes** lane additionally requires `_dotfiles_setup_mode` = `internal` (loader:
-  `references/shell-common-source.md`, pasted **inside the same Bash call that gates on it**); absent or
-  non-internal → SKIP, non-zero exit → FAIL.
+Run `references/duplicate-review-guard.md`'s block (dEitY719/dotfiles#1613): it skips already-reviewed lanes, then
+makes **one** `devx_pr_review_all_fanout` call (Bash timeout 600000) running every other `<ai>:<preset>` lane at once,
+540s cap each; two presets of one AI are two lanes (#56). All comment-only, no writer here (#18). Default `--lanes`:
+`claude`, `codex`, `opencode`, `agy`, `hermes` `:default`, no internal-PC gate — a missing CLI just fails that lane.
+It prints `$LANES`, one `<ai>:<preset>:ok|skip <reason>` per **line**; carry it as a literal.
 
 ## Step 3.4: Orphan sweep (after every lane returns; soft-fail, WARN only)
 
@@ -67,8 +66,8 @@ with `LANES_START_TS`; its `[WARN]` line carries to Step 6 as `ORPHANS`. Never `
 
 ## Step 3.5: Aggregate review verdicts and apply the merge-gate label
 
-Runs after every Step 3 lane returns, **soft-fail** throughout. Bind `TARGET_HOST` from the same `<remote>` URL as
-`TARGET_REPO` (step 0 of `references/reply-pending-label.sh.md`), then follow `references/review-verdict-label.md`.
+Only `ok` lanes feed the harvest; a `skip` lane adds no line (#77 D-5). **Soft-fail.** Bind `TARGET_HOST` from the
+`<remote>` URL (step 0 of `references/reply-pending-label.sh.md`), then follow `references/review-verdict-label.md`.
 
 ## Step 4: Clean-tree assertion (nothing to push here)
 
@@ -85,12 +84,12 @@ Step 2.5 already pushed, so this step only asserts: `git status --porcelain` mus
 ## Step 6: Report
 
 Print the status line and the `Next:` line exactly as `references/report-template.md` specifies — lane rows,
-`simplify:<value>`, `<ai>:FAIL(<reason>)` never `SKIP`, `orphans:<n>`, the `[WARN]` downgrades, the verdict clause.
+`<ai>:SKIP(<reason>)`, `self:<SELF>:<v>`, `simplify:<v>`, `orphans:<n>`, the `[WARN]` downgrades, the verdict clause.
 
 ## Constraints (full rationale: `references/constraints.md`)
 
-- Reviewer lanes are soft-fail and comment-only; `/simplify` runs alone in Step 2.5, before them.
-- Never add `/code-review` (`--fix` included) or a bare `git commit`; approve/request-changes is `gh-pr:approve`.
+- Reviewer lanes are soft-fail and comment-only; the self-fix writers run one at a time in Step 2.5, before them.
+- `/code-review` only as Step 2.5c's `claude -p` child, never `Skill()` or a lane; never a bare `git commit`.
 - Inline reply is deterministic; `--defer-reply` is minutes-only and not a guarantee.
 
 ## Related Skills

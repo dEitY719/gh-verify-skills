@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-05T05:25Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-10T02:44Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -223,10 +223,9 @@ _gh_pr_review_require_ai_cli() {
         return 2
         ;;
     esac
+    # No internal-PC gate for opencode / hermes since #2069: a lane whose
+    # provider is unreachable fails at run time and is skipped by the caller.
     case "$ai" in
-    opencode | hermes)
-        _gh_pr_review_require_internal_cli "$ai" || return 1
-        ;;
     agy)
         # Since #1761 the agy lane builds its stdin NDJSON and parses the
         # stream-json reply with `jq`, so jq is as much a hard requirement as
@@ -241,32 +240,6 @@ _gh_pr_review_require_ai_cli() {
     esac
     if ! command -v "$ai" >/dev/null 2>&1; then
         echo "Required CLI '$ai' not found in PATH" >&2
-        return 1
-    fi
-    return 0
-}
-
-# _gh_pr_review_require_internal_cli — fail closed unless the dotfiles
-# setup-mode SSOT says this is an internal PC. Shared gate for AI CLIs
-# that only reach their provider from inside the corporate network:
-# opencode and hermes (internal AI coding CLI). A
-# personal/public install of either binary is not enough on its own.
-# Args: $1 = ai name, used only to build the error message.
-_gh_pr_review_require_internal_cli() {
-    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
-    local ai="$1"
-    if ! command -v _dotfiles_setup_mode >/dev/null 2>&1; then
-        local _helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/tools/integrations/claude.sh"
-        # shellcheck disable=SC1090
-        [ -f "$_helper" ] && . "$_helper"
-    fi
-
-    local _mode=""
-    if command -v _dotfiles_setup_mode >/dev/null 2>&1; then
-        _mode=$(_dotfiles_setup_mode 2>/dev/null || echo "")
-    fi
-    if [ "$_mode" != "internal" ]; then
-        echo "--ai $ai is internal-PC only (~/.dotfiles-setup-mode != internal)" >&2
         return 1
     fi
     return 0
@@ -430,8 +403,9 @@ _gh_pr_review_mktemp_prompt() {
     _gh_pr_review_mktemp_safe "/tmp/gh-pr-review-prompt.$ai.$pr.XXXXXX"
 }
 
-# _gh_pr_review_timeout — bounded-run wrapper for the slow internal-PC CLIs
-# (issue #1506). Args: $1 = seconds, $2.. = command + argv.
+# _gh_pr_review_timeout — bounded-run wrapper for the slow CLIs (issue
+# #1506); devx_pr_review_all_fanout bounds every lane with it (#2069).
+# Args: $1 = seconds, $2.. = command + argv.
 #
 # `timeout` is GNU coreutils and is absent on a stock macOS, so this degrades
 # to running the command unbounded rather than hard-failing — same shape as
@@ -563,9 +537,7 @@ _gh_pr_review_run_ai() {
         # as a value argument rather than --file/stdin, guarded by
         # _gh_pr_review_argv_prompt_or_fail — see that helper's header for why
         # this lane still has an argv ceiling.
-        if ! _gh_pr_review_require_internal_cli hermes >"$_stderr_file" 2>&1; then
-            _rc=1
-        elif _prompt_content=$(_gh_pr_review_argv_prompt_or_fail "hermes -z" "$prompt_file" "$_stderr_file"); then
+        if _prompt_content=$(_gh_pr_review_argv_prompt_or_fail "hermes -z" "$prompt_file" "$_stderr_file"); then
             _gh_pr_review_timeout "$_slow_cli_timeout_sec" \
                 hermes -z "$_prompt_content" 2>>"$_stderr_file" || _rc=$?
         else
@@ -573,14 +545,10 @@ _gh_pr_review_run_ai() {
         fi
         ;;
     opencode)
-        if ! _gh_pr_review_require_internal_cli opencode >"$_stderr_file" 2>&1; then
+        _opencode_workdir=$(mktemp -d "${TMPDIR:-/tmp}/gh-pr-review-opencode.XXXXXX") || {
+            echo "Could not create opencode run directory under ${TMPDIR:-/tmp}" >"$_stderr_file"
             _rc=1
-        else
-            _opencode_workdir=$(mktemp -d "${TMPDIR:-/tmp}/gh-pr-review-opencode.XXXXXX") || {
-                echo "Could not create opencode run directory under ${TMPDIR:-/tmp}" >"$_stderr_file"
-                _rc=1
-            }
-        fi
+        }
         if [ "$_rc" -eq 0 ]; then
             _opencode_model=$(_gh_pr_review_opencode_model)
             if [ -z "$_opencode_model" ]; then
@@ -1237,14 +1205,14 @@ Flags:
                                whole PR is. No match -> exit 1 (#1616)
 
 OpenCode:
-  --ai opencode                internal-PC only; model from
+  --ai opencode                model from
                                DOTFILES_OPENCODE_REVIEW_MODEL (unset ->
                                skipped); prompt is attached
                                with --file; execution runs in an
                                isolated temporary directory
 
 Hermes:
-  --ai hermes                  internal-PC only; internal AI coding CLI;
+  --ai hermes                  internal AI coding CLI;
                                prompt is attached with --file (invocation
                                shape unverified — see ai-cli-invocation.md)
 

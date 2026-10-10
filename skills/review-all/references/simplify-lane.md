@@ -1,7 +1,15 @@
 # The `/simplify` lane — why it runs first, alone (dEitY719/gh-verify-skills#18)
 
-`/simplify` is the only lane in this skill that writes to the working tree.
-Every other lane — agy, codex, opencode, hermes — is comment-only. Until #18
+> **Since dEitY719/gh-verify-skills#77 this is Step 2.5 substep d** of the
+> self-fix pass (`self-fix-pass.md`), and runs only when `SELF=claude`
+> (`/simplify` is a Claude Code built-in; any other harness records
+> `SIMPLIFY=n/a`). Substep c — the self-review fix — is the second writer in
+> Step 2.5 and runs strictly before this one, committed first, so the
+> one-writer-at-a-time rule below holds for both. The push block at the end of
+> this file is substep e: it now runs **once**, after c and d.
+
+When #18 was written `/simplify` was the only lane that wrote to the working
+tree. Every other lane — agy, codex, opencode, hermes — is comment-only. Until #18
 the five were dispatched together in Step 3's single turn, which put a writer
 and an orchestrator that also edits files on the same tree at the same time.
 
@@ -78,7 +86,7 @@ independent of the ordering choice).
 (#18, "Not in scope"). Everything above is imposed by the dispatch, not by the
 skill being dispatched.
 
-## The three substeps (SKILL.md Step 2.5)
+## The three substeps (Step 2.5 substep d, plus the shared e)
 
 **1 — the clean-tree gate.** `git status --porcelain` must be empty before an
 Agent is dispatched. Non-empty → record `SIMPLIFY=skip`, print exactly
@@ -87,21 +95,25 @@ Agent is dispatched. Non-empty → record `SIMPLIFY=skip`, print exactly
 [SKIP] simplify: working tree dirty
 ```
 
-and go straight to Step 3. This is the assertion that makes "the agent was the
+and go straight to substep e. After substep c the orchestrator has
+committed, so a dirty tree here means c's commit failed — a defect, not a
+skip. When substep a's gate already refused the whole pass, d is `skip`
+without running this check. This is the assertion that makes "the agent was the
 only writer" true, so substep 3's `git add -A` can only stage what the agent
 authored; without it the lane reproduces incident 3 above.
 
-**2 — record the window, then dispatch exactly one Agent.** Take
-`LANES_START_TS=$(date +%s)` first and carry it as a literal into Step 3.4's
-sweep (`orphan-sweep.md`); it must be read before the lane starts or the sweep
-cannot tell the lane's children from processes that predate the round. Then
-dispatch **one** Agent running the built-in `/simplify`, **edit-only**, with the
+**2 — dispatch exactly one Agent.** `LANES_START_TS` was already taken in
+substep b, before c's child process started, and is carried as a literal into
+Step 3.4's sweep (`orphan-sweep.md`); it must be read before any writer starts
+or the sweep cannot tell its children from processes that predate the round.
+Then dispatch **one** Agent running the built-in `/simplify`, **edit-only**, with the
 scope contract above quoted verbatim in its prompt, and nothing else dispatched
 alongside it.
 
-**3 — the orchestrator commits** — the section below.
+**3 — the orchestrator commits** — the section below; then substep e pushes
+everything c and d committed, in one push.
 
-## The commit, the push, and the stale label (Step 2.5 substep 3)
+## The commit, the push, and the stale label (Step 2.5 substeps d.3 and e)
 
 The **orchestrator** commits — never the agent. Because the tree was clean
 before dispatch and the agent was the only writer, `git add -A` can only pick up
@@ -143,13 +155,16 @@ a verdict nobody should trust, the second produces none and says so.
 
 ```bash
 PUSHED=0                                     # never left unset — agy, PR #28
-if [ -n "$(git status --porcelain)" ]; then
+if [ -n "$(git status --porcelain)" ]; then  # d.3 — skipped when SIMPLIFY is n/a / skip
     _scope=$(git status --porcelain | awk '{print $2}' | cut -d/ -f1 | sort -u | paste -sd+ -)
     git add -A && git commit -m "refactor(${_scope:-review-all}): simplify per /simplify" || exit 1
+fi
+# e — ONE push for every self-fix commit c and d made (#77 F-2).
+if [ -n "$(git log --oneline '@{u}..HEAD' 2>/dev/null)" ]; then
     if git push; then
         PUSHED=1
     else
-        printf '[FAIL] simplify commit could not be pushed — reviewers would read the stale remote head. Push it by hand and re-run.\n' >&2
+        printf '[FAIL] self-fix commit(s) could not be pushed — reviewers would read the stale remote head. Push by hand and re-run.\n' >&2
         exit 1
     fi
 fi
@@ -159,7 +174,7 @@ if [ "$PUSHED" = "1" ]; then
     unset -f _gh_pr_drop_label 2>/dev/null || :; unalias _gh_pr_drop_label 2>/dev/null || :; export SHELL_COMMON="$_SC"; [ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
     [ "$(command -v _gh_pr_drop_label 2>/dev/null)" = _gh_pr_drop_label ] || { unset SHELL_COMMON; printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }
     if _vl_err=$(_gh_pr_drop_label "$pr" review-passed "$TARGET_REPO" "$TARGET_HOST" 2>&1); then
-        echo "[OK] \`review-passed\` 무효화됨 — /simplify 커밋이 push 되어 이전 판정은 만료"
+        echo "[OK] \`review-passed\` 무효화됨 — self-fix 커밋이 push 되어 이전 판정은 만료"
     else
         echo "[WARN] \`review-passed\` 제거 실패 — 리뷰되지 않은 auto-fix 커밋에 판정이 남아 있다: ${_vl_err}"
     fi
@@ -175,9 +190,9 @@ blocker was addressed.
 
 The simplify outcome lives in its own variable, `$SIMPLIFY` — **not** in
 `$LANES` (agy, PR #28 FOLLOW-UP). `$LANES` is a stream of
-`<ai>:ok|skip|fail` rows that Step 3.5 walks and feeds to the verdict
+`<ai>:<preset>:ok|skip` rows that Step 3.5 walks and feeds to the verdict
 aggregator; simplify produces no verdict, and a row whose value is outside that
-three-token vocabulary would either be mis-parsed or force every consumer to
+two-token vocabulary would either be mis-parsed or force every consumer to
 special-case it. Keeping it out of the stream is what makes "Step 3.5 skips it"
 structural rather than a rule someone has to remember.
 
@@ -186,6 +201,7 @@ structural rather than a rule someone has to remember.
 | `committed` | ran, tree was dirty, commit pushed |
 | `clean` | ran, changed nothing |
 | `skip` | the clean-tree gate refused to dispatch, or the Agent could not run |
+| `n/a` | `SELF` is not `claude`, so there is no `/simplify` to run (#77 D-9) |
 
 Step 6 prints it as `simplify:<value>` alongside the lane rows.
 

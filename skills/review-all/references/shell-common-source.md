@@ -18,13 +18,15 @@ _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/d
 
 Then call `devx_pr_review_all_parse "$@"`.
 
-## Step 3 — `_dotfiles_setup_mode`
+## Step 3 — no setup-mode gate any more
 
-Gates the `opencode` and `hermes` lanes, which run on the internal PC only.
-
-```sh
-_SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/functions/dotfiles_setup_mode.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi; unset -f _dotfiles_setup_mode 2>/dev/null || :; unalias _dotfiles_setup_mode 2>/dev/null || :; export SHELL_COMMON="$_SC"; [ -f "$_SC/functions/dotfiles_setup_mode.sh" ] && . "$_SC/functions/dotfiles_setup_mode.sh"; [ "$(command -v _dotfiles_setup_mode 2>/dev/null)" = _dotfiles_setup_mode ] || { unset SHELL_COMMON; printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _dotfiles_setup_mode
-```
-
-Undefined, both gates read non-internal and skip — looking exactly like a
-missing CLI.
+Step 3 used to load `_dotfiles_setup_mode` here to gate the `opencode` and
+`hermes` lanes to the internal PC. dEitY719/gh-verify-skills#77 D-6 and
+dEitY719/dotfiles#2069 removed that gate everywhere: every lane — `claude`,
+`codex`, `opencode`, `agy`, `hermes` — is tried on every PC, and one whose CLI
+or model env is missing simply comes back `skip`. Step 3 loads
+`devx_pr_review_all.sh` with the same tiered loader as Step 1
+(`duplicate-review-guard.md` carries the block) and calls
+`devx_pr_review_all_fanout`, which sources `gh_pr_review.sh` from the
+`SHELL_COMMON` that loader exported — the vendored copy when there is no
+dotfiles checkout.
