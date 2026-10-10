@@ -61,8 +61,12 @@ Run it in one Bash call with a 600000 ms tool timeout:
 ```sh
 _base=$(GH_HOST="$TARGET_HOST" gh pr view "$pr" -R "$TARGET_REPO" --json baseRefName -q .baseRefName)
 # Outside the worktree: in the spike, out.txt/err.txt in cwd were swept into `git add -A`.
-_out=$(mktemp "${TMPDIR:-/tmp}/review-all-selffix.$pr.out.XXXXXX")
-_err=$(mktemp "${TMPDIR:-/tmp}/review-all-selffix.$pr.err.XXXXXX")
+# Kept after the run (not /tmp, not deleted) so the child's own /code-review output is
+# the audit trail for `self:claude:*` — the report alone cannot prove the built-in ran.
+_logdir="${XDG_STATE_HOME:-$HOME/.local/state}/gh-verify/review-all"
+mkdir -p "$_logdir" || exit 1
+_log="$_logdir/selffix.$(printf '%s' "$TARGET_REPO" | tr / _).pr$pr.$(date +%Y%m%dT%H%M%S)"
+_out="$_log.out"; _err="$_log.err"
 _rc=0
 if ! command -v claude >/dev/null 2>&1; then
     _rc=127; echo "claude CLI not found" >"$_err"
@@ -89,7 +93,7 @@ if [ "$_rc" -ne 0 ]; then
         _why=$(sed -n '/[^[:space:]]/{s/[[:space:]][[:space:]]*/ /g;p;q;}' "$_err" | cut -c1-80)
     SELF_FIX="skip(${_why:-exit $_rc})"
 fi
-echo "SELF_FIX=$SELF_FIX"; tail -n 40 "$_out"; rm -f "$_out" "$_err"
+echo "SELF_FIX=$SELF_FIX"; echo "SELF_FIX_LOG=$_out"; tail -n 40 "$_out"
 ```
 
 - **Abnormal exit or timeout** → `self:claude:skip(<reason>)`. Edits it already
