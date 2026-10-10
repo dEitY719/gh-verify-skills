@@ -108,9 +108,7 @@ No Agent, no child CLI: the running harness does the review itself (D-7).
    common prefix plus the `thorough` preset body (the runtime copy is
    `_gh_pr_review_common_prefix` in `shell-common/functions/gh_pr_review.sh`).
 3. Fix only the findings you judge valid, **edit-only** — the scope contract
-   blockquote in `simplify-lane.md` applies to you verbatim: no `git commit`,
-   `revert`, `reset`, `checkout --`, `restore`, `stash`, `push`, `rebase`,
-   `cherry-pick`.
+   blockquote in `simplify-lane.md` applies to you verbatim.
 4. The orchestrator then runs the commit half of the block above with
    `(<SELF>)` in the message. Edits → `SELF_FIX=fixed`; none → `SELF_FIX=clean`.
 

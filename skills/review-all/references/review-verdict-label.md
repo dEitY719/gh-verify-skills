@@ -398,18 +398,9 @@ lines are ignored, so a stray one cannot inflate `lanes=` into a false
 "verified". An `ok` lane whose comment has no parseable verdict still yields
 `unknown`, so the fail-closed rule for a reviewer that *ran* is unchanged.
 
-**This reverses dEitY719/gh-verify-skills#14** on purpose. #14 fed a lane that
-was dispatched and could not run an `unknown` line, so a PR that lost a
-reviewer — the agy lane died on `prompt 131746B > 131072B argv limit` while
-reviewing `dEitY719/gh-issue-skills#13` — was left unlabelled instead of
-certified off the survivors. #77 D-5 drops that: while a reviewer's
-subscription is lapsed every PR would stay unlabelled forever, and the user's
-rule is "an error is a skip, do not dwell on it". What keeps this safe:
-`review-passed` is still written only by `gh-pr:reply` (dEitY719/dotfiles#1636),
-so a skipped lane can never manufacture a pass here. The accepted residual
-risk: a lane that would have said `blocking` and errored instead leaves no
-`review-blocked`. The report still names it (`<ai>:SKIP(<reason>)`), so the
-loss is visible, just no longer gating.
+**This reverses dEitY719/gh-verify-skills#14** on purpose; the rationale and the
+accepted residual risk are in `constraints.md`. The report still names a skipped
+lane (`<ai>:SKIP(<reason>)`), so the loss is visible, just no longer gating.
 
 **Where the lane state lives.** Nothing on the PR records it, so Step 3 — the
 only step that watched the lanes — writes it down from the fan-out's output, one

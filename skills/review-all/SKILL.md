@@ -56,7 +56,7 @@ else `simplify:n/a`. e: **one** push; **a failed `git push` stops the run** (onl
 Run `references/duplicate-review-guard.md`'s block (dEitY719/dotfiles#1613): it skips already-reviewed lanes, then
 makes **one** `devx_pr_review_all_fanout` call (Bash timeout 600000) running every other `<ai>:<preset>` lane at once,
 540s cap each; two presets of one AI are two lanes (#56). All comment-only, no writer here (#18). Default `--lanes`:
-`claude`, `codex`, `opencode`, `agy`, `hermes` `:default`, no internal-PC gate — a missing CLI just fails that lane.
+`claude`, `codex`, `opencode`, `agy`, `hermes` `:default`, no internal-PC gate — a missing CLI just skips that lane.
 It prints `$LANES`, one `<ai>:<preset>:ok|skip <reason>` per **line**; carry it as a literal.
 
 ## Step 3.4: Orphan sweep (after every lane returns; soft-fail, WARN only)
