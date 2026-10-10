@@ -30,8 +30,7 @@ knows when the lanes were supposed to be done.
   since #18 runs before Step 3, so a timestamp taken at Step 3 would miss the
   exact case this sweep exists for. Shell state does not
   survive between Bash calls: print the value and carry it as a literal, the
-  same as `pr` and `START_TS`. If Step 2.5 skipped at its clean-tree gate,
-  record it before the Step 3 dispatch instead.
+  same as `pr` and `START_TS`.
 - **Match** — a process whose cwd is the PR worktree (or below it) **and**
   that started at or after `LANES_START_TS`. That was the narrowest filter
   that caught the incident process without also catching a dev server the user
