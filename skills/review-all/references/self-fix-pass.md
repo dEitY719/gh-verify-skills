@@ -66,11 +66,8 @@ _err=$(mktemp "${TMPDIR:-/tmp}/review-all-selffix.$pr.err.XXXXXX")
 _rc=0
 if ! command -v claude >/dev/null 2>&1; then
     _rc=127; echo "claude CLI not found" >"$_err"
-elif command -v timeout >/dev/null 2>&1; then
-    timeout 580 claude -p "/code-review high --fix ${_base:-main}" --permission-mode acceptEdits \
-        </dev/null >"$_out" 2>"$_err" || _rc=$?
-elif command -v gtimeout >/dev/null 2>&1; then    # Homebrew coreutils on macOS
-    gtimeout 580 claude -p "/code-review high --fix ${_base:-main}" --permission-mode acceptEdits \
+elif _to=$(command -v timeout || command -v gtimeout); then    # gtimeout: Homebrew coreutils
+    "$_to" 580 claude -p "/code-review high --fix ${_base:-main}" --permission-mode acceptEdits \
         </dev/null >"$_out" 2>"$_err" || _rc=$?
 else    # shortcut: stock macOS has neither, so this one child runs unbounded; reuse
         # _gh_pr_review_timeout's POSIX fallback (dotfiles#2074) if it ever hangs
