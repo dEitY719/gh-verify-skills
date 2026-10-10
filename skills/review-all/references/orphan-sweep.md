@@ -22,13 +22,13 @@ knows when the lanes were supposed to be done.
 
 ## Window
 
-- **`LANES_START_TS`** — `date +%s`, recorded immediately before Step 2.5
-  dispatches its Agent, or — when Step 2.5's clean-tree gate skipped the lane —
-  taken just before Step 3's fan-out instead, so the window always opens before
-  the first child could have started
-  substep 2 dispatches the `/simplify` Agent. The incident's leaker was the
-  simplify lane, which since #18 runs before Step 3, so a timestamp taken at
-  Step 3 would miss the exact case this sweep exists for. Shell state does not
+- **`LANES_START_TS`** — `date +%s`, recorded in Step 2.5 substep b, before
+  the self-fix writer (the `claude -p` child, #77) and the `/simplify` Agent
+  start, or — when Step 2.5's clean-tree gate skipped the pass — taken just
+  before Step 3's fan-out instead, so the window always opens before the first
+  child could have started. The incident's leaker was the simplify lane, which
+  since #18 runs before Step 3, so a timestamp taken at Step 3 would miss the
+  exact case this sweep exists for. Shell state does not
   survive between Bash calls: print the value and carry it as a literal, the
   same as `pr` and `START_TS`. If Step 2.5 skipped at its clean-tree gate,
   record it before the Step 3 dispatch instead.

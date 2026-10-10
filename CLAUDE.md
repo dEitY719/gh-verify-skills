@@ -84,20 +84,26 @@ Two things this repo depends on are owned by `dEitY719/harness-skills`
 - **Description budget.** CI sums every skill description and fails past 5,440
   characters — Codex's context budget. Keep new descriptions tight.
 - **`review-all`'s parallel fan-out is behaviour, not formatting.** Step 3
-  dispatches every **reviewer** lane `--lanes` resolves to — by default the
-  four `agy:default`, `codex:default`, `opencode:default`, `hermes:default`
-  (dEitY719/gh-verify-skills#56) — **in one turn**, and Step 3.5 aggregates
-  their verdicts only after every lane has returned. The parallelism is
+  runs every **reviewer** lane `--lanes` resolves to — by default the five
+  `claude:default`, `codex:default`, `opencode:default`, `agy:default`,
+  `hermes:default` (dEitY719/gh-verify-skills#56, #77) — **at once**, through
+  one `devx_pr_review_all_fanout` shell call that backgrounds every lane and
+  waits for all of them (harness-agnostic since #77 D-8; it replaced one Agent
+  per lane), and Step 3.5 aggregates their verdicts only after every lane has
+  returned. A lane that errors is `skip` and feeds no verdict (#77 D-5). The parallelism is
   load-bearing (dEitY719/dotfiles#1613, dEitY719/dotfiles#1636, PR
   dEitY719/dotfiles#1598); a rewrite that serialises those lanes changes what
   the merge gate certifies. Two presets of one AI are two independent lanes,
   not one lane racing itself: that is what the `[:<preset>]` marker field and
   the preset-aware dedup guard exist to keep true.
-- **`/simplify` is not one of them, and must never be dispatched beside them**
-  (dEitY719/gh-verify-skills#18). It is the only lane that writes to the
-  working tree, so it runs alone in Step 2.5 — before the fan-out, on a tree
-  asserted clean, edit-only, with the orchestrator committing after it returns.
-  Four same-day incidents came from running it concurrently, the worst a
+- **The Step 2.5 self-fix writers are not among them, and must never run
+  beside them** (dEitY719/gh-verify-skills#18, #77). The self-review fix —
+  for claude, `/code-review high --fix` in a `claude -p` child, never a
+  `Skill()` call or a fan-out lane (`skills/review-all/references/constraints.md`) — and then
+  `/simplify` write to the working tree, so they run one at a time in Step 2.5
+  — before the fan-out, on a tree asserted clean, edit-only, with the
+  orchestrator committing after each returns and pushing once.
+  Four same-day incidents came from running `/simplify` concurrently, the worst a
   subagent that read the orchestrator's edits as an attack and reverted a
   codex BLOCKER fix. Moving it back into Step 3's turn reopens all four:
   `skills/review-all/references/simplify-lane.md`.

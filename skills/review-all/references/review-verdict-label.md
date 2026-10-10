@@ -336,8 +336,8 @@ Build the stream with `printf` inside the lane loop and pipe it straight in.
 Never stage the verdicts in a variable and re-expand it:
 
 ```sh
-# $LANES is what Step 3 recorded: one `<ai>:<preset>:ok|skip|fail` per LINE
-# (dEitY719/gh-verify-skills#56). Newline-delimited for the same reason the
+# $LANES is what Step 3 recorded: one `<ai>:<preset>:ok|skip <reason>` per LINE
+# (dEitY719/gh-verify-skills#56, #77). Newline-delimited for the same reason the
 # aggregator takes stdin — `for x in $LANES` would need word-splitting, which
 # zsh does not do, and every lane but the first would vanish.
 #
@@ -350,11 +350,10 @@ AGG=$(
     while IFS=: read -r ai preset state; do
         [ -n "$ai" ] || continue
         case "$state" in
-        skip) continue ;;              # never dispatched -> NOTHING
-        fail) printf 'unknown\n' ;;    # dispatched, could not run
-        *)    printf '%s\n' "$BODIES" |
-                  devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
-                  devx_pr_review_all_verdict ;;
+        ok) printf '%s\n' "$BODIES" |
+                devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
+                devx_pr_review_all_verdict ;;
+        *)  continue ;;                # skip <reason> -> NOTHING (#77 D-5)
         esac
     done | devx_pr_review_all_aggregate
 )
@@ -375,7 +374,7 @@ directly only when you want the verdict *without* writing a label.
 |---|---|---|
 | any lane `blocking` | blocked | `review-blocked` |
 | ≥1 lane, all `lgtm`/`concerns` | passed | `review-passed` |
-| ≥1 lane, any `unknown` (unparseable verdict, **or a lane that could not run**) | verdict not established | *(empty)* |
+| ≥1 lane, any `unknown` (an `ok` lane whose verdict line is missing or unparseable) | verdict not established | *(empty)* |
 | zero | nothing was checked | *(empty)* |
 
 `devx_pr_review_all_aggregate` itself is **unchanged** by #56 and needed no
@@ -389,29 +388,32 @@ sees a preset at all.
 still answers. `unknown` is not, because a lane whose output stopped parsing is
 indistinguishable from a lane that never reached a verdict.
 
-**A lane that was never dispatched contributes no line at all.** `command -v`
-empty, a non-internal PC — the `SKIP` rows of the report — are absent from the
-stream, not an `unknown`. "Not checked" and "checked and passed" must never
-collapse into the same state. The `/simplify` lane never contributes; it
-produces no verdict. Blank lines are ignored, so a stray one cannot inflate
-`lanes=` into a false "verified".
+**A `skip` lane contributes no line at all.** Since
+dEitY719/gh-verify-skills#77 D-5 a lane has two states, `ok` and `skip`:
+`devx_pr_review_all_fanout` folds "CLI absent" and "ran and exited non-zero"
+(402, network reset, unset model env, the 540s cap) into one `skip` row with a
+one-line reason, and neither reaches the aggregator. The `/simplify` lane and
+the Step 2.5 self-fix never contribute either; they produce no verdict. Blank
+lines are ignored, so a stray one cannot inflate `lanes=` into a false
+"verified". An `ok` lane whose comment has no parseable verdict still yields
+`unknown`, so the fail-closed rule for a reviewer that *ran* is unchanged.
 
-**A lane that was dispatched and could not run contributes `unknown`**
-(dEitY719/gh-verify-skills#14). This is the third state, and it used to be
-folded into the second. The agy lane died on
-`prompt 131746B > 131072B argv limit` while reviewing
-`dEitY719/gh-issue-skills#13` (62 files); Step 3 soft-failed it, Step 3.5
-dropped it from the stream, and a PR that lost half its reviewers produced a
-`lanes=1` verdict that read exactly like a PR reviewed by one lane on purpose.
-`unknown` is the right token because it is already precisely what the
-aggregator means by it — *the lane ran but its verdict could not be
-established* — so no new vocabulary is needed: the round reports
-`[WARN] no reviewer lane produced a verdict … left unlabelled`, and unlabelled
-reads downstream as "not verified". Fail-closed, and visibly so.
+**This reverses dEitY719/gh-verify-skills#14** on purpose. #14 fed a lane that
+was dispatched and could not run an `unknown` line, so a PR that lost a
+reviewer — the agy lane died on `prompt 131746B > 131072B argv limit` while
+reviewing `dEitY719/gh-issue-skills#13` — was left unlabelled instead of
+certified off the survivors. #77 D-5 drops that: while a reviewer's
+subscription is lapsed every PR would stay unlabelled forever, and the user's
+rule is "an error is a skip, do not dwell on it". What keeps this safe:
+`review-passed` is still written only by `gh-pr:reply` (dEitY719/dotfiles#1636),
+so a skipped lane can never manufacture a pass here. The accepted residual
+risk: a lane that would have said `blocking` and errored instead leaves no
+`review-blocked`. The report still names it (`<ai>:SKIP(<reason>)`), so the
+loss is visible, just no longer gating.
 
 **Where the lane state lives.** Nothing on the PR records it, so Step 3 — the
-only step that watched the lanes — writes it down as it dispatches, one
-`<ai>:<preset>:ok|skip|fail` per **line** (`$LANES` in the blocks below; the
+only step that watched the lanes — writes it down from the fan-out's output, one
+`<ai>:<preset>:ok|skip <reason>` per **line** (`$LANES` in the blocks below; the
 3rd field arrived with dEitY719/gh-verify-skills#56, and every reader takes it
 through `devx_pr_review_all_lane_rows` rather than splitting it by hand).
 `<preset>` is what makes the row identify a *lane* rather than an *AI*: without
@@ -423,16 +425,17 @@ re-derivable. This is deliberately a shell variable inside one skill run and
 not a file or a PR marker: the two steps are the same run by construction, so
 there is nothing to persist across.
 
-A `fail`'s `<reason>` is the lane's **first stderr line**, newlines and control
-characters stripped, truncated to 120 characters. Step 6 prints exactly one
-line, and a lane's stderr is arbitrary text that can carry both.
+A `skip`'s `<reason>` is the lane's **first non-blank stderr line**,
+whitespace squeezed (`timeout 540s` when the cap fired, `exit <rc>` when
+stderr was empty) — computed by `devx_pr_review_all_fanout`. Step 6 truncates
+it to fit its one line.
 
-The distinction is only knowable **here**. `command -v agy` empty and
+The reason is only knowable **here**. `command -v agy` empty and
 `gh-pr:review --ai agy` exiting 1 both leave the PR with no `ai-review` block
-for that lane; nothing downstream can tell them apart. Collapsing both into one
-`[SKIP]` throws away the only place in the pipeline where the difference still
-exists — the same argument as "Why this lives in the producer" below, one level
-finer.
+for that lane; nothing downstream can tell them apart. Since #77 both are one
+`skip` state for the verdict, but the reason string still keeps them apart in
+the report — the same argument as "Why this lives in the producer" below, one
+level finer.
 
 ## Applying the label
 
@@ -445,11 +448,10 @@ printf '%s\n' "$LANES" | devx_pr_review_all_lane_rows |
 while IFS=: read -r ai preset state; do   # one <ai>:<preset>:<state> per line
     [ -n "$ai" ] || continue
     case "$state" in
-    skip) continue ;;                   # never dispatched -> NOTHING
-    fail) printf 'unknown\n' ;;         # dispatched, could not run
-    *)    printf '%s\n' "$BODIES" |
-              devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
-              devx_pr_review_all_verdict ;;
+    ok) printf '%s\n' "$BODIES" |
+            devx_pr_review_all_lane_block "$ai" "$head_sha" "$ME" "$preset" |
+            devx_pr_review_all_verdict ;;
+    *)  continue ;;                     # skip <reason> -> NOTHING (#77 D-5)
     esac
 done | devx_pr_review_all_apply_label "$pr" "$TARGET_REPO" "$TARGET_HOST" "$head_sha"
 ```
