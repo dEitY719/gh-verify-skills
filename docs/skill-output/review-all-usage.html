@@ -297,16 +297,26 @@
             <span><code class="inl">dEitY719/dotfiles#1670</code></span>
           </div>
           <div class="in-row">
+            <span class="lbl">self-fix 패스</span>
+            <span>
+              Step 2.5 에서 리뷰보다 먼저, 한 번에 하나씩. <code class="inl">SELF=claude</code> 면
+              <code class="inl">claude -p "/code-review high --fix &lt;base&gt;"</code> 자식 뒤에 <code class="inl">/simplify</code>,
+              다른 하네스는 in-session <code class="inl">thorough</code> 리뷰(<code class="inl">simplify:n/a</code>).
+              보고 줄에 <code class="inl">self:&lt;SELF&gt;:&lt;결과&gt;</code> 로 남는다
+            </span>
+          </div>
+          <div class="in-row">
             <span class="lbl">리뷰 레인</span>
             <span>
-              agy, codex, opencode, hermes, <code class="inl">/simplify</code> 자동 수정 패스
-              <br><span class="text-secondary">(Step 3 에서 한 턴에 병렬 디스패치)</span>
+              claude, codex, opencode, agy, hermes
+              <br><span class="text-secondary">(Step 3 에서 한 번의 셸 호출로 병렬, PC 구분 없음. 에러 난 레인은 <code class="inl">&lt;ai&gt;:SKIP(&lt;사유&gt;)</code> 로 남고 판정에서 제외된다)</span>
               <span class="lanes">
-                <span class="lane">agy</span>
+                <span class="lane fanout">self-fix (Step 2.5)</span>
+                <span class="lane">claude</span>
                 <span class="lane">codex</span>
                 <span class="lane">opencode</span>
+                <span class="lane">agy</span>
                 <span class="lane">hermes</span>
-                <span class="lane fanout">/simplify 자동 수정</span>
               </span>
             </span>
           </div>

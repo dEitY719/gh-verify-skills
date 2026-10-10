@@ -29,7 +29,9 @@ The discriminator is **when in the PR's life** you are standing:
   proofs (live = the serving checkout's identity, merged = a fresh clone's).
 
 `review-all` is the only one that can write to your branch, and only through
-the `/simplify` auto-fix pass it runs.
+its Step 2.5 self-fix pass: the running harness reviews the PR and fixes what
+it finds (on Gemini-family harnesses, an in-session `thorough` review;
+`/simplify` is Claude-Code-only, so it reports `simplify:n/a`).
 
 ## Tool mapping for Gemini CLI
 
@@ -52,15 +54,21 @@ read that repo's `references/antigravity-tools.md` instead: `agy` shares
 
 ## Capability gaps on Gemini CLI
 
-- **`review-all`'s parallel fan-out is the load-bearing part.** Step 3
-  dispatches the four reviewer lanes in a single turn. Serialising them is
-  acceptable and slower; quietly running fewer lanes than the report claims is
-  not. Step 3.5 then aggregates the verdicts, and a lane that contributed
-  nothing must not be counted. The `/simplify` auto-fix pass is **not** one of
-  those lanes: it runs alone in Step 2.5, before them, and dispatching it
-  beside them is a defect, not an optimisation (dEitY719/gh-verify-skills#18).
-- `review-all` invokes other harnesses by name (`agy`, `codex`, `opencode`,
-  `hermes`). Each lane is soft-fail: a missing binary is a `SKIP`, never an
+- **`review-all`'s parallel fan-out is the load-bearing part.** Step 3 runs
+  all five default reviewer lanes (`claude`, `codex`, `opencode`, `agy`,
+  `hermes`) at once through one `devx_pr_review_all_fanout` shell call, so it
+  needs only `run_shell_command`, no subagent (dEitY719/gh-verify-skills#77).
+  Step 3.5 then aggregates the verdicts. The Step 2.5 self-fix writers are
+  **not** lanes: they run one at a time before the fan-out, and running them
+  beside it is a defect, not an optimisation (dEitY719/gh-verify-skills#18).
+- **Bind `SELF` honestly in Step 2.4.** Gemini CLI is not one of the five
+  named harnesses; Antigravity declares `SELF=agy`. Any harness that cannot
+  name itself declares `SELF=unknown`, which skips the self-fix pass and still
+  runs the fan-out. Never derive `SELF` from env variables.
+- `review-all` invokes other harnesses by name (`claude`, `codex`, `opencode`,
+  `agy`, `hermes`), with no internal/external PC split. Each lane is
+  soft-fail: one that errors for any reason (missing binary, 402, timeout)
+  is reported as `<ai>:SKIP(<reason>)` and excluded from the verdict, never an
   abort.
 - `live` needs a browser driver. Without one it drops to the reduced check set
   in `references/driver.md` and must say so in the report.

@@ -15,7 +15,11 @@ PR 번호  ──▶  /gh-verify:review-all  ──▶  레인별 리뷰 + 게�
 ## 2. 입력
 
 - 대상 후보 PR — `dEitY719/dotfiles#1670`
-- 리뷰 레인 — agy, codex, opencode, hermes, `/simplify` 자동 수정 패스 (Step 3 에서 한 턴에 병렬 디스패치)
+- self-fix 패스 — Step 2.5 에서 리뷰보다 먼저, 한 번에 하나씩. `SELF=claude` 면
+  `claude -p "/code-review high --fix <base>"` 자식 뒤에 `/simplify`, 다른 하네스는 in-session `thorough` 리뷰
+  (`simplify:n/a`). 보고 줄에 `self:<SELF>:<결과>` 로 남는다
+- 리뷰 레인 — claude, codex, opencode, agy, hermes (Step 3 에서 한 번의 셸 호출로 병렬, PC 구분 없음.
+  에러 난 레인은 `<ai>:SKIP(<사유>)` 로 남고 판정에서 제외된다)
 
 ## 3. 결과
 

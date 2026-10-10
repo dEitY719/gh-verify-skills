@@ -45,12 +45,16 @@ recognise; this repo keeps no copy on purpose. Short version:
 - "Search file contents" / "find files by name" -> `grep`, `glob`
 - "Create a todo" -> `todowrite`
 - "Invoke a skill" -> OpenCode's native `skill` tool
-- "Dispatch a subagent" -> OpenCode has no parallel subagent primitive.
-  `review-all` Step 3 wants its four reviewer lanes dispatched in one turn; run
-  them sequentially and say so in the report. A serialised fan-out is slower
-  but still correct — a fan-out silently reduced to one lane is not. The
-  `/simplify` auto-fix pass is not one of those four: it runs alone in Step
-  2.5, before them (dEitY719/gh-verify-skills#18).
+- "Dispatch a subagent" -> OpenCode has no parallel subagent primitive, and
+  `review-all` no longer needs one: Step 3 runs all five default reviewer
+  lanes (`claude`, `codex`, `opencode`, `agy`, `hermes`) in parallel through
+  one `devx_pr_review_all_fanout` shell call (dEitY719/gh-verify-skills#77).
+  A lane that errors is reported as `<ai>:SKIP(<reason>)` and excluded from
+  the verdict. Before that, Step 2.4 binds `SELF=opencode` and Step 2.5 runs
+  the self-fix pass in-session: review `gh pr diff` against the `thorough`
+  preset and fix the valid findings, edit-only; `/simplify` is
+  Claude-Code-only, so it reports `simplify:n/a`. The self-fix writers are not
+  lanes and never run beside them (dEitY719/gh-verify-skills#18).
 - "Ask the user" -> OpenCode has no dedicated ask tool; stop and ask in your
   reply, then wait. `live` and `merged` both need a real answer when the base
   URL, API origin, or claim list cannot be resolved.
