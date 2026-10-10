@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-10T02:44Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-10T04:15Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -407,19 +407,59 @@ _gh_pr_review_mktemp_prompt() {
 # #1506); devx_pr_review_all_fanout bounds every lane with it (#2069).
 # Args: $1 = seconds, $2.. = command + argv.
 #
-# `timeout` is GNU coreutils and is absent on a stock macOS, so this degrades
-# to running the command unbounded rather than hard-failing — same shape as
-# `_wsl_check_timeout` in shell-common/functions/wsl_check.sh, kept local to
-# this file for the same reason (one call site family, no shared contract).
+# `timeout` is GNU coreutils and is absent on a stock macOS (Homebrew
+# coreutils installs it as `gtimeout`). With neither, #2074 replaced the old
+# unbounded degrade with a POSIX fallback: run the command in the background,
+# a watcher subshell `sleep`s N then sends TERM (and KILL after a 2s grace),
+# and expiry returns 124 like GNU timeout. If `sleep` itself is missing the
+# watcher never fires, so the command still runs (unbounded) rather than
+# hard-failing. Kept local to this file like `_wsl_check_timeout` in
+# shell-common/functions/wsl_check.sh (one call site family, no shared
+# contract).
 #
 # Deliberately no `--preserve-status`: the default exit code 124 is what makes
 # "we killed it" distinguishable from any exit code the CLI produces itself.
 _gh_pr_review_timeout() {
     if command -v timeout >/dev/null 2>&1; then
         timeout "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        gtimeout "$@"
     else
-        shift
-        "$@"
+        # Subshell: no job-control chatter in an interactive shell, and the
+        # helper variables never leak into the caller.
+        # shortcut: signals only the direct child, not its process group as
+        # GNU timeout does; grandchildren (e.g. `bash -c` → hermes) can
+        # outlive the kill. Upgrade if a lane is seen leaking processes.
+        (
+            [ -n "${ZSH_VERSION-}" ] && emulate -L sh
+            _gprt_sec="$1"
+            shift
+            # Explicit <&0: an async list would otherwise get /dev/null stdin.
+            "$@" <&0 &
+            _gprt_pid=$!
+            (
+                _gprt_sleep=""
+                trap 'kill "$_gprt_sleep" 2>/dev/null; exit 0' TERM
+                sleep "$_gprt_sec" &
+                _gprt_sleep=$!
+                wait "$_gprt_sleep" || exit 0
+                # Fired: from here on, being cancelled still means "expired".
+                kill -TERM "$_gprt_pid" 2>/dev/null || exit 0
+                trap 'kill "$_gprt_sleep" 2>/dev/null; exit 124' TERM
+                sleep 2 &
+                _gprt_sleep=$!
+                wait "$_gprt_sleep"
+                kill -KILL "$_gprt_pid" 2>/dev/null
+                exit 124
+            ) </dev/null >/dev/null 2>&1 &
+            _gprt_watch=$!
+            wait "$_gprt_pid" 2>/dev/null
+            _gprt_rc=$?
+            kill -TERM "$_gprt_watch" 2>/dev/null
+            wait "$_gprt_watch" && exit "$_gprt_rc"
+            [ "$?" -eq 124 ] && exit 124
+            exit "$_gprt_rc"
+        )
     fi
 }
 
