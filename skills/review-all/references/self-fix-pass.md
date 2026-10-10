@@ -40,7 +40,8 @@ gate is what makes each later `git add -A` stage only the step's own work.
 starts, so d's own gate (`simplify-lane.md` substep 1) sees a clean tree again
 and its commit holds only `/simplify`'s hunks. Each step gets its own commit so
 a bad one reverts alone. `<scope>` is derived exactly as in `simplify-lane.md`
-(top-level dirs of the staged paths, joined with `+`).
+(top-level dirs of the staged paths, read with `git diff --cached --name-only`
+after `git add -A` so a rename counts under its new path, joined with `+`).
 
 **e — the push** is `simplify-lane.md`'s "The commit, the push, and the stale
 label" block, run **once** after c and d. A failed push exits 1 before any
@@ -73,8 +74,10 @@ else    # stock macOS has no timeout: run unbounded, same as _gh_pr_review_timeo
         </dev/null >"$_out" 2>"$_err" || _rc=$?
 fi
 if [ -n "$(git status --porcelain)" ]; then
-    _scope=$(git status --porcelain | awk '{print $2}' | cut -d/ -f1 | sort -u | paste -sd+ -)
-    git add -A && git commit -m "fix(${_scope:-review-all}): apply self-review findings (claude)" || exit 1
+    git add -A || exit 1
+    # Staged names, not porcelain $2: a rename row's $2 is the OLD path (#80).
+    _scope=$(git diff --cached --name-only | cut -d/ -f1 | sort -u | paste -sd+ -)
+    git commit -m "fix(${_scope:-review-all}): apply self-review findings (claude)" || exit 1
     SELF_FIX=fixed
 else
     SELF_FIX=clean
