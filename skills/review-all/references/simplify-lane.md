@@ -96,9 +96,18 @@ Agent is dispatched. Non-empty → record `SIMPLIFY=skip`, print exactly
 ```
 
 and go straight to substep e. After substep c the orchestrator has
-committed, so a dirty tree here means c's commit failed — a defect, not a
-skip. When substep a's gate already refused the whole pass, d is `skip`
-without running this check. This is the assertion that makes "the agent was the
+committed, so a dirty tree here means c's commit did not take every hunk — a
+defect, handled exactly as Step 4 handles one (#80): record `SIMPLIFY=skip`
+and go to substep e, whose block prints
+
+```
+[WARN] working tree dirty after self-fix — left uncommitted
+```
+
+and **leaves the changes uncommitted**. The block checks `$SIMPLIFY` and never
+commits a tree `/simplify` did not write; committing hunks of unknown authorship is worse than
+the dirty tree. When substep a's gate already refused the whole pass, d is
+`skip` without running this check. This is the assertion that makes "the agent was the
 only writer" true, so substep 3's `git add -A` can only stage what the agent
 authored; without it the lane reproduces incident 3 above.
 
@@ -134,7 +143,10 @@ Two flag choices are load-bearing, both from agy + codex review of PR #28:
 
 `<scope>` is a placeholder — the runnable block below derives it from the
 staged files' top-level directories, joined with `+` when they span more than
-one (`skills/review-all` + `docs` → `skills+docs`). Committing the literal
+one (`skills/review-all` + `docs` → `skills+docs`). It reads them with
+`git diff --cached --name-only` **after** `git add -A`, so a rename counts
+under its new path; `git status --porcelain | awk '{print $2}'` picked the old
+one from an `R  old -> new` row (#80). Committing the literal
 string `refactor(<scope>):` is a defect, not a template — codex, PR #28
 BLOCKER: the prose said "derive it" but the block never did.
 
@@ -147,23 +159,47 @@ Step 3 then reviews a tree that does not exist any more, and stamps verdict
 markers with a sha the merge will never carry: the same class of silent
 mis-certification #18 set out to close.
 
+A branch with no upstream is not a reason to skip the push: `@{u}..HEAD`
+errors there, and reading that as "nothing to push" silently broke the
+guarantee (#80). With no upstream the block pushes with
+`git push -u "$remote" HEAD`, which also sets one.
+
 So this is the one hard-fail in an otherwise soft-fail skill. On push failure,
 print the git error, leave the commit in place (it is not lost — it is local
 and pushable by hand), and **exit without dispatching a single reviewer lane**.
 A round that reviews the wrong head is worse than no round: the first produces
 a verdict nobody should trust, the second produces none and says so.
 
+Set `SIMPLIFY` at the top of the block to the value already recorded (`skip`,
+`n/a`); leave it unset when the Agent ran, and the block sets `committed` or
+`clean` itself.
+
 ```bash
 PUSHED=0                                     # never left unset — agy, PR #28
-if [ -n "$(git status --porcelain)" ]; then  # d.3 — skipped when SIMPLIFY is n/a / skip
-    _scope=$(git status --porcelain | awk '{print $2}' | cut -d/ -f1 | sort -u | paste -sd+ -)
-    git add -A && git commit -m "refactor(${_scope:-review-all}): simplify per /simplify" || exit 1
-fi
-# e — ONE push for every self-fix commit c and d made (#77 F-2).
-if [ -n "$(git log --oneline '@{u}..HEAD' 2>/dev/null)" ]; then
-    if git push; then
-        PUSHED=1
+case "${SIMPLIFY:-}" in
+skip|n/a)    # d.3 does not run: whatever is dirty now is not /simplify's work (#80)
+    [ -z "$(git status --porcelain)" ] || printf '[WARN] working tree dirty after self-fix — left uncommitted\n' ;;
+*)           # d.3 — the Agent ran
+    if [ -n "$(git status --porcelain)" ]; then
+        git add -A || exit 1
+        # Staged names, not porcelain $2: a rename row's $2 is the OLD path (#80).
+        _scope=$(git diff --cached --name-only | cut -d/ -f1 | sort -u | paste -sd+ -)
+        git commit -m "refactor(${_scope:-review-all}): simplify per /simplify" || exit 1
+        SIMPLIFY=committed
     else
+        SIMPLIFY=clean
+    fi ;;
+esac
+# e — ONE push for every self-fix commit c and d made (#77 F-2).
+_push=0
+if ! git rev-parse -q --verify '@{u}' >/dev/null 2>&1; then
+    _push=upstream                           # no upstream: push and set one, never skip (#80)
+elif [ -n "$(git log --oneline '@{u}..HEAD')" ]; then
+    _push=1
+fi
+if [ "$_push" != 0 ]; then
+    if [ "$_push" = upstream ]; then git push -u "${remote:-origin}" HEAD; else git push; fi && PUSHED=1
+    if [ "$PUSHED" != 1 ]; then
         printf '[FAIL] self-fix commit(s) could not be pushed — reviewers would read the stale remote head. Push by hand and re-run.\n' >&2
         exit 1
     fi
