@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_review_all.sh
-# Synced 2026-10-10T02:44Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-10T03:07Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_review_all.sh
 # Pure arg parser for the devx:pr-review-all skill. Mirrors the
@@ -251,8 +251,9 @@ devx_pr_review_all_parse() {
 #
 # devx_pr_review_all_fanout <pr> <remote> <lanes>
 # Runs `gh_pr_review --ai <ai> --review <preset> <pr> <remote>` for every
-# `<ai>:<preset>` lane at once, each in a fresh `sh` that sources
-# gh_pr_review.sh, bounded by _gh_pr_review_timeout at the same cap as the
+# `<ai>:<preset>` lane at once, each in a fresh `bash` that sources
+# gh_pr_review.sh (bash, not sh: it needs `set -o pipefail`, which dash
+# rejects — #2072), bounded by _gh_pr_review_timeout at the same cap as the
 # opencode / hermes CLIs (GH_PR_REVIEW_SLOW_CLI_TIMEOUT_SEC, default 540s) —
 # so a hung codex / agy / claude cannot outlive the caller's 600s Bash budget.
 # Once every lane has exited, prints one line per lane, in <lanes> order:
@@ -299,8 +300,8 @@ devx_pr_review_all_fanout() {
         (
             # gh_pr_review.sh returns early in a non-interactive shell.
             export DOTFILES_FORCE_INIT=1
-            # shellcheck disable=SC2016  # $1/$@ belong to the inner sh
-            _gh_pr_review_timeout "$_sec" sh -c '. "$1" || exit 1; shift; gh_pr_review "$@"' \
+            # shellcheck disable=SC2016  # $1/$@ belong to the inner bash
+            _gh_pr_review_timeout "$_sec" bash -c '. "$1" || exit 1; shift; gh_pr_review "$@"' \
                 devx-pr-review-all-fanout "$_src" \
                 --ai "${_lane%%:*}" --review "${_lane#*:}" "$pr" "$remote" \
                 </dev/null >"$_f.out" 2>"$_f.err"
