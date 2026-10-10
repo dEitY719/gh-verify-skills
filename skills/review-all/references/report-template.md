@@ -35,6 +35,9 @@ Exactly one line, `[OK]` / `[SKIP]` / `[WARN]`:
 - **`self:<SELF>:<value>`** is `$SELF_FIX` from Step 2.5 — `fixed`,
   `fixed(fallback)`, `clean` or `skip(<reason>)` (`self-fix-pass.md`);
   `self:unknown:skip(unidentified harness)` when Step 2.4 could not bind SELF.
+  For `SELF=claude`, add one line after the status line: `self-fix log: <SELF_FIX_LOG>` —
+  the kept `.out` (with its `.err` sibling) from the `claude -p` child, so a reader can
+  confirm the built-in `/code-review` actually ran.
 - **`simplify:<value>`** is `$SIMPLIFY` — `committed`, `clean`, `skip`, or
   `n/a` when `SELF` is not `claude` (`simplify-lane.md`).
 - **Lane errors alone never downgrade the line to `[WARN]`** (#77 F-7). A
