@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-10T04:15Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-10T04:48Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -410,10 +410,11 @@ _gh_pr_review_mktemp_prompt() {
 # `timeout` is GNU coreutils and is absent on a stock macOS (Homebrew
 # coreutils installs it as `gtimeout`). With neither, #2074 replaced the old
 # unbounded degrade with a POSIX fallback: run the command in the background,
-# a watcher subshell `sleep`s N then sends TERM (and KILL after a 2s grace),
-# and expiry returns 124 like GNU timeout. If `sleep` itself is missing the
-# watcher never fires, so the command still runs (unbounded) rather than
-# hard-failing. Kept local to this file like `_wsl_check_timeout` in
+# a watcher subshell `sleep`s N then sends TERM (and KILL after a 2s grace)
+# to the command's process group, and expiry returns 124 like GNU timeout
+# (#2077: group kill, INT/TERM forwarding, race-free 124). If `sleep` itself
+# is missing the watcher could never fire, so the command still runs
+# (unbounded) rather than hard-failing. Kept local to this file like `_wsl_check_timeout` in
 # shell-common/functions/wsl_check.sh (one call site family, no shared
 # contract).
 #
@@ -425,39 +426,70 @@ _gh_pr_review_timeout() {
     elif command -v gtimeout >/dev/null 2>&1; then
         gtimeout "$@"
     else
-        # Subshell: no job-control chatter in an interactive shell, and the
-        # helper variables never leak into the caller.
-        # shortcut: signals only the direct child, not its process group as
-        # GNU timeout does; grandchildren (e.g. `bash -c` → hermes) can
-        # outlive the kill. Upgrade if a lane is seen leaking processes.
+        # Subshell: the helper variables, traps and `set -m` never leak into
+        # the caller.
         (
             [ -n "${ZSH_VERSION-}" ] && emulate -L sh
             _gprt_sec="$1"
             shift
+            _gprt_pid=""
+            _gprt_watch=""
+            # No `sleep` → the watcher could never fire: run unbounded.
+            if ! command -v sleep >/dev/null 2>&1; then
+                "$@"
+                exit
+            fi
+            # Expiry is decided by this flag (written by the watcher BEFORE it
+            # kills), never by trap timing, so expiry always returns 124 (#2077).
+            _gprt_flag=$(_gh_pr_review_mktemp_safe "${TMPDIR:-/tmp}/gh-pr-review-timeout.XXXXXX") || _gprt_flag=""
+            # Signal the command's whole process group like GNU timeout, so
+            # grandchildren (`bash -c` → hermes) die too; plain pid if the
+            # group kill fails (no job control, e.g. zsh without a tty).
+            _gprt_kill() {
+                kill "-$1" -- "-$_gprt_pid" 2>/dev/null || kill "-$1" "$_gprt_pid" 2>/dev/null
+            }
+            _gprt_cleanup() {
+                [ -n "$_gprt_watch" ] && kill -TERM "$_gprt_watch" 2>/dev/null
+                [ -n "$_gprt_flag" ] && rm -f "$_gprt_flag"
+            }
+            # Ctrl-C / TERM reach the command even though its own group is not
+            # the terminal's foreground group (#2077).
+            trap '[ -n "$_gprt_pid" ] && _gprt_kill TERM; _gprt_cleanup; exit 130' INT
+            trap '[ -n "$_gprt_pid" ] && _gprt_kill TERM; _gprt_cleanup; exit 143' TERM
+            # Job control puts the command in its own process group; switched
+            # back off at once so no "Terminated" job notice is printed. Probed
+            # in a subshell first: zsh refuses monitor without a tty, and in sh
+            # emulation a failing `set` would exit this shell.
+            { (set -m) && set -m; } 2>/dev/null
             # Explicit <&0: an async list would otherwise get /dev/null stdin.
             "$@" <&0 &
             _gprt_pid=$!
+            set +m 2>/dev/null
             (
                 _gprt_sleep=""
                 trap 'kill "$_gprt_sleep" 2>/dev/null; exit 0' TERM
                 sleep "$_gprt_sec" &
                 _gprt_sleep=$!
                 wait "$_gprt_sleep" || exit 0
-                # Fired: from here on, being cancelled still means "expired".
-                kill -TERM "$_gprt_pid" 2>/dev/null || exit 0
-                trap 'kill "$_gprt_sleep" 2>/dev/null; exit 124' TERM
+                [ -n "$_gprt_flag" ] && echo expired >"$_gprt_flag"
+                _gprt_kill TERM || exit 0
                 sleep 2 &
                 _gprt_sleep=$!
                 wait "$_gprt_sleep"
-                kill -KILL "$_gprt_pid" 2>/dev/null
-                exit 124
+                _gprt_kill KILL
+                exit 0
             ) </dev/null >/dev/null 2>&1 &
             _gprt_watch=$!
             wait "$_gprt_pid" 2>/dev/null
             _gprt_rc=$?
-            kill -TERM "$_gprt_watch" 2>/dev/null
-            wait "$_gprt_watch" && exit "$_gprt_rc"
-            [ "$?" -eq 124 ] && exit 124
+            # Group still alive after expiry: let the watcher finish its grace
+            # and KILL it. Otherwise the watcher has nothing left to do.
+            { [ -s "$_gprt_flag" ] && kill -0 -- "-$_gprt_pid" 2>/dev/null; } ||
+                kill -TERM "$_gprt_watch" 2>/dev/null
+            wait "$_gprt_watch" 2>/dev/null
+            [ -s "$_gprt_flag" ] && _gprt_rc=124
+            _gprt_watch=""
+            _gprt_cleanup
             exit "$_gprt_rc"
         )
     fi
