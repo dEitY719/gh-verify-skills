@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_host.sh
-# Synced 2026-10-05T05:04Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-10T03:07Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/gh_host.sh
 # Resolve the active GitHub host and parse owner/repo from remote URLs.
 #
@@ -66,6 +66,18 @@ else
     printf '[gh_host] %s missing or did not define _dotfiles_root_guard_self — #1454 guard skipped (#724).\n' \
         "$_drg_helper" >&2
 fi
+# Setup-mode reader SSOT (#1810), from this file's own shell-common first so a
+# minimal-env hook (no SHELL_COMMON, isolated $HOME) still resolves internal.
+if ! command -v _dotfiles_setup_mode >/dev/null 2>&1; then
+    for _grh_lib in "${_drg_self%/*}/../util/setup_mode_read.sh" \
+        "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/util/setup_mode_read.sh"; do
+        if [ -r "$_grh_lib" ]; then
+            . "$_grh_lib"
+            break
+        fi
+    done
+    unset _grh_lib
+fi
 unset _drg_self _drg_helper
 
 # _gh_ghes_host — print the internal GHES host, or nothing when unknown.
@@ -90,33 +102,16 @@ _gh_ghes_host() {
 
 # _gh_resolve_host — print the active GitHub host on stdout.
 #
-# Reads `_dotfiles_setup_mode` (defined in
-# shell-common/tools/integrations/claude.sh). When that function isn't
-# in scope, fall back to reading `~/.dotfiles-setup-mode` directly so
-# non-interactive callers (hooks, one-shot scripts) that source
-# gh_host.sh without the integrations layer still resolve `internal`
-# correctly. Before issue #718 this branch unconditionally returned
-# `github.com`, which silently broke `claude/hooks/post-gh-pr-create.sh`
-# on internal PCs (host regex never matched the GHE PR URL → board
-# sync skipped). The disk fallback mirrors the same canonicalisation
-# that `_dotfiles_setup_mode` performs (legacy numeric values 1/2/3
-# from pre-#571 setup.sh) so the two code paths agree.
+# Mode comes from `_dotfiles_setup_mode`, sourced at the top of this file so
+# non-interactive callers (hooks, one-shot scripts) that load gh_host.sh
+# without the shell loader still get it. Before issue #718 a missing reader
+# meant an unconditional `github.com`, which silently broke
+# `claude/hooks/post-gh-pr-create.sh` on internal PCs. An unreachable lib
+# still degrades to "" (github.com), never an error.
 _gh_resolve_host() {
+    _grh_mode=""
     if command -v _dotfiles_setup_mode >/dev/null 2>&1; then
         _grh_mode=$(_dotfiles_setup_mode 2>/dev/null || echo "")
-    else
-        _grh_file="$HOME/.dotfiles-setup-mode"
-        if [ -f "$_grh_file" ]; then
-            _grh_mode=$(tr -d ' \t\n\r' < "$_grh_file" 2>/dev/null)
-            case "$_grh_mode" in
-                1) _grh_mode="public" ;;
-                2) _grh_mode="internal" ;;
-                3) _grh_mode="external" ;;
-            esac
-        else
-            _grh_mode=""
-        fi
-        unset _grh_file
     fi
     if [ "$_grh_mode" = "internal" ]; then
         _grh_ghes=$(_gh_ghes_host)
