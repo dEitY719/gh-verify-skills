@@ -70,7 +70,8 @@ elif _to=$(command -v timeout || command -v gtimeout); then    # gtimeout: Homeb
     "$_to" 580 claude -p "/code-review high --fix ${_base:-main}" --permission-mode acceptEdits \
         </dev/null >"$_out" 2>"$_err" || _rc=$?
 else    # shortcut: stock macOS has neither, so this one child runs unbounded; reuse
-        # _gh_pr_review_timeout's POSIX fallback (dotfiles#2074) if it ever hangs
+        # _gh_pr_review_timeout's POSIX fallback (dotfiles#2074) if it ever hangs --
+        # source gh_pr_review.sh with DOTFILES_FORCE_INIT=1, it returns early otherwise
     claude -p "/code-review high --fix ${_base:-main}" --permission-mode acceptEdits \
         </dev/null >"$_out" 2>"$_err" || _rc=$?
 fi
