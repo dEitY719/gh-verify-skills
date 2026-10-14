@@ -130,8 +130,18 @@ nothing and simply fails. The exception is this repo's own pre-rename trigger
 phrases inside a `description:` — see "Rules for changing skills" above.
 
 Paths under `claude/skills/`, `shell-common/functions/`, and
-`tests/bats/` — those point into `dEitY719/dotfiles` and are labelled as such.
-Only paths **inside** this repo were rewritten by the migration.
+`tests/bats/<subdir>/` — those point into `dEitY719/dotfiles` and are labelled as such.
+Only paths **inside** this repo were rewritten by the migration. This repo's own
+bats suite is the flat `tests/bats/*.bats` (see "Tests").
+
+## Tests
+
+- `tests/run.sh` — the self-checks the shared `validate` workflow runs.
+- `tests/bats/` — bats suites moved here from dotfiles (dEitY719/dotfiles#2200),
+  run by `.github/workflows/bats.yml`. Locally:
+  `BATS_LIB_PATH=<dir with bats-support,bats-assert> bats -r tests/bats`.
+  Fixtures in `tests/bats/fixtures/` run the shipped code (fence-extracted or
+  vendored), never a hand copy of it.
 
 ## Emojis
 
