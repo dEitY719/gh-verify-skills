@@ -181,25 +181,23 @@ pmv_prompt_retryable() {
 # not mean "never typed in": dotfiles PR #2166 got `/gh-verify:merged` three
 # times — three verify comments and a false STUCK — because the session took
 # the first one and kept working past the wait. herdr's own view of the agent
-# decides: working / blocked / done, or a `state_change_seq` past the one read
-# before the first send, means it took the prompt. The status counts only when
-# the agent was not already in it before the send — a reused session
-# (`agent_name_taken`) or one parked on a startup dialog is non-idle without
-# having taken anything. An unreadable answer is "not landed", so a broken
-# probe degrades to the pre-#85 retry, never a hang.
+# decides: working / blocked / done, or a `completion_seq` past the one read
+# before the first send (a turn finished), means it took the prompt. Only a
+# baseline of `idle` is evidence: a session busy before the send (a reused
+# `agent_name_taken` one, a startup dialog) changes state and completes turns
+# of its own, so it keeps the pre-#85 retry and STUCK rather than a silent
+# [OK]. `completion_seq`, not `state_change_seq`: startup settling moves state
+# without completing a turn. An unreadable answer is "not landed" too.
 pmv_agent_probe() { # sets PMV_AGENT_STATUS / PMV_AGENT_SEQ from `herdr agent get`
-    _pmv_get=$(herdr agent get "$1" 2>/dev/null) || _pmv_get=""
-    PMV_AGENT_STATUS=$(printf '%s' "$_pmv_get" | pmv_json_first agent_status)
-    PMV_AGENT_SEQ=$(printf '%s' "$_pmv_get" |
-        jq -r '[.. | objects | .state_change_seq? // empty] | map(select(type == "number")) | first // empty' \
-            2>/dev/null) || PMV_AGENT_SEQ=""
+    _pmv_probe=$(herdr agent get "$1" 2>/dev/null |
+        jq -r '.result.agent | "\(.agent_status // "") \(.completion_seq // "")"' 2>/dev/null) || _pmv_probe=""
+    PMV_AGENT_STATUS="${_pmv_probe%% *}"
+    PMV_AGENT_SEQ="${_pmv_probe#* }"
 }
 pmv_prompt_landed() { # pmv_prompt_landed <agent> <status-before> <seq-before>
+    [ "$2" = idle ] || return 1
     pmv_agent_probe "$1"
-    case "$2" in
-    working | blocked | done) ;;
-    *) case "$PMV_AGENT_STATUS" in working | blocked | done) return 0 ;; esac ;;
-    esac
+    case "$PMV_AGENT_STATUS" in working | blocked | done) return 0 ;; esac
     [ -n "$3" ] && [ -n "$PMV_AGENT_SEQ" ] && [ "$PMV_AGENT_SEQ" -gt "$3" ] 2>/dev/null
 }
 
@@ -487,12 +485,12 @@ while :; do
     pmv_prompt_retryable "$PROMPT_CODE" || break
     # Settle BEFORE asking whether it landed: a prompt herdr gave up on can still
     # be picked up seconds later, and probing first would re-send over it.
-    [ "$PROMPT_TRY" -lt "$PMV_PROMPT_ATTEMPT_MAX" ] && pmv_settle
+    pmv_settle
     if pmv_prompt_landed "$PMV_AGENT" "$PMV_STATUS0" "$PMV_SEQ0"; then
         # It is running (or already ran): a re-send would start a second
         # verification, and STUCK would be a false alarm (#85).
-        printf '[INFO] gh-verify:post-merge-verify: prompt landed (agent %s, status %s, seq %s -> %s) despite %s — not re-sending.\n' \
-            "$PMV_AGENT" "${PMV_AGENT_STATUS:-?}" "${PMV_SEQ0:-?}" "${PMV_AGENT_SEQ:-?}" "$PROMPT_CODE"
+        printf '[INFO] gh-verify:post-merge-verify: prompt landed (agent %s, status %s, completion_seq %s -> %s) despite %s — not re-sending.\n' \
+            "$PMV_AGENT" "${PMV_AGENT_STATUS:-?}" "${PMV_SEQ0:-?}" "${PMV_AGENT_SEQ:-?}" "${PROMPT_CODE:-unknown}"
         PROMPT_RC=0
         break
     fi
@@ -609,4 +607,4 @@ becomes the main checkout's own current branch, never a detached HEAD.
 | `herdr worktree list --cwd P --json` | `.result.source.source_workspace_id`, `.result.worktrees[].path`, `.open_workspace_id` |
 | `herdr tab create` | `pane_id` / `tab_id`, read by leaf name |
 | `herdr agent start` / `prompt` | `.error.code` on failure |
-| `herdr agent get <name>` | `agent_status`, `state_change_seq` (leaf names, under `.result.agent`) |
+| `herdr agent get <name>` | `.result.agent.agent_status`, `.result.agent.completion_seq` |

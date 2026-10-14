@@ -54,12 +54,12 @@ case "$1 $2" in
 "worktree list") printf '{"result":{"source":{"source_workspace_id":"wT"}}}\n' ;;
 "tab create") printf '{"result":{"tab":{"tab_id":"wT:t1"},"pane":{"pane_id":"wT:p1"}}}\n' ;;
 "agent start") printf '{"result":{}}\n' ;;
-"agent prompt") printf '{"error":{"code":"timeout","message":"stub"}}\n'; exit 1 ;;
+"agent prompt") printf '{"error":{"code":"%s","message":"stub"}}\n' "${STUB_CODE:-timeout}"; exit 1 ;;
 "agent get")
     n=$(grep -c '^agent prompt' "$HERDR_LOG")
     seq=10; st=$STUB_STATUS0
     [ "$n" -gt 0 ] && { seq=$STUB_SEQ_AFTER; st=$STUB_STATUS; }
-    printf '{"result":{"agent":{"agent_status":"%s","state_change_seq":%s}}}\n' "$st" "$seq" ;;
+    printf '{"result":{"agent":{"agent_status":"%s","completion_seq":%s}}}\n' "$st" "$seq" ;;
 esac
 exit 0
 STUB
@@ -100,6 +100,20 @@ out=$(run_case busy blocked 10 blocked)
 chk "busy: a status held before the send is not evidence" "$(sends busy)" 3
 has "busy: the tab is renamed STUCK" "$(cat "$TMP/busy.log")" 'tab rename wT:t1 pr-7-STUCK'
 hasnt "busy: no [OK] line" "$out" '[OK] post-merge'
+
+# A session busy before the send finishes its own turn: seq moves, but that is
+# not this prompt landing.
+out=$(run_case busydone idle 12 working)
+chk "busydone: own work finishing is not evidence" "$(sends busydone)" 3
+has "busydone: the tab is renamed STUCK" "$(cat "$TMP/busydone.log")" 'tab rename wT:t1 pr-7-STUCK'
+
+# A non-retryable code: one send, no probe after it, no STUCK.
+out=$(STUB_CODE=agent_not_found run_case fatal working 12)
+chk "fatal: a non-retryable code is not re-sent" "$(sends fatal)" 1
+chk "fatal: no landing probe after the send" \
+    "$(sed -n '/^agent prompt/,$p' "$TMP/fatal.log" | grep -c '^agent get')" 0
+hasnt "fatal: no STUCK rename" "$(cat "$TMP/fatal.log")" 'tab rename'
+has "fatal: the failure keeps its code" "$out" 'failed (agent_not_found)'
 
 [ "$FAIL" -eq 0 ] && echo "[OK] dispatch prompt retry" || echo "[FAIL] dispatch prompt retry"
 exit "$FAIL"
