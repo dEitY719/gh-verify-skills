@@ -67,8 +67,7 @@ Paste `references/dispatch.sh.md` verbatim. It performs, in order:
 5. `herdr agent prompt <agent> "/<verify-skill> <N>" --wait --until idle` (F-5), then report the new `tab_id`, the
    agent name, and the `attach` hint.
 
-Every decision above is mirrored executably in dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` —
-change one, change both.
+Every decision above is pinned by `tests/bats/gh_pr_post_merge_verify.bats`, which runs the shipped fence itself.
 
 ## Constraints
 

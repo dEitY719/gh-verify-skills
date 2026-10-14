@@ -9,9 +9,9 @@ already bound (Step 1), and it is a no-op for any repo missing from
 fence below and sources it, so this file stays the single source (dEitY719/dotfiles#1565). Keep
 the dispatch in that first fence — the later snippets are documentation.
 
-Executable mirror + regression suite:
-dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh` and
-`tests/bats/skills/gh_pr_post_merge_verify.bats`. Change one, change both.
+Regression suite: `tests/bats/gh_pr_post_merge_verify.bats`. It extracts this
+first fence the same way and runs it against stub `herdr`/`git`, so there is no
+mirror to keep in sync (dEitY719/dotfiles#2200).
 In-repo, `tests/dispatch-fence.sh` extracts the first fence with the consumer's
 own `awk` and asserts the contract it relies on — that the extraction is
 non-empty, that the body parses under `sh`/`bash`/`zsh`/`dash` and shellcheck,

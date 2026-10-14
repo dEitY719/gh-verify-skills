@@ -53,8 +53,8 @@ The value does not label anything — it is interpolated into
 `herdr agent prompt` for a session started with
 `--dangerously-skip-permissions`, i.e. it is an input to an unattended agent's
 prompt. Adding a third verification skill means adding it to the allowlist in
-all three places: `references/dispatch.sh.md`,
-dotfiles' `tests/bats/skills/_fixtures/gh_pr_post_merge_verify.sh`, and this table.
+both places, `references/dispatch.sh.md` and this table, and to the R-3 cases
+in `tests/bats/gh_pr_post_merge_verify.bats`.
 
 ## Trust boundary changed by dEitY719/dotfiles#1555
 
