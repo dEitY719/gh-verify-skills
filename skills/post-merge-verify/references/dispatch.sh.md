@@ -182,19 +182,25 @@ pmv_prompt_retryable() {
 # times — three verify comments and a false STUCK — because the session took
 # the first one and kept working past the wait. herdr's own view of the agent
 # decides: working / blocked / done, or a `state_change_seq` past the one read
-# before the first send, means it took the prompt. An unreadable answer is
-# "not landed", so a broken probe degrades to the pre-#85 retry, never a hang.
-pmv_state_seq() { # stdin: a `herdr agent get` answer
-    jq -r '[.. | objects | .state_change_seq? // empty] | map(select(type == "number")) | first // empty' \
-        2>/dev/null || return 0
-}
-pmv_agent_seq() { herdr agent get "$1" 2>/dev/null | pmv_state_seq; }
-pmv_prompt_landed() { # pmv_prompt_landed <agent> <seq-before-first-send>
+# before the first send, means it took the prompt. The status counts only when
+# the agent was not already in it before the send — a reused session
+# (`agent_name_taken`) or one parked on a startup dialog is non-idle without
+# having taken anything. An unreadable answer is "not landed", so a broken
+# probe degrades to the pre-#85 retry, never a hang.
+pmv_agent_probe() { # sets PMV_AGENT_STATUS / PMV_AGENT_SEQ from `herdr agent get`
     _pmv_get=$(herdr agent get "$1" 2>/dev/null) || _pmv_get=""
     PMV_AGENT_STATUS=$(printf '%s' "$_pmv_get" | pmv_json_first agent_status)
-    case "$PMV_AGENT_STATUS" in working | blocked | done) return 0 ;; esac
-    _pmv_seq=$(printf '%s' "$_pmv_get" | pmv_state_seq)
-    [ -n "$2" ] && [ -n "$_pmv_seq" ] && [ "$_pmv_seq" -gt "$2" ] 2>/dev/null
+    PMV_AGENT_SEQ=$(printf '%s' "$_pmv_get" |
+        jq -r '[.. | objects | .state_change_seq? // empty] | map(select(type == "number")) | first // empty' \
+            2>/dev/null) || PMV_AGENT_SEQ=""
+}
+pmv_prompt_landed() { # pmv_prompt_landed <agent> <status-before> <seq-before>
+    pmv_agent_probe "$1"
+    case "$2" in
+    working | blocked | done) ;;
+    *) case "$PMV_AGENT_STATUS" in working | blocked | done) return 0 ;; esac ;;
+    esac
+    [ -n "$3" ] && [ -n "$PMV_AGENT_SEQ" ] && [ "$PMV_AGENT_SEQ" -gt "$3" ] 2>/dev/null
 }
 
 pmv_escalate_prompt_stall() {
@@ -465,7 +471,9 @@ fi
 # dash form (`/gh-verify-merged`) is "Unknown command" (#69).
 VERIFY_PROMPT="/${VERIFY_SKILL} ${PR_NUMBER}"
 PROMPT_TRY=1
-PMV_SEQ0=$(pmv_agent_seq "$PMV_AGENT")
+pmv_agent_probe "$PMV_AGENT"
+PMV_STATUS0="$PMV_AGENT_STATUS"
+PMV_SEQ0="$PMV_AGENT_SEQ"
 while :; do
     PROMPT_JSON=$(herdr agent prompt "$PMV_AGENT" "$VERIFY_PROMPT" \
         --wait --until idle --timeout "${PMV_PROMPT_TIMEOUT_MS:-900000}" 2>&1)
@@ -476,23 +484,22 @@ while :; do
     # fact — #85 could not say whether it saw `timeout` or `agent_prompt_stalled`.
     printf '[WARN] gh-verify:post-merge-verify: herdr agent prompt %s answered (rc %s): %s\n' \
         "$PMV_AGENT" "$PROMPT_RC" "$(printf '%s' "$PROMPT_JSON" | tr '\n' ' ')"
-    if pmv_prompt_retryable "$PROMPT_CODE" && pmv_prompt_landed "$PMV_AGENT" "$PMV_SEQ0"; then
+    pmv_prompt_retryable "$PROMPT_CODE" || break
+    # Settle BEFORE asking whether it landed: a prompt herdr gave up on can still
+    # be picked up seconds later, and probing first would re-send over it.
+    [ "$PROMPT_TRY" -lt "$PMV_PROMPT_ATTEMPT_MAX" ] && pmv_settle
+    if pmv_prompt_landed "$PMV_AGENT" "$PMV_STATUS0" "$PMV_SEQ0"; then
         # It is running (or already ran): a re-send would start a second
         # verification, and STUCK would be a false alarm (#85).
-        printf '[INFO] gh-verify:post-merge-verify: prompt landed (agent %s, %s) despite %s — not re-sending.\n' \
-            "$PMV_AGENT" "${PMV_AGENT_STATUS:-idle, state advanced}" "$PROMPT_CODE"
+        printf '[INFO] gh-verify:post-merge-verify: prompt landed (agent %s, status %s, seq %s -> %s) despite %s — not re-sending.\n' \
+            "$PMV_AGENT" "${PMV_AGENT_STATUS:-?}" "${PMV_SEQ0:-?}" "${PMV_AGENT_SEQ:-?}" "$PROMPT_CODE"
         PROMPT_RC=0
         break
     fi
-    if pmv_prompt_retryable "$PROMPT_CODE" &&
-        [ "$PROMPT_TRY" -lt "$PMV_PROMPT_ATTEMPT_MAX" ]; then
-        printf '[WARN] gh-verify:post-merge-verify: herdr agent prompt %s failed (%s) — retrying after %ss settle (%s/%s).\n' \
-            "$PMV_AGENT" "${PROMPT_CODE:-unknown}" "$PMV_SETTLE_SECONDS" "$PROMPT_TRY" "$PMV_PROMPT_ATTEMPT_MAX"
-        PROMPT_TRY=$((PROMPT_TRY + 1))
-        pmv_settle
-        continue
-    fi
-    break
+    [ "$PROMPT_TRY" -lt "$PMV_PROMPT_ATTEMPT_MAX" ] || break
+    printf '[WARN] gh-verify:post-merge-verify: herdr agent prompt %s failed (%s) — retrying after %ss settle (%s/%s).\n' \
+        "$PMV_AGENT" "$PROMPT_CODE" "$PMV_SETTLE_SECONDS" "$PROMPT_TRY" "$PMV_PROMPT_ATTEMPT_MAX"
+    PROMPT_TRY=$((PROMPT_TRY + 1))
 done
 if [ "${PROMPT_RC:-0}" -ne 0 ]; then
     PROMPT_CODE=$(printf '%s' "$PROMPT_JSON" | pmv_error_code)
@@ -574,8 +581,10 @@ one place that reports an unbound key, so a missing shell-common, a missing
 remote and a non-github URL all surface as the same single `[WARN]`.
 
 `--wait --until idle` waits for the dispatched session to settle, so the
-timeout is generous. Hitting it is a `[WARN]`, not a failure: the prompt has
-already landed, and the attach hint is still printed.
+timeout is generous. Hitting it (or `agent_prompt_stalled`) is not proof the
+prompt was lost: `herdr agent get` decides (#85). Landed → `[INFO]`, no
+re-send, `[OK]`; never landed → retry up to `PMV_PROMPT_ATTEMPT_MAX`, then the
+STUCK rename and notification. The attach hint is printed either way.
 
 `gh-pr:merge` already read both refs in its own Step 2 pre-flight and passes
 them down. Standalone, recover them from the same PR — host-pinned and

@@ -9,9 +9,10 @@
 # `herdr` on PATH. The stub's `agent prompt` always answers a retryable code;
 # what changes per case is what `herdr agent get` says about the agent:
 #
-#   landed   agent working              -> one send, no STUCK, [OK] dispatched
+#   landed   idle -> working, seq same  -> one send, no STUCK, [OK] dispatched
 #   advanced idle, state_change_seq up  -> one send, no STUCK (it already ran)
 #   never    idle, seq unchanged        -> 3 sends, STUCK rename + notification
+#   busy     blocked before AND after   -> 3 sends, STUCK (status was not news)
 #
 # No network, no gh, no real herdr, no sleeps (PMV_SETTLE_SECONDS=0).
 set -u
@@ -56,18 +57,19 @@ case "$1 $2" in
 "agent prompt") printf '{"error":{"code":"timeout","message":"stub"}}\n'; exit 1 ;;
 "agent get")
     n=$(grep -c '^agent prompt' "$HERDR_LOG")
-    seq=10; [ "$n" -gt 0 ] && seq=$STUB_SEQ_AFTER
-    printf '{"result":{"agent":{"agent_status":"%s","state_change_seq":%s}}}\n' "$STUB_STATUS" "$seq" ;;
+    seq=10; st=$STUB_STATUS0
+    [ "$n" -gt 0 ] && { seq=$STUB_SEQ_AFTER; st=$STUB_STATUS; }
+    printf '{"result":{"agent":{"agent_status":"%s","state_change_seq":%s}}}\n' "$st" "$seq" ;;
 esac
 exit 0
 STUB
 chmod +x "$TMP/bin/herdr"
 
 # shellcheck disable=SC2016  # $1 expands in the child bash, on purpose
-run_case() { # run_case <name> <status> <seq-after-send>
+run_case() { # run_case <name> <status> <seq-after-send> [status-before-send]
     : > "$TMP/$1.log"
     ( cd "$MAIN" && env PATH="$TMP/bin:$PATH" HERDR_LOG="$TMP/$1.log" \
-        STUB_STATUS="$2" STUB_SEQ_AFTER="$3" \
+        STUB_STATUS="$2" STUB_SEQ_AFTER="$3" STUB_STATUS0="${4:-idle}" \
         DOTFILES_ROOT="$TMP/no-dotfiles" CLAUDE_PLUGIN_ROOT="$ROOT" \
         IW_WATCHED_REPOS="$TMP/watched.json" TARGET_REPO=o/r TARGET_HOST=github.com \
         PR_NUMBER=7 HEAD_BRANCH=gone BASE_BRANCH=main REMOTE=origin PMV_SETTLE_SECONDS=0 \
@@ -75,7 +77,7 @@ run_case() { # run_case <name> <status> <seq-after-send>
 }
 sends() { grep -c '^agent prompt' "$TMP/$1.log"; }
 
-out=$(run_case landed working 11)
+out=$(run_case landed working 10)
 chk "landed: the prompt is sent once" "$(sends landed)" 1
 has "landed: the raw herdr answer is logged" "$out" '"code":"timeout","message":"stub"'
 has "landed: says it did not re-send" "$out" 'not re-sending'
@@ -93,6 +95,11 @@ has "never: the tab is renamed STUCK" "$(cat "$TMP/never.log")" 'tab rename wT:t
 has "never: the stall notification fires" "$(cat "$TMP/never.log")" 'notification show'
 has "never: the failure keeps its code" "$out" 'failed (timeout) — attach and run it by hand'
 hasnt "never: no [OK] line" "$out" '[OK] post-merge'
+
+out=$(run_case busy blocked 10 blocked)
+chk "busy: a status held before the send is not evidence" "$(sends busy)" 3
+has "busy: the tab is renamed STUCK" "$(cat "$TMP/busy.log")" 'tab rename wT:t1 pr-7-STUCK'
+hasnt "busy: no [OK] line" "$out" '[OK] post-merge'
 
 [ "$FAIL" -eq 0 ] && echo "[OK] dispatch prompt retry" || echo "[FAIL] dispatch prompt retry"
 exit "$FAIL"
