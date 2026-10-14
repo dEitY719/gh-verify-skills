@@ -6,13 +6,16 @@
 #
 # Runs the REAL first fence — extracted with the consumer's awk, as
 # tests/dispatch-fence.sh does — against a throwaway git checkout and a stub
-# `herdr` on PATH. The stub's `agent prompt` always answers a retryable code;
-# what changes per case is what `herdr agent get` says about the agent:
+# `herdr` on PATH. The stub's `agent prompt` always fails (retryable `timeout`
+# unless STUB_CODE says otherwise); what changes per case is what
+# `herdr agent get` says about the agent before and after the send:
 #
-#   landed   idle -> working, seq same  -> one send, no STUCK, [OK] dispatched
-#   advanced idle, state_change_seq up  -> one send, no STUCK (it already ran)
-#   never    idle, seq unchanged        -> 3 sends, STUCK rename + notification
-#   busy     blocked before AND after   -> 3 sends, STUCK (status was not news)
+#   landed   idle -> working             -> one send, no STUCK, [OK] dispatched
+#   advanced idle, completion_seq up     -> one send, no STUCK (it already ran)
+#   never    idle, seq unchanged         -> 3 sends, STUCK rename + notification
+#   busy     blocked before and after    -> 3 sends, STUCK (not evidence)
+#   busydone working before, seq up      -> 3 sends, STUCK (its own turn ended)
+#   fatal    non-retryable code          -> one send, no probe, no STUCK
 #
 # No network, no gh, no real herdr, no sleeps (PMV_SETTLE_SECONDS=0).
 set -u
