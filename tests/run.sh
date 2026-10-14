@@ -49,3 +49,7 @@ PY
 # here rather than beside the skill because CI runs this file and nothing else
 # once it exists (dEitY719/gh-verify-skills#39).
 bash tests/dispatch-fence.sh
+
+# The prompt retry loop in that fence, run for real against a stub herdr: a
+# prompt that landed is never re-sent (#85).
+bash tests/dispatch-prompt-retry.sh
