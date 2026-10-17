@@ -3,7 +3,7 @@
 SSOT for how Step 3 avoids re-running a reviewer lane that already reviewed the
 PR's current head, and — since dEitY719/gh-verify-skills#77 — for the one
 `devx_pr_review_all_fanout` call that dispatches the lanes it did not skip. Implementation: `devx_pr_review_all_already_reviewed` in
-`shell-common/functions/devx_pr_review_all.sh`; regression suite:
+`shell-common/lib/devx_pr_review_all.sh`; regression suite:
 `tests/bats/functions/devx_pr_review_all_dedupe.bats`. Issue: dEitY719/dotfiles#1613.
 
 Why it exists: nothing gated the fan-out on "has this already been reviewed?".
@@ -18,7 +18,7 @@ Once, before any lane is dispatched:
 
 ```sh
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/devx_pr_review_all.sh" ]; then
+if [ ! -f "$_SC/lib/devx_pr_review_all.sh" ]; then
     [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
         printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
             "$_SC" >&2
@@ -31,7 +31,7 @@ fi
 unset -f devx_pr_review_all_already_reviewed 2>/dev/null || :
 unalias devx_pr_review_all_already_reviewed 2>/dev/null || :
 export SHELL_COMMON="$_SC"                                                           # before the load
-[ -f "$_SC/functions/devx_pr_review_all.sh" ] && . "$_SC/functions/devx_pr_review_all.sh"
+[ -f "$_SC/lib/devx_pr_review_all.sh" ] && . "$_SC/lib/devx_pr_review_all.sh"
 [ "$(command -v devx_pr_review_all_already_reviewed 2>/dev/null)" \
     = devx_pr_review_all_already_reviewed ] || {                                     # tier 5
     unset SHELL_COMMON

@@ -129,7 +129,7 @@ dotfiles-era aliases of their own, so a stale `gh:`/`devx:` name resolves to
 nothing and simply fails. The exception is this repo's own pre-rename trigger
 phrases inside a `description:` — see "Rules for changing skills" above.
 
-Paths under `claude/skills/`, `shell-common/functions/`, and
+Paths under `claude/skills/`, `shell-common/{lib,functions}/`, and
 `tests/bats/<subdir>/` — those point into `dEitY719/dotfiles` and are labelled as such.
 Only paths **inside** this repo were rewritten by the migration. This repo's own
 bats suite is the flat `tests/bats/*.bats` (see "Tests").

@@ -208,7 +208,7 @@ import re, subprocess
 
 files = subprocess.run(["git", "ls-files", "--", ".", ":!lib/vendor", ":!tests"],
                        capture_output=True, text=True).stdout.split()
-load = re.compile(r"\. \"\$(?:_SC/functions/[A-Za-z0-9_./]+|_HELPER)\"")
+load = re.compile(r"\. \"\$(?:_SC/(?:functions|lib)/[A-Za-z0-9_./]+|_HELPER)\"")
 exp = re.compile(r"export SHELL_COMMON=")
 # A prologue starts at its tier-1 assignment, and a fence ends one. Without
 # that reset a file with two prologues passes on the first one is export,

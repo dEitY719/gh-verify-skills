@@ -137,10 +137,10 @@ PMV_PROMPT_ATTEMPT_MAX="${PMV_PROMPT_ATTEMPT_MAX:-3}"
 # the plugin installed there is no $HOME/dotfiles, so fall back to the vendored copy
 # and export SHELL_COMMON so anything sourced after this resolves from the same root.
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/herdr_agent_name.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+if [ ! -f "$_SC/lib/herdr_agent_name.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
-PMV_NAME_LIB="$_SC/functions/herdr_agent_name.sh"
+PMV_NAME_LIB="$_SC/lib/herdr_agent_name.sh"
 # Clear the name BOTH ways before the load, so the test after it proves *this*
 # load defined the function. `unalias` is not optional: a live alias outranks
 # the function the load just defined in sh, dash and zsh (and in zsh stops it
@@ -232,7 +232,7 @@ pmv_escalate_prompt_stall() {
 # verbatim — 0 matched, 1 herdr could not be asked, 3 herdr answered and
 # nothing is on that path — because an empty answer from herdr is "unknown",
 # never "nothing running", and the caller below branches on that difference.
-PMV_LOOKUP_LIB="$_SC/functions/herdr_agent_lookup.sh"
+PMV_LOOKUP_LIB="$_SC/lib/herdr_agent_lookup.sh"
 # Proved by loading, like the name helper above: `-r` answers "is there a file"
 # and no more, so a helper that sources halfway leaves the two functions below
 # undefined and the dispatch calls a name that is not there
@@ -549,7 +549,7 @@ shell-common, so Step 1 is runnable without leaving the repo:
 TARGET_REPO=""
 TARGET_HOST=""
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/gh_host.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+if [ ! -f "$_SC/lib/gh_host.sh" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
     _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"                                # tier 2
 fi
 unset -f _gh_resolve_host 2>/dev/null || :
@@ -560,7 +560,7 @@ unalias _gh_resolve_host 2>/dev/null || :
 # block SHELL_COMMON is set if and only if a helper proved out.
 export SHELL_COMMON="$_SC"
 # shellcheck source=/dev/null
-[ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
+[ -f "$_SC/lib/gh_host.sh" ] && . "$_SC/lib/gh_host.sh"
 if [ "$(command -v _gh_resolve_host 2>/dev/null)" != _gh_resolve_host ]; then        # tier 5
     unset SHELL_COMMON
 else

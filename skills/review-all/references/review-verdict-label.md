@@ -1,7 +1,7 @@
 # gh-verify:review-all — Review verdict → merge-gate label
 
 SSOT for how a reviewer lane's closing verdict line becomes a machine-readable
-PR label. Implementation: `shell-common/functions/devx_pr_review_all.sh`;
+PR label. Implementation: `shell-common/lib/devx_pr_review_all.sh`;
 regression suite: `tests/bats/functions/devx_pr_review_all_verdict.bats`.
 
 Why it exists: every `gh-pr:review` preset mandates a closing verdict line, and
@@ -32,7 +32,7 @@ dEitY719/dotfiles#1563's label-lifecycle invalidation rules are the piece that m
 safe: every skill that advances a PR's head (`gh-pr:reply`,
 `gh-resolve:conflict`, `gh-resolve:outdated`) drops the stale verdict
 through the shared `_gh_pr_drop_label` helper, whose header comment in
-`shell-common/functions/gh_pr_edit_safe.sh` is the SSOT for the asymmetry rule
+`shell-common/lib/gh_pr_edit_safe.sh` is the SSOT for the asymmetry rule
 (`review-passed` always; `review-blocked` never by drop — it is cleared only
 as the side effect of a new non-blocking decision written through
 `devx_pr_review_all_write_label`).
@@ -145,7 +145,7 @@ a durable machine-readable record rather than a summary. Fetch the comments
 
 ```sh
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/devx_pr_review_all.sh" ]; then
+if [ ! -f "$_SC/lib/devx_pr_review_all.sh" ]; then
     [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
         printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
             "$_SC" >&2
@@ -158,7 +158,7 @@ fi
 unset -f devx_pr_review_all_lane_block 2>/dev/null || :
 unalias devx_pr_review_all_lane_block 2>/dev/null || :
 export SHELL_COMMON="$_SC"                                                           # before the load
-[ -f "$_SC/functions/devx_pr_review_all.sh" ] && . "$_SC/functions/devx_pr_review_all.sh"
+[ -f "$_SC/lib/devx_pr_review_all.sh" ] && . "$_SC/lib/devx_pr_review_all.sh"
 [ "$(command -v devx_pr_review_all_lane_block 2>/dev/null)" \
     = devx_pr_review_all_lane_block ] || {                                           # tier 5
     unset SHELL_COMMON
@@ -430,7 +430,7 @@ level finer.
 
 ## Applying the label
 
-`devx_pr_review_all_apply_label` (`shell-common/functions/devx_pr_review_all.sh`)
+`devx_pr_review_all_apply_label` (`shell-common/lib/devx_pr_review_all.sh`)
 owns this. Build the verdict stream and pipe it in — do **not** stage the
 verdicts in a variable and re-expand it (same zsh rule as the section above):
 
@@ -459,7 +459,7 @@ What it does, and why each part is the way it is:
 - **A non-blocking aggregate writes no label (dEitY719/dotfiles#1636).** It removes any stale
   `review-blocked` — mutual exclusion is unchanged — and reports the handoff.
   `review-passed` is `gh-pr:reply`'s to apply.
-- Adds through `_gh_pr_edit_safe_label` (`shell-common/functions/gh_pr_edit_safe.sh`),
+- Adds through `_gh_pr_edit_safe_label` (`shell-common/lib/gh_pr_edit_safe.sh`),
   never bare `gh pr edit --add-label` — that silently exits 1 on repos with
   classic Projects attached (#326). The opposite label is removed through the
   REST endpoint, for the same reason.
@@ -516,7 +516,7 @@ issue comment:
 ```
 
 `gh-pr:merge-train`'s gate (`_gh_pr_merge_train_review_passed_stale` in
-`shell-common/functions/gh_pr_merge_train.sh`) reads the last such marker back
+`shell-common/lib/gh_pr_merge_train.sh`) reads the last such marker back
 and compares its sha against the PR's *current* `headRefOid` before trusting
 the label — full detail:
 `gh-pr-merge-train/references/review-verdict-gate.md` → "Freshness check".
@@ -552,7 +552,7 @@ pointer to `dEitY719/harness-skills#22` and all five correctly kept
 `gh-pr:reply` Step 6 (`gh-pr-skills`, `references/review-passed-gate.md`), and
 the carrier would be the `pr-reply-origins` ledger, whose `<verdict>` field is
 a closed enum (`ACCEPT` / `ACCEPT-PARTIAL` / `DECLINE` / `QUESTION`) validated
-in vendored `shell-common/functions/gh_pr_reply_targeted_review.sh`, SSOT
+in vendored `shell-common/lib/gh_pr_reply_targeted_review.sh`, SSOT
 `dEitY719/dotfiles`. Recording "declined, tracked at `<issue>`" needs a token
 or a field there, and `lib/vendor/**` is never edited in this repo. Tracked as
 `dEitY719/gh-pr-skills#21`.

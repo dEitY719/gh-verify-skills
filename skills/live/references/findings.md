@@ -115,8 +115,8 @@ SKILL.md 의 **발견 처리 단계**를 뒷받침한다 — 후보를 스스로
 | # | 함정 | 대응 |
 |---|---|---|
 | 1 | **없는 라벨** | 만들지 않고 조용히 건너뛴다. `gh label list` 로 사전 검증. 실측: `refactor`·`test` 가 대상 레포에 없어 `enhancement` 로 낙착 |
-| 2 | **classic Projects 레포에서 `gh {issue,pr} edit --add-label` 이 exit 1** | `_gh_pr_edit_safe_label` (REST 폴백, `shell-common/functions/gh_pr_edit_safe.sh`) 경유 |
-| 3 | **보드 카드는 별도** | `_gh_project_status_sync issue <N> "Backlog" --repo "$TARGET_REPO"` (`shell-common/functions/gh_project_status.sh`) |
+| 2 | **classic Projects 레포에서 `gh {issue,pr} edit --add-label` 이 exit 1** | `_gh_pr_edit_safe_label` (REST 폴백, `shell-common/lib/gh_pr_edit_safe.sh`) 경유 |
+| 3 | **보드 카드는 별도** | `_gh_project_status_sync issue <N> "Backlog" --repo "$TARGET_REPO"` (`shell-common/lib/gh_project_status.sh`) |
 
 2번 실측: 5회 재시도가 전부 같은 GraphQL 경고
 (`Projects (classic) is being deprecated … repository.pullRequest.projectCards`)로 실패했고,
@@ -137,11 +137,11 @@ safe 래퍼로 갈아탄 뒤에야 라벨이 붙었다.
 # value every later required ${SHELL_COMMON:-...} reads. `${VAR+set}`/`${VAR-}`,
 # never the `:` forms: those cannot tell unset from empty.
 _SC="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"                                   # tier 1
-if [ ! -f "$_SC/functions/gh_project_status.sh" ]; then
+if [ ! -f "$_SC/lib/gh_project_status.sh" ]; then
     [ -z "${CLAUDE_PLUGIN_ROOT:-}" ] ||                                              # tier 2
         _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"
 fi
-_HELPER="$_SC/functions/gh_project_status.sh"
+_HELPER="$_SC/lib/gh_project_status.sh"
 _sc_was=${SHELL_COMMON+set} _sc_prev="${SHELL_COMMON-}"                              # save
 unset -f _gh_project_status_sync 2>/dev/null || :
 unalias _gh_project_status_sync 2>/dev/null || :

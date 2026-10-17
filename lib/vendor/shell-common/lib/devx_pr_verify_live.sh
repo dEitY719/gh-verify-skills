@@ -1,16 +1,16 @@
 #!/bin/sh
 # VENDORED — do not edit here.
-# SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# SSOT: dEitY719/dotfiles shell-common/lib/devx_pr_verify_live.sh
+# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
-# shell-common/functions/devx_pr_verify_live.sh
+# shell-common/lib/devx_pr_verify_live.sh
 # Pure arg parser for the devx:pr-verify-live skill. Mirrors the
 # devx_pr_review_all_parse contract: one `key=value` line per resolved arg
 # on success, errors to stderr. Exit 0 ok/help, exit 2 arg error. Runtime
 # checks (PR state, gh auth, dev-server reachability) belong to the skill body.
 #
-# This file lives under shell-common/functions/, so it is auto-sourced into
-# the user's interactive shell. Every variable the parser assigns is `local`
+# This file lives under shell-common/lib/, so the loader never sources it;
+# callers source it directly, often into an interactive shell. Every variable the parser assigns is `local`
 # (house style here — see gh_pr_review.sh) so a call cannot clobber the
 # user's `$pr` / `$remote` / `$url`. Callers read the stdout `key=value`
 # contract, never the shell variables.
@@ -35,7 +35,7 @@ elif [ -n "${BASH_VERSION-}" ]; then
 else
     _drg_self=""
 fi
-_drg_helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/dotfiles_root.sh"
+_drg_helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/dotfiles_root.sh"
 if [ -r "$_drg_helper" ]; then
     . "$_drg_helper" || true
 fi

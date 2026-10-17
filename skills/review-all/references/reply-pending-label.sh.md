@@ -31,7 +31,7 @@ export 하지 않으므로, 같은 `<remote>` URL 에서 여기서 한 번 뽑�
 
 ```bash
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"                                  # tier 1
-if [ ! -f "$_SC/functions/gh_pr_edit_safe.sh" ]; then
+if [ ! -f "$_SC/lib/gh_pr_edit_safe.sh" ]; then
     [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || {                                            # tier 5
         printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' \
             "$_SC" >&2
@@ -45,8 +45,8 @@ unset -f _gh_pr_edit_safe_label _gh_resolve_host 2>/dev/null || :
 unalias _gh_pr_edit_safe_label 2>/dev/null || :
 unalias _gh_resolve_host 2>/dev/null || :
 export SHELL_COMMON="$_SC"                                                           # before the load
-[ -f "$_SC/functions/gh_pr_edit_safe.sh" ] && . "$_SC/functions/gh_pr_edit_safe.sh"
-[ -f "$_SC/functions/gh_host.sh" ] && . "$_SC/functions/gh_host.sh"
+[ -f "$_SC/lib/gh_pr_edit_safe.sh" ] && . "$_SC/lib/gh_pr_edit_safe.sh"
+[ -f "$_SC/lib/gh_host.sh" ] && . "$_SC/lib/gh_host.sh"
 if [ "$(command -v _gh_pr_edit_safe_label 2>/dev/null)" != _gh_pr_edit_safe_label ] ||
     [ "$(command -v _gh_resolve_host 2>/dev/null)" != _gh_resolve_host ]; then       # tier 5
     unset SHELL_COMMON

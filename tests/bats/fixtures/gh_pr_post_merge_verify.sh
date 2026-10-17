@@ -150,7 +150,7 @@ pmv_dispatch() {
 # The vendored helpers the fence sources, for the unit-level pins.
 pmv_load_vendored() {
     # shellcheck source=/dev/null
-    . "${REPO_ROOT}/lib/vendor/shell-common/functions/herdr_agent_name.sh"
+    . "${REPO_ROOT}/lib/vendor/shell-common/lib/herdr_agent_name.sh"
     # shellcheck source=/dev/null
-    . "${REPO_ROOT}/lib/vendor/shell-common/functions/herdr_agent_lookup.sh"
+    . "${REPO_ROOT}/lib/vendor/shell-common/lib/herdr_agent_lookup.sh"
 }

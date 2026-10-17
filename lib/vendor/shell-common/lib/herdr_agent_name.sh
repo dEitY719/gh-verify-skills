@@ -1,8 +1,8 @@
 #!/bin/sh
 # VENDORED — do not edit here.
-# SSOT: dEitY719/dotfiles shell-common/functions/herdr_agent_name.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
-# shell-common/functions/herdr_agent_name.sh
+# SSOT: dEitY719/dotfiles shell-common/lib/herdr_agent_name.sh
+# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# shell-common/lib/herdr_agent_name.sh
 # NOTE: This file intentionally has NO interactive guard: pure function
 # definitions with no output at file scope, sourced non-interactively by
 # pr_merge_train_cron.sh, issue_watcher_cron.sh and skill blocks (see below).
