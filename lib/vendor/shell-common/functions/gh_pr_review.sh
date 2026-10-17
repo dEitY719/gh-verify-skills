@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T02:03Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -297,19 +297,32 @@ _gh_pr_review_argv_prompt_or_fail() {
 }
 
 # _gh_pr_review_resolve_claude_account — for --ai claude --user <name>,
-# loads the claude integration helper (`_claude_resolve_account`) and
-# returns the resolved CLAUDE_CONFIG_DIR on stdout. Exits 1 with the
-# canonical "Unknown claude account" line on unknown names.
+# loads `_claude_resolve_account` and returns the resolved CLAUDE_CONFIG_DIR
+# on stdout. Exits 1 with the canonical "Unknown claude account" line on
+# unknown names. Sources the guard-free tools/custom/lib/claude_accounts_auth.sh
+# (#2146), not integrations/claude.sh, whose interactive guard returns early in a
+# non-interactive skill run and leaves the function undefined (#2226).
 _gh_pr_review_resolve_claude_account() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local user="$1"
+    local _sc="${SHELL_COMMON:-$HOME/dotfiles/shell-common}"
     if ! command -v _claude_resolve_account >/dev/null 2>&1; then
-        local _helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/tools/integrations/claude.sh"
+        local _helper="$_sc/tools/custom/lib/claude_accounts_auth.sh"
         # shellcheck disable=SC1090
         [ -f "$_helper" ] && . "$_helper"
     fi
+    # The whitelist is exported by env/claude.sh at shell init; a non-interactive
+    # skill run may not have inherited it, which would reject every --user as
+    # "(allowed: )". Same fallback as tools/custom/claude_accounts.sh. Its exports
+    # persist in the caller, exactly as if env/claude.sh had run at shell init.
+    # [ -f ]: a vendored shell-common (gh-verify-skills) ships no env/ tree.
+    local _env="$_sc/env/claude.sh"
+    if [ -z "${CLAUDE_ENABLED_ACCOUNTS+x}" ] && [ -f "$_env" ]; then
+        # shellcheck disable=SC1090
+        . "$_env"
+    fi
     if ! command -v _claude_resolve_account >/dev/null 2>&1; then
-        echo "claude account routing helper not available — load shell-common/tools/integrations/claude.sh" >&2
+        echo "claude account routing helper not available — load shell-common/tools/custom/lib/claude_accounts_auth.sh" >&2
         return 1
     fi
     local _cfg
