@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_review_all.sh
-# Synced 2026-10-10T03:07Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/devx_pr_review_all.sh
 # Pure arg parser for the devx:pr-review-all skill. Mirrors the
@@ -300,8 +300,10 @@ devx_pr_review_all_fanout() {
         (
             # gh_pr_review.sh returns early in a non-interactive shell.
             export DOTFILES_FORCE_INIT=1
+            # In-process _gh_pr_review_main when the sourced file has it (#2195:
+            # gh_pr_review is a wrapper over tools/custom/, absent from vendored copies).
             # shellcheck disable=SC2016  # $1/$@ belong to the inner bash
-            _gh_pr_review_timeout "$_sec" bash -c '. "$1" || exit 1; shift; gh_pr_review "$@"' \
+            _gh_pr_review_timeout "$_sec" bash -c '. "$1" || exit 1; shift; if command -v _gh_pr_review_main >/dev/null 2>&1; then _gh_pr_review_main "$@"; else gh_pr_review "$@"; fi' \
                 devx-pr-review-all-fanout "$_src" \
                 --ai "${_lane%%:*}" --review "${_lane#*:}" "$pr" "$remote" \
                 </dev/null >"$_f.out" 2>"$_f.err"

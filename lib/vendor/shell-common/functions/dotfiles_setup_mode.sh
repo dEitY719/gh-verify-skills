@@ -21,9 +21,14 @@
 # don't hit a wedge after upgrading. Empty when the file doesn't exist
 # (fresh install before setup.sh has run).
 _dotfiles_setup_mode() {
-    _dsm_file="$HOME/.dotfiles-setup-mode"
-    [ -f "$_dsm_file" ] || { echo ""; return 0; }
-    _dsm_raw=$(tr -d ' \t\n\r' < "$_dsm_file" 2>/dev/null)
+    # DOTFILES_SETUP_MODE env wins over the file (#2137): explicit mode passing.
+    if [ -n "${DOTFILES_SETUP_MODE-}" ]; then
+        _dsm_raw=$(printf '%s' "$DOTFILES_SETUP_MODE" | tr -d ' \t\n\r')
+    else
+        _dsm_file="$HOME/.dotfiles-setup-mode"
+        [ -f "$_dsm_file" ] || { echo ""; return 0; }
+        _dsm_raw=$(tr -d ' \t\n\r' < "$_dsm_file" 2>/dev/null)
+    fi
     case "$_dsm_raw" in
         1|public)   echo "public" ;;
         2|internal) echo "internal" ;;

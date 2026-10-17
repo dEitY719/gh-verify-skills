@@ -1,9 +1,11 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_project_status.sh
-# Synced 2026-10-05T05:04Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/functions/gh_project_status.sh
+# No interactive guard: sourced by skills and hooks from non-interactive
+# shells; a guard would leave _gh_project_status_sync undefined.
 # Push a projectV2 Status transition for an Issue or PR. Auto-discovers every
 # projectV2 the target belongs to; for each project that has a "Status" field
 # with an option matching the target name, updates the item's Status to that

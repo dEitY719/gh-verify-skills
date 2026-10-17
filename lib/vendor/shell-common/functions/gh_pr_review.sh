@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-10T04:48Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -16,7 +16,7 @@ case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # the prompt builder, and the PR comment body builder. The matching
 # claude/skills/gh-pr-review/SKILL.md delegates to gh_pr_review on
 # Steps 1, 4 (PROMPT_FILE path allocation only), 5, and 6. The bats fixture
-# tests/bats/skills/_fixtures/gh_pr_review_arg_parse.sh sources this
+# tests/bats/functions/_fixtures/gh_pr_review_arg_parse.sh sources this
 # file so the arg-parse contract has exactly one definition.
 
 # Advisory only (issue #1454): a stale copy of this file living in another
@@ -534,8 +534,9 @@ _gh_pr_review_run_ai() {
     # Ctrl-C during the CLI run leaks it into /tmp. Callers that care hand
     # the path down so it sits in the handler's `rm -f` list; the
     # self-allocating branch stays for direct callers (and tests).
-    local _stderr_file="${4:-}"
+    local _stderr_file="${4:-}" _stderr_owned=0
     if [ -z "$_stderr_file" ]; then
+        _stderr_owned=1
         _stderr_file=$(_gh_pr_review_mktemp_safe "/tmp/gh-pr-review-stderr.$ai.XXXXXX") || {
             echo "Could not create stderr temp file under /tmp" >&2
             return 1
@@ -690,7 +691,9 @@ _gh_pr_review_run_ai() {
         # Intentionally do NOT rm — leave the file for the user.
         return "$_rc"
     fi
-    rm -f "$_stderr_file"
+    # A caller-supplied path is the caller's to delete (issue #2084): its
+    # empty-review guard keeps the file when exit 0 came with no output.
+    [ "$_stderr_owned" -eq 1 ] && rm -f "$_stderr_file"
     return 0
 }
 
@@ -1329,7 +1332,7 @@ _gh_pr_review_disarm_trap() {
 }
 
 # gh_pr_review — orchestrator. Maps SKILL.md Steps 1–7 to this function.
-gh_pr_review() {
+_gh_pr_review_main() {
     # zsh compatibility — keep the rest of the function POSIX-shaped.
     if [ -n "${ZSH_VERSION-}" ]; then
         emulate -L sh
@@ -1585,6 +1588,20 @@ EOF
         rm -f "$PROMPT_FILE" "$AI_OUT" "$BODY_FILE"
         return "$_rc"
     fi
+    # Issue #2084: exit 0 is not a review. A CLI that succeeds with no text
+    # (agy's headless permission denial did exactly that) would otherwise
+    # post a marker-only comment that review-all's aggregation and the
+    # duplicate-review guard read as "this head sha is already reviewed".
+    # Every --ai lane, not just agy — an empty review is never worth posting.
+    # AI_STDERR_FILE is kept, as on the failure branch above: with an empty
+    # stdout it is the only clue to why the CLI produced nothing.
+    if ! grep -q '[^[:space:]]' "$AI_OUT" 2>/dev/null; then
+        echo "External AI CLI '$ai' returned an empty review — no comment posted" >&2
+        echo "  full stderr saved to: $AI_STDERR_FILE" >&2
+        _gh_pr_review_disarm_trap
+        rm -f "$PROMPT_FILE" "$AI_OUT" "$BODY_FILE"
+        return 1
+    fi
 
     # ---- Step 6: post PR comment ----
     local TOKENS HUMAN_H ELAPSED
@@ -1612,5 +1629,18 @@ EOF
 # Aliases — hyphenated command names per shell-common convention
 # ============================================================================
 
+# Public entry (#2195): the PATH executable tools/custom/gh_pr_review.sh (also
+# ~/.local/bin/gh-pr-review) sources this file and calls _gh_pr_review_main; this thin
+# wrapper keeps the `gh_pr_review` / `gh-pr-review` names in interactive shells.
+gh_pr_review() {
+    local _exe="${SHELL_COMMON:-${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common}"/tools/custom/gh_pr_review.sh
+    "$_exe" "$@"
+}
+
 alias gh-pr-review='gh_pr_review'
 alias gh-pr-review-help='gh_pr_review_help'
+
+# Help registry (#2135): skipped when sourced without util/help_registry.sh.
+command -v _register_help >/dev/null 2>&1 || return 0
+_register_help gh_pr_review_help "[Development] gh-pr-review external-AI review delegation"
+_register_func gh_pr_review "Delegate a PR review to an external AI CLI"
