@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_host.sh
-# Synced 2026-10-10T03:07Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/functions/gh_host.sh
 # Resolve the active GitHub host and parse owner/repo from remote URLs.
 #
@@ -109,11 +109,15 @@ _gh_ghes_host() {
 # `claude/hooks/post-gh-pr-create.sh` on internal PCs. An unreachable lib
 # still degrades to "" (github.com), never an error.
 _gh_resolve_host() {
-    _grh_mode=""
-    if command -v _dotfiles_setup_mode >/dev/null 2>&1; then
-        _grh_mode=$(_dotfiles_setup_mode 2>/dev/null || echo "")
+    _grh_class="github"
+    if command -v _dotfiles_setup_mode_gh_host >/dev/null 2>&1; then
+        _grh_class=$(_dotfiles_setup_mode_gh_host 2>/dev/null || echo github)
+    elif command -v _dotfiles_setup_mode >/dev/null 2>&1; then
+        # A reader without the policy functions is in scope (an older vendored
+        # copy, or a caller's own function — #718 function-first): map it here.
+        case "$(_dotfiles_setup_mode 2>/dev/null)" in internal) _grh_class="ghes" ;; esac
     fi
-    if [ "$_grh_mode" = "internal" ]; then
+    if [ "$_grh_class" = "ghes" ]; then
         _grh_ghes=$(_gh_ghes_host)
         if [ -n "$_grh_ghes" ]; then
             printf '%s\n' "$_grh_ghes"
@@ -128,7 +132,7 @@ _gh_resolve_host() {
         # external / public / "" (file missing) / unknown -> github.com
         echo "github.com"
     fi
-    unset _grh_mode
+    unset _grh_class
 }
 
 # _gh_match_known_host — print the known GitHub host a URL matches, or

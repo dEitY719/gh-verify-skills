@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live_backend_identity.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/devx_pr_verify_live_backend_identity.sh
@@ -21,13 +21,7 @@ if [ -f "$_UX_LIB_PATH" ]; then
     source "$_UX_LIB_PATH"
 else
     ux_error() { echo "$1" >&2; }
-    ux_info() {
-        if [ -n "$1" ]; then
-            echo "$1"
-        else
-            echo ""
-        fi
-    }
+    ux_info() { printf '%s\n' "${1-}"; }
     ux_header() { echo "=== $1 ==="; }
 fi
 unset _UX_LIB_PATH
@@ -158,3 +152,7 @@ alias devx-pr-verify-live-backend-identity='devx_pr_verify_live_backend_identity
 if [ -n "$BASH_VERSION" ]; then
     export -f devx_pr_verify_live_backend_identity show_devx_pr_verify_live_backend_identity_help
 fi
+
+# Help registry (#2135): skipped when sourced without util/help_registry.sh.
+command -v _register_help >/dev/null 2>&1 || return 0
+_register_help show_devx_pr_verify_live_backend_identity_help "[Development] Backend container identity verification helper"
