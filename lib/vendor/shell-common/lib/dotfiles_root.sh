@@ -1,8 +1,8 @@
 #!/bin/sh
 # VENDORED — do not edit here.
-# SSOT: dEitY719/dotfiles shell-common/functions/dotfiles_root.sh
-# Synced 2026-09-05T10:16Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
-# shell-common/functions/dotfiles_root.sh
+# SSOT: dEitY719/dotfiles shell-common/lib/dotfiles_root.sh
+# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# shell-common/lib/dotfiles_root.sh
 #
 # Canonicalize $DOTFILES_ROOT so it always resolves to the MAIN git worktree,
 # never a linked worktree. Issue #589.
@@ -28,7 +28,7 @@
 # file explicitly (bash/main.bash, zsh/main.zsh, for #589 canonicalization),
 # then again via the functions/ autoloader's own pass over
 # shell-common/functions/*.sh, then once more per #1454-guarded helper file
-# below (each does `. "$SHELL_COMMON/functions/dotfiles_root.sh"` itself).
+# below (each does `. "$SHELL_COMMON/lib/dotfiles_root.sh"` itself).
 # Every repeat re-parses this file and redefines its functions for no
 # benefit — skip repeats within one process. `return` (not `exit`) since
 # this only ever runs as a sourced dot-script; the `|| exit 0` fallback
@@ -283,7 +283,7 @@ _dotfiles_root_guard_self() {
     else
         printf '[%s] %s missing or did not define _dotfiles_root_warn_if_foreign_source — #1454 guard skipped (#724).\n' \
             "${2:-dotfiles}" \
-            "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/dotfiles_root.sh" >&2
+            "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/dotfiles_root.sh" >&2
     fi
     return 0
 }

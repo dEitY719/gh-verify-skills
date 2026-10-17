@@ -28,7 +28,7 @@ Neither supersedes the other, and neither is a prerequisite for the other.
 ## Why the agent name does NOT carry the host (dEitY719/dotfiles#1530)
 
 The name is `mv-<repo>-pr-<N>`, built by `herdr_agent_name` in
-`shell-common/functions/herdr_agent_name.sh` — the SSOT this skill shares with
+`shell-common/lib/herdr_agent_name.sh` — the SSOT this skill shares with
 `pr_merge_train_cron.sh` and `issue_watcher_cron.sh`.
 
 It used to be `pmv-<host>-<owner>-<repo>-<N>`, mirroring `_PMT_AGENT_PREFIX`

@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-17T02:03Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -40,7 +40,7 @@ elif [ -n "${BASH_VERSION-}" ]; then
 else
     _drg_self=""
 fi
-_drg_helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/dotfiles_root.sh"
+_drg_helper="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/dotfiles_root.sh"
 if [ -r "$_drg_helper" ]; then
     . "$_drg_helper" || true
 fi
@@ -1112,10 +1112,10 @@ _gh_pr_review_parse_remote_url() {
     # Issue #703 — the parser used to be `github.com`-only, which made
     # /gh-pr-reply, /gh-pr-approve and /gh-pr-review reject GHE remotes
     # on the `internal` PC. Delegating to the SSOT helper in
-    # shell-common/functions/gh_host.sh keeps both hosts working while
+    # shell-common/lib/gh_host.sh keeps both hosts working while
     # leaving this function's call sites untouched.
     # shellcheck disable=SC1091
-    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_host.sh"
+    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/gh_host.sh"
     _gh_parse_owner_repo_url "$@"
 }
 
@@ -1146,7 +1146,7 @@ _gh_pr_review_resolve_target_repo() {
 
 # _gh_pr_review_ensure_host — pin the gh server for a `gh` call that cannot
 # carry `--repo`. Mirrors `_gh_project_status_ensure_host`
-# (shell-common/functions/gh_project_status.sh) rather than growing a second
+# (shell-common/lib/gh_project_status.sh) rather than growing a second
 # mechanism: an already-set GH_HOST wins — and is re-exported, because a
 # caller may have assigned it as a plain (non-exported) shell variable that
 # `gh` subprocesses would not otherwise inherit — else the SSOT helper in
@@ -1158,7 +1158,7 @@ _gh_pr_review_ensure_host() {
         return 0
     fi
     # shellcheck disable=SC1091
-    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_host.sh" 2>/dev/null || return 0
+    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/gh_host.sh" 2>/dev/null || return 0
     if command -v _gh_resolve_host >/dev/null 2>&1; then
         GH_HOST=$(_gh_resolve_host)
         export GH_HOST
@@ -1175,7 +1175,7 @@ _gh_pr_review_require_auth() {
     local _remote="${1:-origin}" _url _host
     _url=$(git remote get-url "$_remote" 2>/dev/null) || _url=""
     # shellcheck disable=SC1091
-    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_host.sh" 2>/dev/null || :
+    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/gh_host.sh" 2>/dev/null || :
     _host=$(_gh_host_from_url "$_url" 2>/dev/null) || _host=""
     if [ -n "$_host" ]; then
         if ! gh auth status --hostname "$_host" >/dev/null 2>&1; then

@@ -74,7 +74,7 @@ read that repo's `references/antigravity-tools.md` instead: `agy` shares
   in `references/driver.md` and must say so in the report.
 - `post-merge-verify` drives the `herdr` CLI. No `herdr` on PATH means a silent
   no-op, which is correct.
-- Several skills source shell helpers (`${SHELL_COMMON}/functions/*.sh`). They
+- Several skills source shell helpers (`${SHELL_COMMON}/{lib,functions}/*.sh`). They
   are vendored here under `lib/vendor/shell-common/`: an upstream `~/dotfiles`
   checkout is preferred when present (tier 1) and the vendored copy is the
   fallback (tier 2), per the resolution order in

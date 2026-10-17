@@ -116,7 +116,7 @@ What "partial" means:
 
 Two more constraints apply everywhere: `gh` must be authenticated for the host
 the remote points at, and several skills source shell helpers
-(`${SHELL_COMMON}/functions/*.sh`). Those helpers are vendored here under
+(`${SHELL_COMMON}/{lib,functions}/*.sh`). Those helpers are vendored here under
 `lib/vendor/shell-common/`: an upstream `~/dotfiles` checkout is preferred when
 present (tier 1) and the vendored copy is the fallback (tier 2), per the
 resolution order in
