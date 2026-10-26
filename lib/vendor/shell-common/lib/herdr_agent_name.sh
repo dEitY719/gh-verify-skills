@@ -1,11 +1,11 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/lib/herdr_agent_name.sh
-# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-26T08:35Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/lib/herdr_agent_name.sh
 # NOTE: This file intentionally has NO interactive guard: pure function
 # definitions with no output at file scope, sourced non-interactively by
-# pr_merge_train_cron.sh, issue_watcher_cron.sh and skill blocks (see below).
+# pr_merge_train_cron.sh, avatar_issue_watcher.sh and skill blocks (see below).
 # SSOT for the herdr agent names the unattended pipelines derive (issue #1530).
 #
 # herdr validates every agent name against
@@ -13,7 +13,7 @@
 #     ^[a-z][a-z0-9_-]{0,31}$
 #
 # and refuses `agent start` outright when it does not match. Three call sites
-# — pr_merge_train_cron.sh, issue_watcher_cron.sh and gh:pr-post-merge-verify's
+# — pr_merge_train_cron.sh, avatar_issue_watcher.sh and gh:pr-post-merge-verify's
 # dispatch block — each carried their own copy of a slug helper built on
 # `tr -c 'A-Za-z0-9._-' '-'`. That set *keeps* uppercase and dots (tr -c only
 # replaces what is outside the set), so on `dEitY719/dotfiles` @ `github.com`
@@ -53,7 +53,7 @@
 #   host   a github.com checkout and a GHES checkout sharing a repo name
 #          collide — the pinning #1403/#1407 established everywhere else.
 #   owner  `acme/dotfiles` and `other/dotfiles` collide too, and this one is
-#          reachable from a single host: issue_watcher_cron.sh watches a *list*
+#          reachable from a single host: avatar_issue_watcher.sh watches a *list*
 #          of repos, so two same-basename entries would share `iw-dotfiles-
 #          issue-<N>` and herdr would route the second dispatch's prompt at the
 #          first one's pane (the failure PR #1447's review guarded against).
@@ -63,8 +63,8 @@
 # up at 37 and was refused on every merge. A name that identifies nothing
 # because herdr rejects it is worse than one that identifies a repo.
 #
-# Reachability today: `${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`
-# — the single watched-repos registry shared by issue_watcher_cron.sh and
+# Reachability today: `${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}`
+# — the single watched-repos registry shared by avatar_issue_watcher.sh and
 # gh:pr-post-merge-verify's dispatch (#1555 unified what used to be two
 # separate lists, one of them a tracked `docs/.ssot/` copy — see #1552) —
 # holds exactly one entry (`dEitY719/dotfiles` on github.com), so neither
@@ -72,7 +72,7 @@
 # 사항 fixed the 16-char repo-only shape as a user decision and deferred the
 # fix to a follow-up. Because the list is untracked and user-editable, no PR
 # review or lint stands between a second same-basename entry and this
-# collision, so issue_watcher_cron.sh also carries a runtime advisory: at
+# collision, so avatar_issue_watcher.sh also carries a runtime advisory: at
 # watch-list load it warns (never blocks) when two entries share a basename
 # (#1552). When a second host OR a second owner joins the watch list, append
 # a short digest of `<host>/<owner>` here (e.g. `iw-dotfiles-a3f-issue-1530`,

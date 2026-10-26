@@ -2,8 +2,8 @@
 
 Step 3 pastes this. It expects `PR_NUMBER`, `TARGET_REPO` and `TARGET_HOST`
 already bound (Step 1), and it is a no-op for any repo missing from
-`${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`
-— the same untracked registry `issue_watcher_cron.sh` reads (issue dEitY719/dotfiles#1555).
+`${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}`
+— the same untracked registry `avatar_issue_watcher.sh` reads (issue dEitY719/dotfiles#1555).
 
 `gh-pr:merge` Step 5 does not paste a copy: it extracts the **first** `bash`
 fence below and sources it, so this file stays the single source (dEitY719/dotfiles#1565). Keep
@@ -44,7 +44,7 @@ repos.
 
 ```bash
 # --- 0. F-1 gate. Unregistered repo => do nothing at all, no output. -------
-WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}" # untracked, array-schema, shared with issue_watcher_cron.sh (dEitY719/dotfiles#1555)
+WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}" # untracked, array-schema, shared with avatar_issue_watcher.sh (dEitY719/dotfiles#1555)
 VERIFY_SKILL=""
 # An unbound registry key is a broken caller, not an opt-out: `select(.repo ==
 # "")` matches nothing, so the outcome table would read it as "unwatched repo"
@@ -99,13 +99,13 @@ pmv_error_code() { jq -r '.error.code // empty' 2>/dev/null || return 0; }
 # twice and splitting them is how a fix keeps missing a third site:
 #   `tab create` -> `agent start`  the pane answers before its shell is
 #       interactive, so the start is refused with `agent_pane_busy`
-#       (issue_watcher_cron.sh's _IW_START_RETRY_SLEEP comment documents it).
+#       (avatar_issue_watcher.sh's _IW_START_RETRY_SLEEP comment documents it).
 #   `agent start` -> `agent prompt`  herdr answers `"agent_status":"idle"`
 #       straight away, but a freshly drawn claude TUI is idle while its
 #       key-input loop is still unattached, so the prompt is swallowed (dEitY719/dotfiles#1560).
 # Measured on herdr 0.7.5: ~5s fails every time, ~13s lands. 13 is the repo
 # standard — the twins are _IW_SETTLE_SECONDS / _IW_START_RETRY_SLEEP in
-# shell-common/tools/custom/issue_watcher_cron.sh and _PMT_SETTLE_SECONDS /
+# shell-common/tools/custom/avatar_issue_watcher.sh and _PMT_SETTLE_SECONDS /
 # _PMT_START_RETRY_SLEEP in shell-common/tools/custom/pr_merge_train_cron.sh.
 # Change one, change all five: dEitY719/dotfiles#1530 / dEitY719/dotfiles#1549 and dEitY719/dotfiles#1560 / dEitY719/dotfiles#1571 are both the same
 # defect recurring because two of three dispatchers were fixed. The *number*

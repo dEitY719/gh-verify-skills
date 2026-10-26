@@ -1,7 +1,7 @@
 # watched-repos registry — schema (F-1, issue dEitY719/dotfiles#1511, unified dEitY719/dotfiles#1555)
 
-Location: `${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`
-— the same untracked file `issue_watcher_cron.sh` already reads, and the same
+Location: `${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}`
+— the same untracked file `avatar_issue_watcher.sh` already reads, and the same
 env-var override rule (`IW_WATCHED_REPOS`). This registry is **not** part of
 the git repo: it lives outside `$DOTFILES_ROOT` and is not reviewed by any PR.
 
@@ -13,7 +13,7 @@ array entry issue-watcher already reads.
 ## Shape
 
 Two top-level shapes, because the file is a personal SSOT this repo does not
-own and cannot migrate — `issue_watcher_cron.sh` has always accepted both, and
+own and cannot migrate — `avatar_issue_watcher.sh` has always accepted both, and
 this skill's lookups now match that:
 
 ```jsonc
@@ -73,7 +73,7 @@ now carrying more of the weight.
 
 1. Add a `verify_skill` field to the array entry whose `repo` is
    `<owner>/<repo>` (or add the whole `{repo, path, verify_skill}` entry if
-   issue-watcher isn't already tracking that repo). `issue_watcher_cron.sh
+   issue-watcher isn't already tracking that repo). `avatar_issue_watcher.sh
    --help` prints the resolved path; `IW_WATCHED_REPOS` overrides it for both
    dispatchers identically.
 2. Pick the variant by what the repo can prove:

@@ -21,8 +21,8 @@ dispatch soft-failed and you want to retry it.
 
 1. Binds the repo slug from the `[remote]`'s URL (one local `git remote
    get-url`, no API call), then reads the untracked watched-repos registry
-   (`${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}`,
-   the same file `issue_watcher_cron.sh` reads) under that slug. **A repo that
+   (`${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}`,
+   the same file `avatar_issue_watcher.sh` reads) under that slug. **A repo that
    is not registered there gets nothing at all** — no output, no herdr call,
    no fetch, no rebase.
 2. Checks `command -v jq` and `command -v herdr`. Either missing → silent

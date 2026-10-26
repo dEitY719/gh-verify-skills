@@ -29,7 +29,7 @@ Neither supersedes the other, and neither is a prerequisite for the other.
 
 The name is `mv-<repo>-pr-<N>`, built by `herdr_agent_name` in
 `shell-common/lib/herdr_agent_name.sh` — the SSOT this skill shares with
-`pr_merge_train_cron.sh` and `issue_watcher_cron.sh`.
+`pr_merge_train_cron.sh` and `avatar_issue_watcher.sh`.
 
 It used to be `pmv-<host>-<owner>-<repo>-<N>`, mirroring `_PMT_AGENT_PREFIX`
 on the dEitY719/dotfiles#1403 / dEitY719/dotfiles#1407 argument that `owner/repo` is not unique across GitHub
@@ -118,7 +118,7 @@ Who removes it, and when, belongs to a later tab-close hook or an
 ## Why `herdr agent list` emptiness is "unknown", not "nothing running"
 
 Lesson carried over from `_iw_live_agents` in
-`shell-common/tools/custom/issue_watcher_cron.sh`: a herdr that answers
+`shell-common/tools/custom/avatar_issue_watcher.sh`: a herdr that answers
 nothing is not a herdr saying no agent is there. Reading it as "nothing
 running" is the one mistake this signal cannot afford, so the two answers get
 two different lines: "herdr could not be queried — tab left alone" is a

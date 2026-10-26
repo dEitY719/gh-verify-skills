@@ -1,17 +1,16 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/lib/herdr_agent_lookup.sh
-# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-10-26T08:35Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/lib/herdr_agent_lookup.sh
 # NOTE: This file intentionally has NO interactive guard: pure function
 # definitions with no output at file scope, sourced non-interactively by
-# issue_watcher_cron.sh, schedule_agent_prompt.sh and skill blocks (see below).
+# avatar_issue_watcher.sh, schedule_agent_prompt.sh and skill blocks (see below).
 # SSOT for "is a herdr agent sitting on this worktree?" (issue #1569).
 #
-# Four call sites ask that question and, before this file, each carried its own
-# hand-copied answer:
+# Four call sites asked that question and, before this file, each carried its
+# own hand-copied answer. Three still ask it:
 #
-#   shell-common/tools/custom/issue_watcher_cron.sh        _iw_live_agents
 #   dEitY719/gh-verify-skills  skills/post-merge-verify/
 #       references/dispatch.sh.md                          pmv_tab_for_cwd
 #   dEitY719/gh-pr-skills  skills/merge/references/
@@ -27,13 +26,19 @@
 # #1530 shape exactly (three copies of a slug helper, all wrong, one file to
 # fix), which is why the fix is the same shape: one helper, four callers.
 #
+# The fourth, avatar_issue_watcher.sh's _iw_live_agents, no longer matches on
+# cwd at all: it joins tab labels (`issue-<N>` / `iw-<repo>-issue-<N>`) to agents by
+# `tab_id`, and uses only herdr_agent_list_json from this file. Its dispatched
+# pane opens on the checkout root, so a cwd never names the issue.
+#
 # What the predicate has to get right, and why each half is load-bearing:
 #
 #   both columns   `cwd` is where the pane was opened (stable for the session's
 #                  whole life); `foreground_cwd` is where its shell stands now.
 #                  Taking only `cwd` loses the session that `cd`-ed away, and
-#                  losing it makes issue-watcher's collection step read a live
-#                  worktree as idle (PR #1456 review). Taking only
+#                  losing it reads a live worktree as idle (PR #1456 review,
+#                  against issue-watcher's since-removed collection step).
+#                  Taking only
 #                  `foreground_cwd` loses the pane whose shell never moved.
 #   boundary       An agent in `<wt>/docs/.ssot` is still working `<wt>`, so a
 #                  bare equality is too narrow — but a bare `startswith` is too
@@ -92,7 +97,7 @@ herdr_agent_physical_path() {
 
 # herdr_agent_path_under <candidate> <base> — the boundary predicate, as a
 # shell test rather than a jq one, so a pure-shell caller that already holds a
-# `cwd`/`foreground_cwd` pair (e.g. issue_watcher_cron.sh's per-pane join,
+# `cwd`/`foreground_cwd` pair (e.g. avatar_issue_watcher.sh's per-pane join,
 # which also needs each pane's `agent_status` and so cannot use the jq-side
 # lookups below) can call it directly instead of re-deriving the boundary
 # rule in awk or jq.
