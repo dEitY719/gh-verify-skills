@@ -6,8 +6,8 @@
 
 - 머지 직후의 수작업 루틴(구현 탭 닫기 → main 최신화 → 검증 세션 열기)을 자동화할 때. 대상은
   **watched-repos 레지스트리에 등록된 레포뿐**이다.
-- 보통은 직접 타이핑하지 않는다 — `gh:pr-merge` 가 Step 5 끝에서 `references/dispatch.sh.md` 를 인라인으로
-  실행한다. 손으로 부르는 경우는 두 가지다: `gh:pr-merge` 밖에서 머지가 일어났을 때, 그리고 디스패치가
+- 보통은 직접 타이핑하지 않는다 — `gh-pr:merge` 가 Step 5 끝에서 `references/dispatch.sh.md` 를 인라인으로
+  실행한다. 손으로 부르는 경우는 두 가지다: `gh-pr:merge` 밖에서 머지가 일어났을 때, 그리고 디스패치가
   soft-fail 해서 재시도할 때.
 - 형제 스킬과의 경계는 **디스패치 대 검증**이다 — 이 스킬은 아무것도 검증하지 않는다. 실제 검증은 열린 세션
   안에서 도는 `gh-verify:merged` 또는 `gh-verify:live` 가 하고, 둘 중 무엇을 돌릴지는 레지스트리의
@@ -19,7 +19,7 @@
 - **검증 도구로** — `Dispatch only`. 스스로는 아무것도 검증하지 않는다.
 - **레지스트리에 없는 레포에서** — 등록되지 않은 레포는 출력도 herdr 호출도 git 호출도 없다. 그 opt-in 이
   이 스킬의 전부다.
-- **GitHub 에 무언가 쓰려고** — 머지·리포트는 `gh:pr-merge` 가 이미 끝냈다. 이 스킬은 GitHub 에 쓰지 않는다.
+- **GitHub 에 무언가 쓰려고** — 머지·리포트는 `gh-pr:merge` 가 이미 끝냈다. 이 스킬은 GitHub 에 쓰지 않는다.
 - **여러 PR 배치 처리 / 실패 재시도 자동화** — PR 당 세션은 하나뿐이고, 배치도 재시도도 하지 않는다.
 - **무인 cron 경로(`pr_merge_train_cron.sh`)에서** — 명시적 non-goal 이다.
 
@@ -48,9 +48,9 @@
 
 ## 동작 단계
 
-1. **Step 1 — 대상 레포와 호스트 해석.** `gh:pr-merge` 와 같은 바인딩으로 하나의 remote URL 에서 레포와
+1. **Step 1 — 대상 레포와 호스트 해석.** `gh-pr:merge` 와 같은 바인딩으로 하나의 remote URL 에서 레포와
    호스트를 함께 얻는다. API 호출은 없다 — 슬러그는 레지스트리 키이자 에이전트 이름의 일부다. 여기서
-   `HEAD_BRANCH` `BASE_BRANCH` `REMOTE` 도 바인딩한다(`gh:pr-merge` 가 넘겨주거나, 단독 실행 시 호스트 고정
+   `HEAD_BRANCH` `BASE_BRANCH` `REMOTE` 도 바인딩한다(`gh-pr:merge` 가 넘겨주거나, 단독 실행 시 호스트 고정
    `gh pr view` 로 복구). 게이트보다 먼저 도는 이유는 슬러그가 곧 레지스트리 조회 키이기 때문이다 —
    바인딩되지 않은 값은 어떤 항목과도 매칭되지 않아 검증을 조용히 통째로 꺼버린다.
 2. **Step 2 — watched-repos 레지스트리 게이트.**
@@ -84,5 +84,5 @@
 - 자신이 만든 검증 워크트리를 지우지 않는다. 그 수명은 탭의 수명이고, 탭은 결과를 읽은 운영자가 닫는다 —
   여기서 정리하면 살아 있는 세션이 서 있는 디렉터리를 지우게 된다.
 - 무인 `pr_merge_train_cron.sh` 경로는 건드리지 않는다.
-- `gh:pr-merge` 는 이 스킬을 `Skill(...)` 로 부르지 않고 `references/dispatch.sh.md` 를 인라인 실행한다.
+- `gh-pr:merge` 는 이 스킬을 `Skill(...)` 로 부르지 않고 `references/dispatch.sh.md` 를 인라인 실행한다.
   이 스킬은 그 블록의 SSOT 이자 수동 진입점으로 남는다.
