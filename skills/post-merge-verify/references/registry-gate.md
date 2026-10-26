@@ -21,7 +21,7 @@ one (#32, #33).
 ## The block
 
 ```bash
-WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.agent-factory/avatars/issue-watcher/watched-repos.json}"
+WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}"
 VERIFY_SKILL=""
 if [ -z "${TARGET_REPO:-}" ]; then
     # An unbound registry key is a broken caller, not an opt-out (#33).
