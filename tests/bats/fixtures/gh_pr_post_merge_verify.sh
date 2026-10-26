@@ -141,7 +141,8 @@ pmv_dispatch() {
     [ "${FAKE_JQ_PRESENT:-1}" = 1 ] || PATH=$(_pmv_path_without jq)
     PR_NUMBER="$1" TARGET_REPO="$2" TARGET_HOST="${T_HOST:-github.com}"
     REMOTE="${3-}" BASE_BRANCH="${4-}" HEAD_BRANCH="${T_HEAD:-wt/issue-77/1}"
-    IW_WATCHED_REPOS="$WATCHED"
+    # WATCHED= (empty) leaves IW_WATCHED_REPOS unset so the fence's own default path is exercised.
+    if [ -n "${WATCHED-}" ]; then IW_WATCHED_REPOS="$WATCHED"; else unset IW_WATCHED_REPOS; fi
     DOTFILES_ROOT="${BATS_TEST_TMPDIR}/no-dotfiles" CLAUDE_PLUGIN_ROOT="$REPO_ROOT"
     # shellcheck source=/dev/null
     . "$_fence"

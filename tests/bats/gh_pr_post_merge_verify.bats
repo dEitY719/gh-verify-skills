@@ -107,6 +107,15 @@ _pmv_log_count() { grep -c -- "$1" "$FAKE_HERDR_LOG" || true; }
     assert_output ""
 }
 
+@test "gate: with IW_WATCHED_REPOS unset the default ~/.avatars registry is read (#91)" {
+    mkdir -p "${HOME}/.avatars/issue-watcher"
+    mv "$WATCHED" "${HOME}/.avatars/issue-watcher/watched-repos.json"
+    WATCHED=""
+    run dispatch
+    assert_success
+    assert_output --partial "verify: /gh-verify:merged 77"
+}
+
 @test "gate: malformed JSON warns" {
     printf 'not json at all\n' >"$WATCHED"
     run dispatch
