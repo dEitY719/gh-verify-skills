@@ -368,8 +368,12 @@
       <section data-reveal aria-labelledby="h-steps">
         <div class="sec-head"><span class="sec-num">04</span><h2 id="h-steps">동작 단계</h2></div>
         <ol class="steps">
+          <li>
+            <h3>Step 1 &mdash; 대상 레포와 호스트 해석</h3>
+            <p><code>gh:pr-merge</code> 와 같은 바인딩으로 하나의 remote URL 에서 레포와 호스트를 함께 얻는다. API 호출은 없다 &mdash; 슬러그는 레지스트리 키이자 에이전트 이름의 일부다. 여기서 <code>HEAD_BRANCH</code> <code>BASE_BRANCH</code> <code>REMOTE</code> 도 바인딩한다(<code>gh:pr-merge</code> 가 넘겨주거나, 단독 실행 시 호스트 고정 <code>gh pr view</code> 로 복구).</p>
+          </li>
           <li class="pivot">
-            <h3>Step 1 &mdash; watched-repos 레지스트리 게이트<span class="step-tag">opt-in</span></h3>
+            <h3>Step 2 &mdash; watched-repos 레지스트리 게이트<span class="step-tag">opt-in</span></h3>
             <p>
               <code>${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}</code> 에서
               대상 레포의 <code>verify_skill</code> 을 읽는다. 값이 비었거나 파일을 못 읽거나 <code>jq</code> 가 없으면
@@ -379,10 +383,6 @@
               <code>--dangerously-skip-permissions</code> 에이전트의 프롬프트에 들어가는 값이라 자유 텍스트일 수 없다.
               <code>herdr</code> 이 없으면 조용한 no-op.
             </p>
-          </li>
-          <li>
-            <h3>Step 2 &mdash; 대상 레포와 호스트 해석</h3>
-            <p><code>gh:pr-merge</code> 와 같은 바인딩으로 하나의 remote URL 에서 레포와 호스트를 함께 얻는다. API 호출은 없다 &mdash; 슬러그는 레지스트리 키이자 에이전트 이름의 일부다. 여기서 <code>HEAD_BRANCH</code> <code>BASE_BRANCH</code> <code>REMOTE</code> 도 바인딩한다(<code>gh:pr-merge</code> 가 넘겨주거나, 단독 실행 시 호스트 고정 <code>gh pr view</code> 로 복구).</p>
           </li>
           <li>
             <h3>Step 3 &mdash; 디스패치 실행</h3>

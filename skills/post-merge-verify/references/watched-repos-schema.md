@@ -97,3 +97,9 @@ repo and no code should write to a user's home directory on its behalf. Any
 repo that had a `verify_skill` in the old tracked file needs it added to the
 untracked file's matching entry by hand; until then `gh-verify:post-merge-verify`
 silently no-ops for that repo (unattended merges themselves are unaffected).
+
+The same holds for the default-path move to
+`~/.avatars/issue-watcher/watched-repos.json` (dEitY719/dotfiles#2273): a
+registry still at its pre-#2273 location is an unreadable file to this gate,
+so every repo silently no-ops until the file is moved by hand or
+`IW_WATCHED_REPOS` points at it.
