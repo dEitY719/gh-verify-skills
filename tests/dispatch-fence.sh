@@ -301,5 +301,14 @@ printf "%s" "${SHELL_COMMON-UNSET}"' _ "$TMP/soft.sh" )
 done
 rm -rf "$EMPTY_HOME2" "$SANDBOX2"
 
+# --- 7. registry-gate.md shows the gate the dispatch actually runs ----------
+# Its first bash fence is a documentation mirror of the dispatch's registry
+# lookup (#93). Nothing executes the mirror, so only this keeps it from drifting.
+GATE_DOC="$ROOT/skills/post-merge-verify/references/registry-gate.md"
+awk -v f="$FENCE" '$0 == f "bash" && !b { b = 1; next } $0 == f && b { exit } b' \
+    "$GATE_DOC" > "$TMP/gate.sh"
+has "registry-gate.md's block is verbatim in the dispatch fence" \
+    "$(cat "$TMP/dispatch.sh")" "$(sed 1d "$TMP/gate.sh")"
+
 [ "$FAIL" -eq 0 ] && echo "[OK] dispatch.sh.md fence contract" || echo "[FAIL] dispatch.sh.md fence contract"
 exit "$FAIL"

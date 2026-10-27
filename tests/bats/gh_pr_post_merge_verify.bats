@@ -220,6 +220,24 @@ _pmv_log_count() { grep -c -- "$1" "$FAKE_HERDR_LOG" || true; }
     refute_output --partial "legacy"
 }
 
+@test "legacy: an empty verify_skill is the silent opt-out, not a refusal (#93)" {
+    printf '[{"repo":"acme/dotfiles","verify_skill":""}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output ""
+}
+
+@test "gate: a duplicate repo entry is ignored, the first one decides (#93)" {
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":"gh-verify:live"},{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output --partial "verify: /gh-verify:live 77"
+    refute_output --partial "legacy"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":false},{"repo":"acme/dotfiles","post_merge_verify":true}]\n' >"$WATCHED"
+    run dispatch
+    assert_output ""
+}
+
 @test "legacy: with no herdr the fallback stays silent (AC-5, #93)" {
     printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
     FAKE_HERDR_PRESENT=0
