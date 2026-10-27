@@ -54,7 +54,8 @@ re='^https?://([^/]+)/([^/]+)/([^/]+)/pull/([0-9]+)([/?#].*)?$'
 if [ "$pr_i" -lt 0 ] || [[ ! "${args[$pr_i]}" =~ $re ]]; then
     printf '%q ' "$@"; echo; exit 0
 fi
-want="${BASH_REMATCH[1]} ${BASH_REMATCH[2]}/${BASH_REMATCH[3]}"
+host="${BASH_REMATCH[1]%%:*}" # _repo_of drops the port too (an ssh port is not the web port)
+want="$host ${BASH_REMATCH[2]}/${BASH_REMATCH[3]}"
 slug="${BASH_REMATCH[2]}/${BASH_REMATCH[3]}"
 args[pr_i]="${BASH_REMATCH[4]}"
 
