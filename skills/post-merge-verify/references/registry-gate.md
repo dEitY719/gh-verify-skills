@@ -23,21 +23,46 @@ one (#32, #33).
 ```bash
 WATCHED_FILE="${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}"
 VERIFY_SKILL=""
+# Which registry key VERIFY_SKILL came from: post_merge_verify_skill (current
+# schema, gh-verify-skills#93) or verify_skill (legacy fallback, one [WARN]).
+PMV_SKILL_KEY="post_merge_verify_skill"
+# An unbound registry key is a broken caller, not an opt-out: `select(.repo ==
+# "")` matches nothing, so the outcome table would read it as "unwatched repo"
+# and disable verification for every repo without a word (#33).
 if [ -z "${TARGET_REPO:-}" ]; then
-    # An unbound registry key is a broken caller, not an opt-out (#33).
     printf '[WARN] gh-verify:post-merge-verify: TARGET_REPO is unbound (Step 1) — post-merge verification skipped.\n'
+# No jq → the registry cannot be read, so the feature is simply unavailable.
+# Silent, never a WARN: an absent tool is not a broken SSOT, and gh-pr:merge's
+# gate (which carries the same condition) must print nothing either way.
 elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
-    if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" \
-        '(if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r) | .verify_skill // empty' "$WATCHED_FILE" 2>/dev/null); then
+    # One "<key>\t<skill>" row per matching entry. post_merge_verify must be JSON
+    # true (absent/false = off); post_merge_verify_skill defaults to
+    # gh-verify:merged. Only an entry with no post_merge_verify key at all falls
+    # back to the legacy verify_skill. @tsv escapes tabs inside values, so the
+    # first tab is always the separator.
+    if ! PMV_ROW=$(jq -r --arg r "$TARGET_REPO" '
+        (if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r)
+        | if has("post_merge_verify") then
+              select(.post_merge_verify == true)
+              | ["post_merge_verify_skill",
+                 ((.post_merge_verify_skill // "") | if . == "" then "gh-verify:merged" else . end)]
+          else
+              select((.verify_skill // "") != "") | ["verify_skill", .verify_skill]
+          end
+        | @tsv' "$WATCHED_FILE" 2>/dev/null); then
         # The file exists but is not JSON: a broken SSOT, not an opt-out.
         printf '[WARN] gh-verify:post-merge-verify: %s is not valid JSON — post-merge verification skipped.\n' \
             "$WATCHED_FILE"
-        VERIFY_SKILL=""
+        PMV_ROW=""
+    fi
+    if [ -n "$PMV_ROW" ]; then
+        PMV_SKILL_KEY=${PMV_ROW%%	*}
+        VERIFY_SKILL=${PMV_ROW#*	}
     fi
 fi
 ```
 
-`VERIFY_SKILL=$(jq ...)` on its own would swallow `jq`'s exit status: a
+`PMV_ROW=$(jq ...)` on its own would swallow `jq`'s exit status: a
 malformed registry would leave the variable empty, which the table below reads
 as "unwatched repo, stay silent". The `if !` is what separates *no entry* from
 *broken file*, so the `[WARN]` row is reachable at all (#32).
@@ -49,13 +74,19 @@ with: a bare top-level array, and an object with a `repos` key.
 
 | Condition | Behaviour |
 |---|---|
-| Empty `VERIFY_SKILL`, unreadable file, or no `jq` | **do nothing at all**, no output |
+| `post_merge_verify` absent or not `true` (no legacy key), repo not in the file, unreadable file, or no `jq` | **do nothing at all**, no output |
+| `post_merge_verify: true` | dispatch with `post_merge_verify_skill`, default `gh-verify:merged` |
+| No `post_merge_verify` key, legacy `verify_skill` set | one migration `[WARN]` (after the herdr probe), then dispatch with its value |
 | `TARGET_REPO` unbound (Step 1 skipped or failed) | one `[WARN]`, then skip |
 | `command -v herdr` missing | silent no-op |
 | `jq` non-zero (file exists but is not JSON) | one `[WARN]`, then skip |
-| `VERIFY_SKILL` outside the allowlist | one `[WARN]`, stop before any herdr call |
+| `VERIFY_SKILL` outside the allowlist | one `[WARN]` naming the key it came from, stop before any herdr call |
 
-The allowlist is exactly `gh-verify:merged` and `gh-verify:live`.
+The allowlist is exactly `gh-verify:merged` and `gh-verify:live`. A
+`post_merge_verify` key that is present but `false` (or any non-`true` value)
+wins over a legacy `verify_skill` on the same entry: the legacy key is read only
+when the new switch is absent. The fallback is temporary — it goes once every
+registry is migrated (gh-verify-skills#93).
 
 **Why the allowlist is not free text.** `VERIFY_SKILL` reaches the prompt of an
 agent started with `--dangerously-skip-permissions`. An unvalidated value there

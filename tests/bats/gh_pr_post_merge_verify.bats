@@ -22,7 +22,7 @@
 # dotfiles PR #1518 review hardening:
 #   R-1  main checkout on the wrong branch / detached  -> WARN, no rebase
 #   R-2  remote + base branch are threaded, never hardcoded origin/main
-#   R-3  verify_skill is allowlisted before any herdr mutation, but only
+#   R-3  the verification skill is allowlisted before any herdr mutation, but only
 #        once herdr itself is present (no herdr => silent, AC-5)
 #   R-4  MAIN_ROOT must resolve to a git worktree root
 #   R-5  a sibling path must not match the tab prefix
@@ -41,8 +41,8 @@ setup() {
     WATCHED="${TEST_TEMP_HOME}/watched-repos.json"
     cat >"$WATCHED" <<'JSON'
 [
-  { "repo": "acme/dotfiles", "verify_skill": "gh-verify:merged" },
-  { "repo": "acme/webapp", "verify_skill": "gh-verify:live" }
+  { "repo": "acme/dotfiles", "post_merge_verify": true },
+  { "repo": "acme/webapp", "post_merge_verify": true, "post_merge_verify_skill": "gh-verify:live" }
 ]
 JSON
 
@@ -82,13 +82,13 @@ _pmv_log_count() { grep -c -- "$1" "$FAKE_HERDR_LOG" || true; }
 
 # --- F-1: the watched-repos.json gate -------------------------------------
 
-@test "gate: a registered repo is prompted with its verify_skill" {
+@test "gate: post_merge_verify true with no skill key defaults to gh-verify:merged (#93)" {
     run dispatch
     assert_success
     assert_output --partial "verify: /gh-verify:merged 77"
 }
 
-@test "gate: per-repo verify_skill is honoured, not hardcoded" {
+@test "gate: per-repo post_merge_verify_skill is honoured, gh-verify:live included (#93)" {
     run dispatch acme/webapp
     assert_success
     assert_output --partial "verify: /gh-verify:live 77"
@@ -163,23 +163,90 @@ _pmv_log_count() { grep -c -- "$1" "$FAKE_HERDR_LOG" || true; }
     assert_output ""
 }
 
-@test "gate: an entry present but with no verify_skill is a silent no-op (#1555)" {
+@test "gate: an entry present but with no post_merge_verify is a silent no-op (#1555, #93)" {
     # issue-watcher may track a repo this skill never verifies.
-    printf '[{"repo":"acme/dotfiles","path":"/x"}]\n' >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","path":"/x","post_merge_verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output ""
+    run cat "$FAKE_HERDR_LOG"
+    assert_output ""
+}
+
+@test "gate: post_merge_verify false (or a non-boolean) opens no tab (#93)" {
+    local _v
+    for _v in false '"true"' null; do
+        printf '[{"repo":"acme/dotfiles","post_merge_verify":%s}]\n' "$_v" >"$WATCHED"
+        run dispatch
+        assert_success
+        assert_output ""
+    done
+    run cat "$FAKE_HERDR_LOG"
+    assert_output ""
+}
+
+@test "gate: an empty post_merge_verify_skill falls back to the default (#93)" {
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":""}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output --partial "verify: /gh-verify:merged 77"
+}
+
+# --- #93: the legacy verify_skill key is a fallback with one [WARN] ---------
+
+@test "legacy: verify_skill alone still dispatches, with exactly one migration WARN (#93)" {
+    printf '[{"repo":"acme/webapp","verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
+    run dispatch acme/webapp
+    assert_success
+    assert_output --partial "verify: /gh-verify:live 77"
+    assert_output --partial "acme/webapp uses the legacy \"verify_skill\" key"
+    [ "$(printf '%s\n' "$output" | grep -c 'legacy "verify_skill"')" -eq 1 ]
+}
+
+@test "legacy: the new schema prints no migration WARN (#93)" {
+    run dispatch acme/webapp
+    assert_success
+    refute_output --partial "legacy"
+}
+
+@test "legacy: post_merge_verify, even false, wins over verify_skill (#93)" {
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":false,"verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output ""
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
+    run dispatch
+    assert_output --partial "verify: /gh-verify:merged 77"
+    refute_output --partial "legacy"
+}
+
+@test "legacy: with no herdr the fallback stays silent (AC-5, #93)" {
+    printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
+    FAKE_HERDR_PRESENT=0
     run dispatch
     assert_success
     assert_output ""
 }
 
+@test "legacy: a verify_skill off the allowlist is still refused (#93)" {
+    printf '[{"repo":"acme/dotfiles","verify_skill":"evil:do-something-else"}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output --partial "verify_skill \"evil:do-something-else\" for acme/dotfiles is not one of"
+    refute_output --partial "post-merge verification dispatched"
+    run cat "$FAKE_HERDR_LOG"
+    assert_output ""
+}
+
 @test "gate: the object-wrapped {repos:[...]} shape is read too (agy review, #1555)" {
-    printf '{"repos":[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]}\n' >"$WATCHED"
+    printf '{"repos":[{"repo":"acme/dotfiles","post_merge_verify":true}]}\n' >"$WATCHED"
     run dispatch
     assert_success
     assert_output --partial "verify: /gh-verify:merged 77"
 }
 
 @test "main root: the object-wrapped {repos:[...]} shape resolves path too (#1555)" {
-    printf '{"repos":[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged","path":"~/elsewhere"}]}\n' >"$WATCHED"
+    printf '{"repos":[{"repo":"acme/dotfiles","post_merge_verify":true,"path":"~/elsewhere"}]}\n' >"$WATCHED"
     run dispatch
     assert_success
     run cat "$FAKE_GIT_LOG"
@@ -500,7 +567,7 @@ branch refs/heads/main
 }
 
 @test "main root: an explicit path wins and expands a leading ~ (#1555)" {
-    printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged","path":"~/elsewhere"}]\n' >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"path":"~/elsewhere"}]\n' >"$WATCHED"
     FAKE_CWD_COMMON_DIR="/not/this/.git"
     run dispatch
     assert_success
@@ -510,7 +577,7 @@ branch refs/heads/main
 }
 
 @test "main root: an entry with no path falls back to git's common dir (#1555)" {
-    printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true}]\n' >"$WATCHED"
     run dispatch
     assert_success
     run cat "$FAKE_GIT_LOG"
@@ -602,7 +669,7 @@ branch refs/heads/main
     assert_output --partial "fetch ${T_MAIN} origin main"
 }
 
-# --- dotfiles PR #1518 review: the verify_skill allowlist ------------------
+# --- dotfiles PR #1518 review: the post_merge_verify_skill allowlist -------
 
 @test "R-3: both shipped verification skills are accepted" {
     run dispatch acme/dotfiles
@@ -614,7 +681,7 @@ branch refs/heads/main
 @test "R-3: with no herdr, even a bad registry value stays silent (AC-5)" {
     # The allowlist sits AFTER the herdr probe on purpose: a machine that
     # cannot run the feature at all must print nothing.
-    printf '[{"repo":"acme/dotfiles","verify_skill":"evil:do-something-else"}]\n' >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":"evil:do-something-else"}]\n' >"$WATCHED"
     FAKE_HERDR_PRESENT=0
     run dispatch
     assert_success
@@ -624,24 +691,20 @@ branch refs/heads/main
 @test "R-3: anything else is refused, the dotfiles-era ids included" {
     local _id
     for _id in gh-verify:anything devx:pr-verify-merged devx:pr-verify-live; do
-        printf '[{"repo":"acme/dotfiles","verify_skill":"%s"}]\n' "$_id" >"$WATCHED"
+        printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":"%s"}]\n' "$_id" >"$WATCHED"
         run dispatch
-        assert_output --partial "verify_skill \"${_id}\" for acme/dotfiles is not one of gh-verify:merged, gh-verify:live"
+        assert_output --partial "post_merge_verify_skill \"${_id}\" for acme/dotfiles is not one of gh-verify:merged, gh-verify:live"
     done
-    # An empty value is "no verify_skill", the silent opt-out, not a refusal.
-    printf '[{"repo":"acme/dotfiles","verify_skill":""}]\n' >"$WATCHED"
-    run dispatch
-    assert_output ""
 }
 
 @test "R-3: a registry value off the allowlist warns before any herdr call" {
     # It is typed into a --dangerously-skip-permissions agent's prompt, so a
     # bad registry must not even get as far as closing a tab.
-    printf '[{"repo":"acme/dotfiles","verify_skill":"evil:do-something-else"}]\n' >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":"evil:do-something-else"}]\n' >"$WATCHED"
     run dispatch
     assert_success
     assert_output --partial "[WARN]"
-    assert_output --partial "verify_skill \"evil:do-something-else\" for acme/dotfiles is not one of"
+    assert_output --partial "post_merge_verify_skill \"evil:do-something-else\" for acme/dotfiles is not one of"
     refute_output --partial "post-merge verification dispatched"
     run cat "$FAKE_HERDR_LOG"
     assert_output ""
@@ -672,7 +735,7 @@ branch refs/heads/main
 }
 
 @test "R-4: a path INSIDE the checkout is not its root" {
-    printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged","path":"%s/git"}]\n' "$T_MAIN" >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"path":"%s/git"}]\n' "$T_MAIN" >"$WATCHED"
     FAKE_MAIN_TOPLEVEL="$T_MAIN"
     run dispatch
     assert_success
@@ -807,7 +870,7 @@ branch refs/heads/main
 
 @test "1571: a repo with no derivable agent name settles neither wait" {
     cat >"$WATCHED" <<'JSON'
-[ { "repo": "acme/...", "verify_skill": "gh-verify:merged" } ]
+[ { "repo": "acme/...", "post_merge_verify": true } ]
 JSON
     run dispatch 'acme/...'
     assert_success
