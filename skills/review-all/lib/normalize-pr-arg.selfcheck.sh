@@ -55,6 +55,7 @@ chk "url case-insens."  "$(norm https://github.com/deity719/EQUINEST/pull/898)" 
 chk "ssh .git remote"   "$(norm https://github.com/me/fork/pull/7)" "0|7 origin|"
 chk "https .git/ rem."  "$(norm https://github.com/dEitY719/other/pull/3)" "0|3 other|"
 chk "ghes ssh:// port"  "$(norm https://ghes.corp.example/team/app/pull/5)" "0|5 ghes|"
+chk "url host :port"    "$(norm https://ghes.corp.example:8443/team/app/pull/5)" "0|5 ghes|"
 chk "flags keep order"  "$(norm --no-reply "$U" --defer-reply 4 --force-review)" \
     "0|--no-reply 898 upstream --defer-reply 4 --force-review|"
 chk "flag value != pr"  "$(norm --lanes x:y "$U")"                 "0|--lanes x:y 898 upstream|"
