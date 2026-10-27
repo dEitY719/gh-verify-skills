@@ -695,6 +695,14 @@ branch refs/heads/main
         run dispatch
         assert_output --partial "post_merge_verify_skill \"${_id}\" for acme/dotfiles is not one of gh-verify:merged, gh-verify:live"
     done
+    # A non-string value is refused by the allowlist, not read as the default
+    # and not misreported as invalid JSON.
+    for _id in false '["gh-verify:merged"]'; do
+        printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":%s}]\n' "$_id" >"$WATCHED"
+        run dispatch
+        assert_output --partial "is not one of gh-verify:merged, gh-verify:live"
+        refute_output --partial "not valid JSON"
+    done
 }
 
 @test "R-3: a registry value off the allowlist warns before any herdr call" {
