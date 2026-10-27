@@ -58,13 +58,14 @@ if [ -z "${TARGET_REPO:-}" ]; then
 # Silent, never a WARN: an absent tool is not a broken SSOT, and gh-pr:merge's
 # gate (which carries the same condition) must print nothing either way.
 elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
-    # One "<key>\t<skill>" row per matching entry. post_merge_verify must be JSON
+    # One "<key>\t<skill>" row, from the first matching entry (a duplicate repo
+    # entry is ignored rather than mixed in). post_merge_verify must be JSON
     # true (absent/false = off); post_merge_verify_skill defaults to
     # gh-verify:merged. Only an entry with no post_merge_verify key at all falls
     # back to the legacy verify_skill. @tsv escapes tabs inside values, so the
     # first tab is always the separator.
     if ! PMV_ROW=$(jq -r --arg r "$TARGET_REPO" '
-        (if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r)
+        first((if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r))
         | if has("post_merge_verify") then
               select(.post_merge_verify == true)
               | ["post_merge_verify_skill",
@@ -89,7 +90,7 @@ command -v herdr >/dev/null 2>&1 || return 0 2>/dev/null || exit 0
 # Legacy schema: still honoured until every registry is migrated, but say so
 # once — after the herdr probe, so a machine without herdr stays silent (AC-5).
 if [ "$PMV_SKILL_KEY" = "verify_skill" ]; then
-    printf '[WARN] gh-verify:post-merge-verify: %s uses the legacy "verify_skill" key — migrate it to "post_merge_verify": true + "post_merge_verify_skill" (gh-verify-skills#93).\n' \
+    printf '[WARN] gh-verify:post-merge-verify: %s uses the legacy "verify_skill" key — migrate it to "post_merge_verify": true + "post_merge_verify_skill" (gh-verify-skills#93); until then any "post_merge_verify_skill" on it is ignored.\n' \
         "$TARGET_REPO"
 fi
 # The registry value is typed into a session started with
