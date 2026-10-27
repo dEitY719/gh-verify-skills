@@ -12,6 +12,7 @@ cd -- "$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 # One line per skills/*/lib/*.selfcheck.sh; the assertions stay next to the
 # code they cover.
 bash skills/exception-merge-checklist/lib/run-checks.selfcheck.sh
+bash skills/review-all/lib/normalize-pr-arg.selfcheck.sh
 
 # The shared `max-skill-lines` gate (100) is a proxy for progressive
 # disclosure: a SKILL.md a reader can hold in their head. Counting lines alone
