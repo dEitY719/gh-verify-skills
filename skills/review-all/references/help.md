@@ -14,6 +14,10 @@ decision** (approve / request-changes) — that is `gh-pr:approve`.
 
 `/gh-verify:review-all <PR#|PR-URL> [remote] [flags]`
 
+A PR URL needs the plugin root (`CLAUDE_PLUGIN_ROOT` on Claude Code, else export
+`GH_VERIFY_ROOT=<plugin dir>`); without it, or for a remote spelled with an ssh host alias,
+pass the number. Details: `references/shell-common-source.md`.
+
 | # | Name | Default | Description |
 |---|------|---------|-------------|
 | 1 | PR number or PR URL, or `-h`/`--help`/`help` | — (required) | Target PR, e.g. `99` or `https://github.com/<owner>/<repo>/pull/99` (`/files`, `?query`, `#fragment` allowed) |

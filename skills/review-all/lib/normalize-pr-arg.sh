@@ -43,7 +43,7 @@ args=("$@")
 pr_i=-1 remote_i=-1 i=0
 while [ "$i" -lt "${#args[@]}" ]; do
     case "${args[$i]}" in
-    --lanes | --defer-reply) i=$((i + 1)) ;; # these two take the next arg as value
+    --lanes | --defer-reply) i=$((i + 1)) ;; # the parser's value flags; selfcheck pins this list
     -*) ;;
     *) if [ "$pr_i" -lt 0 ]; then pr_i=$i; elif [ "$remote_i" -lt 0 ]; then remote_i=$i; fi ;;
     esac
@@ -66,14 +66,14 @@ if [ "$remote_i" -ge 0 ]; then
     got=$(_repo_of "$url")
     if [ "$(_lc "$got")" != "$want" ]; then
         printf "[gh-verify:review-all] remote '%s' is %s, but the PR URL is %s; drop <remote> or pass the matching one\n" \
-            "$r" "${got#* }" "$slug" >&2
+            "$r" "${got/ //}" "$host/$slug" >&2
         exit 2
     fi
 else
     match=""
-    for r in $(git remote 2>/dev/null); do
+    for r in $(git remote 2>/dev/null); do # alphabetical: first match wins when several name the repo
         got=$(_repo_of "$(git remote get-url "$r")")
-        [ "$(_lc "$got")" = "$want" ] &&{ match="$r"; break; }
+        [ "$(_lc "$got")" = "$want" ] && { match="$r"; break; }
     done
     [ -n "$match" ] || {
         printf '[gh-verify:review-all] no git remote matches %s; pass <remote> explicitly\n' "$slug" >&2; exit 2; }
