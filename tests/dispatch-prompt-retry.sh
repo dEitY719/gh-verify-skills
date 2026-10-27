@@ -47,7 +47,7 @@ git -C "$TMP/main" branch -M main
 git -C "$TMP/main" remote add origin "$TMP/remote.git"
 git -C "$TMP/main" push -q origin main
 MAIN=$(cd "$TMP/main" && pwd -P)
-printf '[{"repo":"o/r","path":"%s","verify_skill":"gh-verify:merged"}]\n' "$MAIN" > "$TMP/watched.json"
+printf '[{"repo":"o/r","path":"%s","post_merge_verify":true}]\n' "$MAIN" > "$TMP/watched.json"
 
 mkdir "$TMP/bin"
 cat > "$TMP/bin/herdr" <<'STUB'

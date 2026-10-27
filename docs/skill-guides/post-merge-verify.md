@@ -11,7 +11,8 @@
   soft-fail 해서 재시도할 때.
 - 형제 스킬과의 경계는 **디스패치 대 검증**이다 — 이 스킬은 아무것도 검증하지 않는다. 실제 검증은 열린 세션
   안에서 도는 `gh-verify:merged` 또는 `gh-verify:live` 가 하고, 둘 중 무엇을 돌릴지는 레지스트리의
-  `verify_skill` 값이 고른다(그 두 값만 허용된다).
+  `post_merge_verify_skill` 값이 고른다(그 두 값만 허용, 기본 `gh-verify:merged`). 검증 탭을 열지 말지는
+  `post_merge_verify`(`true`/`false`, 키 없으면 `false`)가 정한다.
 - 검증 자체를 지금 이 세션에서 돌리고 싶다면 `gh-verify:merged` / `gh-verify:live` 를 직접 부른다.
 
 ## 언제 쓰지 않는가
@@ -55,8 +56,10 @@
    바인딩되지 않은 값은 어떤 항목과도 매칭되지 않아 검증을 조용히 통째로 꺼버린다.
 2. **Step 2 — watched-repos 레지스트리 게이트.**
    `${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}` 에서 대상 레포의
-   `verify_skill` 을 읽는다. 값이 비었거나 파일을 못 읽거나 `jq` 가 없으면 **아무것도 하지 않는다**(출력 없음).
-   `jq` 가 non-zero(파일은 있는데 JSON 이 아님)면 `[WARN]` 하나 뒤 건너뛴다. `verify_skill` 이 허용 목록
+   `post_merge_verify` 를 읽는다. `true` 가 아니거나 파일을 못 읽거나 `jq` 가 없으면 **아무것도 하지 않는다**
+   (출력 없음). `true` 면 `post_merge_verify_skill`(기본 `gh-verify:merged`)로 검증한다. `post_merge_verify` 키가
+   아예 없고 옛 `verify_skill` 만 있는 항목은 그 값으로 폴백하되 이관 안내 `[WARN]` 을 한 줄 낸다.
+   `jq` 가 non-zero(파일은 있는데 JSON 이 아님)면 `[WARN]` 하나 뒤 건너뛴다. 검증 스킬 값이 허용 목록
    (`gh-verify:merged`, `gh-verify:live`) 밖이면 herdr 호출 전에 `[WARN]` 을 내고 멈춘다 —
    `--dangerously-skip-permissions` 에이전트의 프롬프트에 들어가는 값이라 자유 텍스트일 수 없다.
    `herdr` 이 없으면 조용한 no-op.

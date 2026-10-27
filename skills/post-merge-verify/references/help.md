@@ -46,7 +46,8 @@ dispatch soft-failed and you want to retry it.
 8. `herdr agent start mv-<repo>-pr-<N> --kind claude --pane <pane>
    -- --dangerously-skip-permissions`.
 9. `herdr agent prompt <agent> "/<verify-skill> <N>" --wait --until idle`,
-   where `<verify-skill>` is the registry's `verify_skill` for that repo —
+   where `<verify-skill>` is the registry's `post_merge_verify_skill` for that
+   repo (default `gh-verify:merged`; only when `post_merge_verify` is `true`) —
    allowlisted to `gh-verify:merged` or `gh-verify:live`, because it
    reaches the prompt of a `--dangerously-skip-permissions` session.
 10. Prints the new tab id, the worktree it opened in, the agent name, and a
