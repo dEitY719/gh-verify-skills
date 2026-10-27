@@ -68,9 +68,9 @@ elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
         | if has("post_merge_verify") then
               select(.post_merge_verify == true)
               | ["post_merge_verify_skill",
-                 ((.post_merge_verify_skill // "") | if . == "" then "gh-verify:merged" else . end)]
+                 (.post_merge_verify_skill | if . == null or . == "" then "gh-verify:merged" elif type == "string" then . else tojson end)]
           else
-              select((.verify_skill // "") != "") | ["verify_skill", .verify_skill]
+              select((.verify_skill // "") != "") | ["verify_skill", (.verify_skill | if type == "string" then . else tojson end)]
           end
         | @tsv' "$WATCHED_FILE" 2>/dev/null); then
         # The file exists but is not JSON: a broken SSOT, not an opt-out.
@@ -79,8 +79,9 @@ elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
         PMV_ROW=""
     fi
     if [ -n "$PMV_ROW" ]; then
-        PMV_SKILL_KEY=${PMV_ROW%%	*}
-        VERIFY_SKILL=${PMV_ROW#*	}
+        PMV_TAB=$(printf '\t') # spelled out: a literal tab here would not survive an editor
+        PMV_SKILL_KEY=${PMV_ROW%%"$PMV_TAB"*}
+        VERIFY_SKILL=${PMV_ROW#*"$PMV_TAB"}
     fi
 fi
 [ -n "$VERIFY_SKILL" ] || return 0 2>/dev/null || exit 0
