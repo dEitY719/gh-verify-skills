@@ -64,7 +64,7 @@ chk "--lanes= form"     "$(norm --lanes=x:y "$U")"                 "0|--lanes=x:
 # Explicit remote: kept when it matches, refused when it does not.
 chk "explicit match"    "$(norm "$U" upstream --no-reply)"         "0|898 upstream --no-reply|"
 chk "explicit mismatch" "$(norm "$U" origin)" \
-    "2||[gh-verify:review-all] remote 'origin' is me/fork, but the PR URL is dEitY719/equinest; drop <remote> or pass the matching one"
+    "2||[gh-verify:review-all] remote 'origin' is github.com/me/fork, but the PR URL is github.com/dEitY719/equinest; drop <remote> or pass the matching one"
 chk "explicit unknown"  "$(norm "$U" nope)" \
     "2||[gh-verify:review-all] no git remote named 'nope'"
 
@@ -73,6 +73,27 @@ chk "no match"          "$(norm https://github.com/x/y/pull/1)" \
     "2||[gh-verify:review-all] no git remote matches x/y; pass <remote> explicitly"
 chk "host must match"   "$(norm https://ghes.corp.example/dEitY719/equinest/pull/1)" \
     "2||[gh-verify:review-all] no git remote matches dEitY719/equinest; pass <remote> explicitly"
+
+chk "lanes no value"    "$(norm "$U" --lanes)"                     "0|898 upstream --lanes|"
+git -C "$TMP/repo" remote add aaa git@github.com:dEitY719/equinest.git
+chk "first remote wins" "$(norm "$U")"                             "0|898 aaa|"
+
+# The value-flag list above must match the vendored parser's: a new value flag
+# upstream would otherwise have its value read as <pr> or <remote>.
+PARSER="$ROOT/lib/vendor/shell-common/lib/devx_pr_review_all.sh"
+got=$(sed -n '/^devx_pr_review_all_parse()/,/^}/p' "$PARSER" |
+    grep -o 'missing value for --[a-z-]*' | sed 's/.* //' | sort -u | paste -sd' ' -)
+chk "value flags pinned" "$got" "--defer-reply --lanes"
+
+# The glue SKILL.md Step 1 pastes, run for real against the vendored parser.
+GLUE=$(awk '/^## Step 1/,/^## Step 3/' "$ROOT/skills/review-all/references/shell-common-source.md" |
+    awk '/^```sh$/{f=1;next} /^```$/{f=0} f')
+printf '%s\n' "$GLUE" > "$TMP/glue.sh"
+glue() { (cd "$TMP/repo" && DOTFILES_ROOT=/nonexistent CLAUDE_PLUGIN_ROOT="$ROOT" GH_VERIFY_ROOT="" \
+    bash "$TMP/glue.sh" "$@" 2>/dev/null | grep -E '^(pr|remote|reply_mode)=' | paste -sd' ' -; exit "${PIPESTATUS[0]}"); }
+chk "glue: url"         "$(glue "$U/files" --no-reply)"            "pr=898 remote=aaa reply_mode=none"
+chk "glue: number"      "$(glue 7 origin)"                         "pr=7 remote=origin reply_mode=inline"
+glue https://github.com/x/y/pull/1 >/dev/null; chk "glue: no match rc" "$?" "2"
 
 [ "$FAIL" -eq 0 ] && echo "PASS  normalize-pr-arg.selfcheck.sh" || echo "FAIL  normalize-pr-arg.selfcheck.sh"
 exit "$FAIL"

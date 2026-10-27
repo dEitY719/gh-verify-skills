@@ -20,7 +20,7 @@ Then, in the same call, normalize a PR URL in the `<pr>` slot and call the parse
 (dEitY719/gh-verify-skills#96):
 
 ```sh
-if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then _NPA="$CLAUDE_PLUGIN_ROOT/skills/review-all/lib/normalize-pr-arg.sh"; [ -r "$_NPA" ] || { printf '[gh-verify:review-all] %s is not readable. On Claude Code this is a broken install.\n' "$_NPA" >&2; return 1 2>/dev/null || exit 1; }; _na=$(bash "$_NPA" "$@") || { return 2 2>/dev/null || exit 2; }; eval "set -- $_na"; fi; devx_pr_review_all_parse "$@"
+_GVR="${GH_VERIFY_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"; if [ -n "$_GVR" ]; then _NPA="$_GVR/skills/review-all/lib/normalize-pr-arg.sh"; [ -r "$_NPA" ] || { printf '[gh-verify:review-all] %s is not readable. On Claude Code this is a broken install.\n' "$_NPA" >&2; return 1 2>/dev/null || exit 1; }; _na=$(bash "$_NPA" "$@") || { return 2 2>/dev/null || exit 2; }; eval "set -- $_na"; fi; devx_pr_review_all_parse "$@"
 ```
 
 `lib/normalize-pr-arg.sh` turns `https://<host>/<owner>/<repo>/pull/<N>` (plus any
@@ -31,9 +31,14 @@ with the reason on stderr. Numbers and flags pass through unchanged, in order. I
 output is `printf %q`-quoted, which is what makes the `eval` safe. It runs from the
 repository under review, which is the cwd Step 1 already assumes. The parser itself is
 vendored from dotfiles and is not edited here; the normalizing stays in this skill.
-With `CLAUDE_PLUGIN_ROOT` unset (a dotfiles-only harness) the step is skipped and a URL
-gets the parser's own `PR# must be a positive integer` exit 2, exactly as before; never
-resolve the script from `$PWD`, which is the repository under review.
+The plugin root is `GH_VERIFY_ROOT`, else `CLAUDE_PLUGIN_ROOT` (the same tiers as
+`exception-merge-checklist`). With both unset (a dotfiles-only harness) the step is
+skipped and a URL gets the parser's own `PR# must be a positive integer` exit 2, exactly
+as before; export `GH_VERIFY_ROOT=<plugin dir>` to enable it. Never resolve the script
+from `$PWD`, which is the repository under review. When several remotes name the URL's
+repo, the first in `git remote` order (alphabetical) wins. Matching is textual, so an
+ssh host alias (`git@gh-work:org/repo`) or `url.insteadOf` remote does not match; pass the
+number instead (`<N> <remote>`). `normalize-pr-arg.selfcheck.sh` runs this block for real.
 
 ## Step 3 — no setup-mode gate any more
 
