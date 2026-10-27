@@ -30,7 +30,7 @@ Arg #1 `-h` / `--help` / `help` → output `references/help.md` verbatim and sto
 
 ## Step 1: Parse Args
 
-Paste `references/shell-common-source.md`'s loader block, then `devx_pr_review_all_parse "$@"`. On help follow Help;
+Paste `references/shell-common-source.md`'s Step 1 blocks: loader, then PR-URL normalize + parse. On help follow Help;
 on exit 2 print stderr and stop. Capture `pr`, `remote`, `reply_mode`, `reply_delay`, `force_review`, `lanes`,
 `START_TS`.
 

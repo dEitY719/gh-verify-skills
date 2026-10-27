@@ -12,10 +12,12 @@ decision** (approve / request-changes) — that is `gh-pr:approve`.
 
 ## Arguments
 
+`/gh-verify:review-all <PR#|PR-URL> [remote] [flags]`
+
 | # | Name | Default | Description |
 |---|------|---------|-------------|
-| 1 | PR number, or `-h`/`--help`/`help` | — (required) | Target PR, e.g. `99` |
-| 2 | remote name | `origin` | Git remote for the target repo |
+| 1 | PR number or PR URL, or `-h`/`--help`/`help` | — (required) | Target PR, e.g. `99` or `https://github.com/<owner>/<repo>/pull/99` (`/files`, `?query`, `#fragment` allowed) |
+| 2 | remote name | `origin`; for a PR URL, the remote matching its host + owner/repo | Git remote for the target repo. With a PR URL, a remote naming another repo exits 2 |
 
 ### Flags
 
@@ -33,6 +35,7 @@ decision** (approve / request-changes) — that is `gh-pr:approve`.
 
 - `/gh-verify:review-all 99` — review PR #99 with all available reviewers, reply inline
 - `/gh-verify:review-all 99 upstream` — same, targeting the `upstream` repo
+- `/gh-verify:review-all https://github.com/<owner>/<repo>/pull/99` — same as `99 <remote>`, the remote picked from the URL
 - `/gh-verify:review-all 99 --defer-reply 8` — review now, schedule the reply 8 min later
 - `/gh-verify:review-all 99 --no-reply` — review only; skip the reply pass
 - `/gh-verify:review-all 99 --force-review` — force every lane to re-run even if this head was already reviewed
@@ -42,7 +45,8 @@ decision** (approve / request-changes) — that is `gh-pr:approve`.
 
 ## What the skill does
 
-1. Parse args via `devx_pr_review_all_parse`; record `START_TS` and the resolved `lanes` list.
+1. Normalize a `<PR#|PR-URL>` URL to `<N> [remote]` (`lib/normalize-pr-arg.sh`), then parse args via
+   `devx_pr_review_all_parse`; record `START_TS` and the resolved `lanes` list.
 2. Pre-flight: PR must be `OPEN` and non-draft, `gh auth` must be live, and
    check out the PR head branch if not already on it (so the self-fix pass
    acts on the right tree). Then bind `SELF` — the model declares which
@@ -108,12 +112,15 @@ decision** (approve / request-changes) — that is `gh-pr:approve`.
 |------|-------|
 | 0 | Review gate ran and the reply step completed / was scheduled / was skipped. |
 | 1 | PR not `OPEN`/non-draft, or `gh` not authenticated. |
-| 2 | Argument error: missing `<PR#>`, non-integer `<PR#>`, unknown flag, bad `--defer-reply` value, or a `--lanes` list that is empty, has an empty/colon-less/multi-colon entry, carries a non-`[A-Za-z0-9_-]` token, or repeats a lane. |
+| 2 | Argument error: a PR URL with no matching git remote or a mismatched `<remote>`, missing `<PR#>`, non-integer `<PR#>`, unknown flag, bad `--defer-reply` value, or a `--lanes` list that is empty, has an empty/colon-less/multi-colon entry, carries a non-`[A-Za-z0-9_-]` token, or repeats a lane. |
 
 ## Good vs. bad invocation
 
 - **Good**: `/gh-verify:review-all 99` — all reviewers + inline reply on PR #99.
 - **Good**: `/gh-verify:review-all 99 --defer-reply 8` — issue-flow-style deferred reply.
+- **Good**: `/gh-verify:review-all https://github.com/<owner>/<repo>/pull/99/files` — URL pasted from the browser.
+- **Bad**: `/gh-verify:review-all https://github.com/<owner>/<repo>/pull/99 origin` when `origin` is another repo —
+  exits 2 rather than reviewing the wrong repo.
 - **Bad**: `/gh-verify:review-all` — exits 2 (missing `<PR#>`).
 - **Bad**: `/gh-verify:review-all abc` — exits 2 (PR# must be a positive integer).
 - **Bad**: `/gh-verify:review-all 99 --lanes "opencode:default,opencode:default"` — exits 2 (repeated lane; the

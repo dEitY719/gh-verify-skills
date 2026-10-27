@@ -16,7 +16,24 @@ definition from an outer shell cannot win.
 _SC="${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common"; if [ ! -f "$_SC/lib/devx_pr_review_all.sh" ]; then [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || { printf '[gh-verify:review-all] no shell-common under %s, and CLAUDE_PLUGIN_ROOT is unset. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }; _SC="$CLAUDE_PLUGIN_ROOT/lib/vendor/shell-common"; fi; unset -f devx_pr_review_all_parse 2>/dev/null || :; unalias devx_pr_review_all_parse 2>/dev/null || :; export SHELL_COMMON="$_SC"; [ -f "$_SC/lib/devx_pr_review_all.sh" ] && . "$_SC/lib/devx_pr_review_all.sh"; [ "$(command -v devx_pr_review_all_parse 2>/dev/null)" = devx_pr_review_all_parse ] || { unset SHELL_COMMON; printf '[gh-verify:review-all] %s did not load a usable shell-common. On Claude Code this is a broken install; on any other harness export CLAUDE_PLUGIN_ROOT=<plugin dir> first.\n' "$_SC" >&2; return 1 2>/dev/null || exit 1; }
 ```
 
-Then call `devx_pr_review_all_parse "$@"`.
+Then, in the same call, normalize a PR URL in the `<pr>` slot and call the parser
+(dEitY719/gh-verify-skills#96):
+
+```sh
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then _NPA="$CLAUDE_PLUGIN_ROOT/skills/review-all/lib/normalize-pr-arg.sh"; [ -r "$_NPA" ] || { printf '[gh-verify:review-all] %s is not readable. On Claude Code this is a broken install.\n' "$_NPA" >&2; return 1 2>/dev/null || exit 1; }; _na=$(bash "$_NPA" "$@") || { return 2 2>/dev/null || exit 2; }; eval "set -- $_na"; fi; devx_pr_review_all_parse "$@"
+```
+
+`lib/normalize-pr-arg.sh` turns `https://<host>/<owner>/<repo>/pull/<N>` (plus any
+`/files`, `/commits`, trailing `/`, `?query`, `#fragment`) into `<N>`, and when no
+`<remote>` was given inserts the git remote whose URL names the same host and
+owner/repo. No matching remote, or an explicit `<remote>` naming another repo, exits 2
+with the reason on stderr. Numbers and flags pass through unchanged, in order. Its
+output is `printf %q`-quoted, which is what makes the `eval` safe. It runs from the
+repository under review, which is the cwd Step 1 already assumes. The parser itself is
+vendored from dotfiles and is not edited here; the normalizing stays in this skill.
+With `CLAUDE_PLUGIN_ROOT` unset (a dotfiles-only harness) the step is skipped and a URL
+gets the parser's own `PR# must be a positive integer` exit 2, exactly as before; never
+resolve the script from `$PWD`, which is the repository under review.
 
 ## Step 3 — no setup-mode gate any more
 
