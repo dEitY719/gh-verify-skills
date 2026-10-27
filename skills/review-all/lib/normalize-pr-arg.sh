@@ -55,8 +55,8 @@ if [ "$pr_i" -lt 0 ] || [[ ! "${args[$pr_i]}" =~ $re ]]; then
     printf '%q ' "$@"; echo; exit 0
 fi
 host="${BASH_REMATCH[1]%%:*}" # _repo_of drops the port too (an ssh port is not the web port)
-want="$host ${BASH_REMATCH[2]}/${BASH_REMATCH[3]}"
 slug="${BASH_REMATCH[2]}/${BASH_REMATCH[3]}"
+want=$(_lc "$host $slug")
 args[pr_i]="${BASH_REMATCH[4]}"
 
 if [ "$remote_i" -ge 0 ]; then
@@ -64,7 +64,7 @@ if [ "$remote_i" -ge 0 ]; then
     url=$(git remote get-url "$r" 2>/dev/null) || {
         printf "[gh-verify:review-all] no git remote named '%s'\n" "$r" >&2; exit 2; }
     got=$(_repo_of "$url")
-    if [ "$(_lc "$got")" != "$(_lc "$want")" ]; then
+    if [ "$(_lc "$got")" != "$want" ]; then
         printf "[gh-verify:review-all] remote '%s' is %s, but the PR URL is %s; drop <remote> or pass the matching one\n" \
             "$r" "${got#* }" "$slug" >&2
         exit 2
@@ -73,7 +73,7 @@ else
     match=""
     for r in $(git remote 2>/dev/null); do
         got=$(_repo_of "$(git remote get-url "$r")")
-        [ "$(_lc "$got")" = "$(_lc "$want")" ] && { match="$r"; break; }
+        [ "$(_lc "$got")" = "$want" ] &&{ match="$r"; break; }
     done
     [ -n "$match" ] || {
         printf '[gh-verify:review-all] no git remote matches %s; pass <remote> explicitly\n' "$slug" >&2; exit 2; }
