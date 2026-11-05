@@ -51,17 +51,13 @@ empty (silent no-op), not an error.
 | `post_merge_verify` | no | JSON boolean, the on/off switch. Only `true` opens a verification tab; `false`, absent, or any other value (the string `"true"` included) means `gh-verify:post-merge-verify` no-ops for that repo — issue-watcher watches it just the same. |
 | `post_merge_verify_skill` | no | **Allowlisted**: `gh-verify:merged` (the default when absent or empty) or `gh-verify:live`, nothing else. Typed into the new session verbatim (`/gh-verify:merged <N>`). Read only when `post_merge_verify` is `true`. |
 
-## Legacy `verify_skill` (fallback, gh-verify-skills#93)
+## Retired `verify_skill` (gh-verify-skills#93, #95)
 
-Before #93 a single `verify_skill` key did both jobs: its presence was the
-on switch and its value the skill. An entry that has **no `post_merge_verify`
-key** but a non-empty `verify_skill` is still honoured as
-`post_merge_verify: true` + `post_merge_verify_skill: <its value>`, under the
-same allowlist, and the dispatch prints one `[WARN]` naming the repo so the
-entry gets migrated. Once `post_merge_verify` is present (even `false`), the
-legacy key on that entry is ignored. Migrating the user's file is the job of
-dotfiles' `avatar-watched-repos` sync tool, not of this skill; the fallback is
-removed in a follow-up once every registry is migrated.
+Before #93 a single `verify_skill` key did both jobs: its presence was the on
+switch and its value the skill. #93 kept it as a read fallback with a migration
+`[WARN]`; #95 removed that fallback, so the key is now ignored and an entry
+carrying only it no-ops silently. Migrating a file is the job of dotfiles'
+`avatar-watched-repos` sync tool.
 
 ## Why `post_merge_verify_skill` is an allowlist, not free text
 
