@@ -34,8 +34,9 @@ if [ -z "${TARGET_REPO:-}" ]; then
 elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
     # The skill of the first matching entry (a duplicate repo entry is ignored
     # rather than mixed in). post_merge_verify must be JSON true (absent/false
-    # = off); post_merge_verify_skill defaults to gh-verify:merged. @tsv escapes
-    # control characters, so a value with a newline cannot match the allowlist.
+    # = off); post_merge_verify_skill defaults to gh-verify:merged. Keep @tsv: it
+    # escapes tab, newline, CR and backslash, so `$(...)` cannot strip a trailing
+    # newline off a value and turn it into an allowlist match.
     if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" '
         first((if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r))
         | select(.post_merge_verify == true)
