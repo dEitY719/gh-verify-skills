@@ -192,67 +192,22 @@ _pmv_log_count() { grep -c -- "$1" "$FAKE_HERDR_LOG" || true; }
     assert_output --partial "verify: /gh-verify:merged 77"
 }
 
-# --- #93: the legacy verify_skill key is a fallback with one [WARN] ---------
-
-@test "legacy: verify_skill alone still dispatches, with exactly one migration WARN (#93)" {
-    printf '[{"repo":"acme/webapp","verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
-    run dispatch acme/webapp
-    assert_success
-    assert_output --partial "verify: /gh-verify:live 77"
-    assert_output --partial "acme/webapp uses the legacy \"verify_skill\" key"
-    [ "$(printf '%s\n' "$output" | grep -c 'legacy "verify_skill"')" -eq 1 ]
-}
-
-@test "legacy: the new schema prints no migration WARN (#93)" {
-    run dispatch acme/webapp
-    assert_success
-    refute_output --partial "legacy"
-}
-
-@test "legacy: post_merge_verify, even false, wins over verify_skill (#93)" {
-    printf '[{"repo":"acme/dotfiles","post_merge_verify":false,"verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
+@test "gate: the retired verify_skill key alone is a silent no-op (#95)" {
+    printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
     run dispatch
     assert_success
     assert_output ""
-    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
-    run dispatch
-    assert_output --partial "verify: /gh-verify:merged 77"
-    refute_output --partial "legacy"
-}
-
-@test "legacy: an empty verify_skill is the silent opt-out, not a refusal (#93)" {
-    printf '[{"repo":"acme/dotfiles","verify_skill":""}]\n' >"$WATCHED"
-    run dispatch
-    assert_success
+    run cat "$FAKE_HERDR_LOG"
     assert_output ""
 }
 
 @test "gate: a duplicate repo entry is ignored, the first one decides (#93)" {
-    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":"gh-verify:live"},{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":"gh-verify:live"},{"repo":"acme/dotfiles","post_merge_verify":true}]\n' >"$WATCHED"
     run dispatch
     assert_success
     assert_output --partial "verify: /gh-verify:live 77"
-    refute_output --partial "legacy"
     printf '[{"repo":"acme/dotfiles","post_merge_verify":false},{"repo":"acme/dotfiles","post_merge_verify":true}]\n' >"$WATCHED"
     run dispatch
-    assert_output ""
-}
-
-@test "legacy: with no herdr the fallback stays silent (AC-5, #93)" {
-    printf '[{"repo":"acme/dotfiles","verify_skill":"gh-verify:merged"}]\n' >"$WATCHED"
-    FAKE_HERDR_PRESENT=0
-    run dispatch
-    assert_success
-    assert_output ""
-}
-
-@test "legacy: a verify_skill off the allowlist is still refused (#93)" {
-    printf '[{"repo":"acme/dotfiles","verify_skill":"evil:do-something-else"}]\n' >"$WATCHED"
-    run dispatch
-    assert_success
-    assert_output --partial "verify_skill \"evil:do-something-else\" for acme/dotfiles is not one of"
-    refute_output --partial "post-merge verification dispatched"
-    run cat "$FAKE_HERDR_LOG"
     assert_output ""
 }
 

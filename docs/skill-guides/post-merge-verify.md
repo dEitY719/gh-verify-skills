@@ -57,8 +57,7 @@
 2. **Step 2 — watched-repos 레지스트리 게이트.**
    `${IW_WATCHED_REPOS:-${HOME}/.avatars/issue-watcher/watched-repos.json}` 에서 대상 레포의
    `post_merge_verify` 를 읽는다. `true` 가 아니거나 파일을 못 읽거나 `jq` 가 없으면 **아무것도 하지 않는다**
-   (출력 없음). `true` 면 `post_merge_verify_skill`(기본 `gh-verify:merged`)로 검증한다. `post_merge_verify` 키가
-   아예 없고 옛 `verify_skill` 만 있는 항목은 그 값으로 폴백하되 이관 안내 `[WARN]` 을 한 줄 낸다.
+   (출력 없음). `true` 면 `post_merge_verify_skill`(기본 `gh-verify:merged`)로 검증한다.
    `jq` 가 non-zero(파일은 있는데 JSON 이 아님)면 `[WARN]` 하나 뒤 건너뛴다. 검증 스킬 값이 허용 목록
    (`gh-verify:merged`, `gh-verify:live`) 밖이면 herdr 호출 전에 `[WARN]` 을 내고 멈춘다 —
    `--dangerously-skip-permissions` 에이전트의 프롬프트에 들어가는 값이라 자유 텍스트일 수 없다.
