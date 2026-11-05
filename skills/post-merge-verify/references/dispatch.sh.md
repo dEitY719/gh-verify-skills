@@ -57,13 +57,14 @@ if [ -z "${TARGET_REPO:-}" ]; then
 elif command -v jq >/dev/null 2>&1 && [ -r "$WATCHED_FILE" ]; then
     # The skill of the first matching entry (a duplicate repo entry is ignored
     # rather than mixed in). post_merge_verify must be JSON true (absent/false
-    # = off); post_merge_verify_skill defaults to gh-verify:merged.
+    # = off); post_merge_verify_skill defaults to gh-verify:merged. @tsv escapes
+    # control characters, so a value with a newline cannot match the allowlist.
     if ! VERIFY_SKILL=$(jq -r --arg r "$TARGET_REPO" '
         first((if type == "array" then . else (.repos // []) end) | .[] | select(.repo == $r))
         | select(.post_merge_verify == true)
         | .post_merge_verify_skill
-        | if . == null or . == "" then "gh-verify:merged" elif type == "string" then . else tojson end
-        ' "$WATCHED_FILE" 2>/dev/null); then
+        | [if . == null or . == "" then "gh-verify:merged" elif type == "string" then . else tojson end]
+        | @tsv' "$WATCHED_FILE" 2>/dev/null); then
         # The file exists but is not JSON: a broken SSOT, not an opt-out.
         printf '[WARN] gh-verify:post-merge-verify: %s is not valid JSON — post-merge verification skipped.\n' \
             "$WATCHED_FILE"
