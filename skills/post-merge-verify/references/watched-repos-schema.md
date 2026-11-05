@@ -9,7 +9,7 @@ Before dEitY719/dotfiles#1555 this schema described a second, tracked SSOT file 
 `docs/.ssot/` that only `gh-verify:post-merge-verify` read. That file is gone;
 every registered repo's verification setting now lives as fields on the same
 array entry issue-watcher already reads — since gh-verify-skills#93 the two keys
-`post_merge_verify` and `post_merge_verify_skill` (see "Legacy `verify_skill`"
+`post_merge_verify` and `post_merge_verify_skill` (see "Retired `verify_skill`"
 below for the key they replaced).
 
 ## Shape
