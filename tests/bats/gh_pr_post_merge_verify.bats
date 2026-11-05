@@ -199,6 +199,11 @@ _pmv_log_count() { grep -c -- "$1" "$FAKE_HERDR_LOG" || true; }
     assert_output ""
     run cat "$FAKE_HERDR_LOG"
     assert_output ""
+    # Alongside post_merge_verify: true it is not read either: default skill wins.
+    printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"verify_skill":"gh-verify:live"}]\n' >"$WATCHED"
+    run dispatch
+    assert_success
+    assert_output --partial "verify: /gh-verify:merged 77"
 }
 
 @test "gate: a duplicate repo entry is ignored, the first one decides (#93)" {
