@@ -675,7 +675,8 @@ branch refs/heads/main
     done
     # A non-string value is refused by the allowlist, not read as the default
     # and not misreported as invalid JSON.
-    for _id in false '["gh-verify:merged"]'; do
+    # A trailing newline is escaped by @tsv, never stripped into a match (#95).
+    for _id in false '["gh-verify:merged"]' '"gh-verify:merged\n"'; do
         printf '[{"repo":"acme/dotfiles","post_merge_verify":true,"post_merge_verify_skill":%s}]\n' "$_id" >"$WATCHED"
         run dispatch
         assert_output --partial "is not one of gh-verify:merged, gh-verify:live"
