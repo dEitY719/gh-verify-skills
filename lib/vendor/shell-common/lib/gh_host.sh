@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/lib/gh_host.sh
-# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-11-10T06:55Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/lib/gh_host.sh
 # Resolve the active GitHub host and parse owner/repo from remote URLs.
 #
@@ -255,4 +255,25 @@ _gh_host_from_url() {
     fi
     printf '%s\n' "$_ghu_host"
     unset _ghu_url _ghu_host
+}
+
+# Guard predicates share host matching and fail-closed policy across callers.
+# Accept bare hosts and remote URLs, including GitHub's ssh subdomains.
+_gh_host_is_github_com() (
+    _ghig_url=$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')
+    case "$_ghig_url" in *://*) _ghig_url=${_ghig_url#*://} ;; esac
+    _ghig_url=${_ghig_url%%/*}
+    _ghig_url=${_ghig_url##*@}
+    _ghig_url=${_ghig_url%%:*}
+    case "$_ghig_url" in
+        github.com | *.github.com) return 0 ;;
+        *) return 1 ;;
+    esac
+)
+
+# A missing policy reader must never allow a github.com push.
+_gh_push_github_com_forbidden() {
+    _gh_host_is_github_com "${1:-}" || return 1
+    command -v _dotfiles_setup_mode_is >/dev/null 2>&1 || return 0
+    _dotfiles_setup_mode_is internal
 }

@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/gh_pr_review.sh
-# Synced 2026-10-17T02:20Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-11-10T06:55Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/gh_pr_review.sh
@@ -52,6 +52,24 @@ else
 fi
 unset _drg_self _drg_helper
 
+# ux_lib (issue #2257): error lines go through ux_error like the sibling
+# gh_pr_approve.sh / gh_pr_reply.sh. The gh-pr:review skill and the bats
+# fixtures source this file into a bare non-interactive shell where the
+# loader never ran, so load ux_lib here when ux_error is missing; a
+# vendored shell-common without tools/ux_lib gets a plain stderr stand-in
+# so no error message is ever lost to "command not found". Any ux_error
+# already defined wins on purpose -- e.g. devx_pr_review_all_fanout defines
+# a plain one first so lane skip reasons carry no glyph.
+if ! command -v ux_error >/dev/null 2>&1; then
+    _gpr_ux_lib="${SHELL_COMMON:-${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common}/tools/ux_lib/ux_lib.sh"
+    # shellcheck disable=SC1090
+    [ -r "$_gpr_ux_lib" ] && . "$_gpr_ux_lib"
+    unset _gpr_ux_lib
+    if ! command -v ux_error >/dev/null 2>&1; then
+        ux_error() { printf '%s\n' "$1" >&2; }
+    fi
+fi
+
 # ============================================================================
 # Section 1 — Argument parser (SSOT, mirrors SKILL.md Step 1)
 # ============================================================================
@@ -79,7 +97,7 @@ gh_pr_review_parse() {
         case "$1" in
         --paths)
             if [ "$#" -lt 2 ] || [ -z "$2" ]; then
-                echo "missing value for --paths" >&2
+                ux_error "missing value for --paths"
                 return 2
             fi
             paths="${paths:+$paths }$2"
@@ -87,7 +105,7 @@ gh_pr_review_parse() {
             ;;
         --paths=*)
             if [ -z "${1#--paths=}" ]; then
-                echo "missing value for --paths" >&2
+                ux_error "missing value for --paths"
                 return 2
             fi
             paths="${paths:+$paths }${1#--paths=}"
@@ -95,7 +113,7 @@ gh_pr_review_parse() {
             ;;
         --ai)
             if [ "$#" -lt 2 ]; then
-                echo "missing value for --ai" >&2
+                ux_error "missing value for --ai"
                 return 2
             fi
             ai="$2"
@@ -107,7 +125,7 @@ gh_pr_review_parse() {
             ;;
         --review)
             if [ "$#" -lt 2 ]; then
-                echo "missing value for --review" >&2
+                ux_error "missing value for --review"
                 return 2
             fi
             review="$2"
@@ -119,7 +137,7 @@ gh_pr_review_parse() {
             ;;
         --user)
             if [ "$#" -lt 2 ]; then
-                echo "missing value for --user" >&2
+                ux_error "missing value for --user"
                 return 2
             fi
             user="$2"
@@ -138,7 +156,7 @@ gh_pr_review_parse() {
             return 0
             ;;
         --*)
-            echo "Unknown flag: $1" >&2
+            ux_error "Unknown flag: $1"
             return 2
             ;;
         *)
@@ -147,7 +165,7 @@ gh_pr_review_parse() {
             elif [ "$remote" = "origin" ]; then
                 remote="$1"
             else
-                echo "Unexpected positional arg: $1" >&2
+                ux_error "Unexpected positional arg: $1"
                 return 2
             fi
             shift
@@ -156,20 +174,20 @@ gh_pr_review_parse() {
     done
 
     if [ -z "$ai" ]; then
-        echo "missing required flag: --ai <codex|agy|claude|opencode|hermes>" >&2
+        ux_error "missing required flag: --ai <codex|agy|claude|opencode|hermes>"
         return 2
     fi
 
     case "$ai" in
     codex | agy | claude | opencode | hermes) ;;
     *)
-        echo "Unknown --ai value: '$ai' (allowed: codex, agy, claude, opencode, hermes)" >&2
+        ux_error "Unknown --ai value: '$ai' (allowed: codex, agy, claude, opencode, hermes)"
         return 2
         ;;
     esac
 
     if [ -n "$user" ] && [ "$ai" != "claude" ]; then
-        echo "--user is only valid with --ai claude (codex/agy/opencode/hermes have no multi-account routing)" >&2
+        ux_error "--user is only valid with --ai claude (codex/agy/opencode/hermes have no multi-account routing)"
         return 2
     fi
 
@@ -184,8 +202,8 @@ gh_pr_review_parse() {
     case "$review" in
     default | quick | thorough | security | performance) ;;
     *)
+        ux_error "Unknown --review value: '$review'"
         cat >&2 <<EOF
-Unknown --review value: '$review'
 Allowed: default | quick | thorough | security | performance
 Korean aliases: 보통 | 간단 | 꼼꼼 (꼼꼼하게) | 보안 | 성능
 EOF
@@ -219,7 +237,7 @@ _gh_pr_review_require_ai_cli() {
     case "$ai" in
     codex | agy | claude | opencode | hermes) ;;
     *)
-        echo "Unknown --ai value: '$ai' (allowed: codex, agy, claude, opencode, hermes)" >&2
+        ux_error "Unknown --ai value: '$ai' (allowed: codex, agy, claude, opencode, hermes)"
         return 2
         ;;
     esac
@@ -233,13 +251,13 @@ _gh_pr_review_require_ai_cli() {
         # the lane with `jq: command not found` attributed to agy — name the
         # tool that is actually missing (PR #1765 codex BLOCKER).
         if ! command -v jq >/dev/null 2>&1; then
-            echo "Required CLI 'jq' not found in PATH (--ai agy needs it for the stream-json transport)" >&2
+            ux_error "Required CLI 'jq' not found in PATH (--ai agy needs it for the stream-json transport)"
             return 1
         fi
         ;;
     esac
     if ! command -v "$ai" >/dev/null 2>&1; then
-        echo "Required CLI '$ai' not found in PATH" >&2
+        ux_error "Required CLI '$ai' not found in PATH"
         return 1
     fi
     return 0
@@ -322,14 +340,14 @@ _gh_pr_review_resolve_claude_account() {
         . "$_env"
     fi
     if ! command -v _claude_resolve_account >/dev/null 2>&1; then
-        echo "claude account routing helper not available — load shell-common/tools/custom/lib/claude_accounts_auth.sh" >&2
+        ux_error "claude account routing helper not available — load shell-common/tools/custom/lib/claude_accounts_auth.sh"
         return 1
     fi
     local _cfg
     if ! _cfg=$(_claude_resolve_account "$user" 2>/dev/null); then
         local _allowed
         _allowed=$(_claude_resolve_account --list 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
-        echo "Unknown claude account: '$user' (allowed: $_allowed)" >&2
+        ux_error "Unknown claude account: '$user' (allowed: $_allowed)"
         return 1
     fi
     printf '%s\n' "$_cfg"
@@ -551,7 +569,7 @@ _gh_pr_review_run_ai() {
     if [ -z "$_stderr_file" ]; then
         _stderr_owned=1
         _stderr_file=$(_gh_pr_review_mktemp_safe "/tmp/gh-pr-review-stderr.$ai.XXXXXX") || {
-            echo "Could not create stderr temp file under /tmp" >&2
+            ux_error "Could not create stderr temp file under /tmp"
             return 1
         }
     fi
@@ -664,7 +682,7 @@ _gh_pr_review_run_ai() {
         [ -n "$_opencode_workdir" ] && rm -rf "$_opencode_workdir"
         ;;
     *)
-        echo "Unknown --ai value: '$ai' (allowed: codex, agy, claude, opencode, hermes)" >&2
+        ux_error "Unknown --ai value: '$ai' (allowed: codex, agy, claude, opencode, hermes)"
         rm -f "$_stderr_file"
         return 2
         ;;
@@ -696,7 +714,7 @@ _gh_pr_review_run_ai() {
         if [ -z "$_summary" ]; then
             _summary=$(head -n 1 "$_stderr_file" 2>/dev/null)
         fi
-        echo "External AI CLI '$ai' failed (exit $_rc): ${_summary:-<no stderr>}" >&2
+        ux_error "External AI CLI '$ai' failed (exit $_rc): ${_summary:-<no stderr>}"
         echo "  full stderr saved to: $_stderr_file" >&2
         echo "  --- stderr (last 20 lines) ---" >&2
         tail -n 20 "$_stderr_file" 2>/dev/null | sed 's/^/  /' >&2
@@ -852,7 +870,7 @@ hot path) or FOLLOW-UP (visible only at scale).
 EOF
         ;;
     *)
-        echo "Unknown preset: '$1'" >&2
+        ux_error "Unknown preset: '$1'"
         return 2
         ;;
     esac
@@ -871,7 +889,7 @@ EOF
 _gh_pr_review_filter_diff_paths() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     if [ "$#" -eq 0 ]; then
-        echo 'usage: _gh_pr_review_filter_diff_paths <path>...' >&2
+        ux_error 'usage: _gh_pr_review_filter_diff_paths <path>...'
         return 2
     fi
     local _wanted=""
@@ -930,7 +948,7 @@ _gh_pr_review_build_prompt() {
         _scoped_diff=$(gh pr diff "$pr" --repo "$repo" 2>/dev/null |
             _gh_pr_review_filter_diff_paths $paths)
         if [ -z "$_scoped_diff" ]; then
-            echo "--paths matched no file in PR #$pr's diff: $paths" >&2
+            ux_error "--paths matched no file in PR #$pr's diff: $paths"
             return 3
         fi
         _scope_note=", scoped to: $paths"
@@ -1130,7 +1148,7 @@ _gh_pr_review_resolve_target_repo() {
     local _remote="${1:-origin}"
     local _url
     if ! _url=$(git remote get-url "$_remote" 2>&1); then
-        echo "Remote '$_remote' not found in this repo:" >&2
+        ux_error "Remote '$_remote' not found in this repo:"
         echo "  git remote get-url '$_remote' → $_url" >&2
         git remote -v >&2
         return 1
@@ -1165,6 +1183,32 @@ _gh_pr_review_ensure_host() {
     fi
 }
 
+# _gh_pr_review_remote_host — print the GitHub host of <remote>'s URL, or
+# nothing when the remote or its host cannot be resolved. Shared by the auth
+# gate (#1905) and the GH_HOST pin (#2313) so both read the same host.
+_gh_pr_review_remote_host() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
+    local _url
+    _url=$(git remote get-url "${1:-origin}" 2>/dev/null) || return 0
+    # shellcheck disable=SC1091
+    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/gh_host.sh" 2>/dev/null || :
+    _gh_host_from_url "$_url" 2>/dev/null || :
+}
+
+# _gh_pr_review_pin_host — export GH_HOST as <remote>'s URL host so every
+# later `gh` call (meta fetch, diff, comment) talks to the PR's server even
+# when the PR number is explicit and the caller logged into several hosts
+# (#2313). An already-set GH_HOST wins and is only re-exported.
+_gh_pr_review_pin_host() {
+    [ -n "${ZSH_VERSION-}" ] && emulate -L sh
+    if [ -z "${GH_HOST-}" ]; then
+        GH_HOST=$(_gh_pr_review_remote_host "$1")
+        [ -n "$GH_HOST" ] || unset GH_HOST
+    fi
+    [ -z "${GH_HOST-}" ] || export GH_HOST
+    return 0
+}
+
 # _gh_pr_review_require_auth — fail unless gh is authenticated for the host of
 # <remote>'s URL. A bare `gh auth status` checks EVERY host in hosts.yml, so a
 # dead login for an unrelated host (e.g. a stale internal-GHES stub on a public
@@ -1172,18 +1216,15 @@ _gh_pr_review_ensure_host() {
 # unscoped check when the host cannot be derived from the remote.
 _gh_pr_review_require_auth() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
-    local _remote="${1:-origin}" _url _host
-    _url=$(git remote get-url "$_remote" 2>/dev/null) || _url=""
-    # shellcheck disable=SC1091
-    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/gh_host.sh" 2>/dev/null || :
-    _host=$(_gh_host_from_url "$_url" 2>/dev/null) || _host=""
+    local _remote="${1:-origin}" _host
+    _host=$(_gh_pr_review_remote_host "$_remote")
     if [ -n "$_host" ]; then
         if ! gh auth status --hostname "$_host" >/dev/null 2>&1; then
-            echo "gh CLI not authenticated for $_host; run 'gh auth login -h $_host'" >&2
+            ux_error "gh CLI not authenticated for $_host; run 'gh auth login -h $_host'"
             return 1
         fi
     elif ! gh auth status >/dev/null 2>&1; then
-        echo "gh CLI not authenticated; run 'gh auth login'" >&2
+        ux_error "gh CLI not authenticated; run 'gh auth login'"
         return 1
     fi
     return 0
@@ -1203,11 +1244,11 @@ _gh_pr_review_resolve_pr_number() {
     _gh_pr_review_ensure_host
     local pr
     if ! pr=$(gh pr view --json number -q .number 2>/dev/null); then
-        echo "No PR found for current branch; pass PR number explicitly" >&2
+        ux_error "No PR found for current branch; pass PR number explicitly"
         return 1
     fi
     if [ -z "$pr" ]; then
-        echo "No PR found for current branch; pass PR number explicitly" >&2
+        ux_error "No PR found for current branch; pass PR number explicitly"
         return 1
     fi
     printf '%s\n' "$pr"
@@ -1217,18 +1258,26 @@ _gh_pr_review_resolve_pr_number() {
 # entrypoint needs (state, isDraft, baseRefName, headRefName,
 # headRefOid). One network round-trip beats five. The raw JSON is echoed
 # verbatim so the caller can extract whichever subset it cares about; on
-# fetch failure (network blip, no permission, deleted PR) it returns 1
-# with the raw `gh` stderr suppressed — the caller surfaces the
-# user-facing error.
+# fetch failure (network blip, no permission, deleted PR, wrong host) it
+# reports the error with gh's first non-empty stderr line as the cause and
+# returns 1 (#2313).
 #
 # `headRefOid` rides along rather than costing a second `gh pr view`: it
 # is only needed to tag the Step 6 comment marker (#1564), which is the
 # same reason the other four are consolidated here.
 _gh_pr_review_fetch_meta() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
-    local pr="$1" repo="$2"
-    gh pr view "$pr" --repo "$repo" \
-        --json state,isDraft,baseRefName,headRefName,headRefOid 2>/dev/null
+    local pr="$1" repo="$2" _err _rc
+    # stdout (the JSON) passes through on fd 3; only stderr is captured.
+    {
+        _err=$(gh pr view "$pr" --repo "$repo" \
+            --json state,isDraft,baseRefName,headRefName,headRefOid 2>&1 >&3 3>&-)
+        _rc=$?
+    } 3>&1
+    [ "$_rc" -eq 0 ] && return 0
+    _err=$(printf '%s\n' "$_err" | sed -n '/[^[:space:]]/{p;q;}')
+    ux_error "PR #$pr could not be fetched from $repo${_err:+: $_err}"
+    return 1
 }
 
 # _gh_pr_review_preflight_pr_state — pure-shell gate on pre-fetched
@@ -1243,16 +1292,16 @@ _gh_pr_review_preflight_pr_state() {
     case "$state" in
     OPEN) ;;
     "")
-        echo "PR #$pr could not be fetched (empty state)" >&2
+        ux_error "PR #$pr could not be fetched (empty state)"
         return 1
         ;;
     *)
-        echo "PR #$pr is $state; aborting" >&2
+        ux_error "PR #$pr is $state; aborting"
         return 1
         ;;
     esac
     if [ "$draft" = "true" ]; then
-        echo "PR #$pr is DRAFT; aborting" >&2
+        ux_error "PR #$pr is DRAFT; aborting"
         return 1
     fi
     return 0
@@ -1397,11 +1446,11 @@ EOF
 
     # ---- Step 2: pre-flight ----
     if ! command -v gh >/dev/null 2>&1; then
-        echo "Required CLI 'gh' not found in PATH" >&2
+        ux_error "Required CLI 'gh' not found in PATH"
         return 1
     fi
     if ! command -v git >/dev/null 2>&1; then
-        echo "Required CLI 'git' not found in PATH" >&2
+        ux_error "Required CLI 'git' not found in PATH"
         return 1
     fi
     local _ai_cli_rc
@@ -1424,6 +1473,10 @@ EOF
     if ! TARGET_REPO=$(_gh_pr_review_resolve_target_repo "$remote"); then
         return 1
     fi
+    # Function-local copy: the pin reaches every gh child but is restored on
+    # return, so a caller that sources this file keeps its own GH_HOST.
+    local GH_HOST="${GH_HOST-}"
+    _gh_pr_review_pin_host "$remote"
 
     # Resolve PR number — explicit arg wins, otherwise auto-detect.
     local PR_NUMBER
@@ -1437,9 +1490,11 @@ EOF
     # single JSON blob (Rule 19 — fewer process forks, fewer network
     # calls).
     local _meta state isDraft base head head_sha
-    _meta=$(_gh_pr_review_fetch_meta "$PR_NUMBER" "$TARGET_REPO")
+    if ! _meta=$(_gh_pr_review_fetch_meta "$PR_NUMBER" "$TARGET_REPO"); then
+        return 1
+    fi
     if [ -z "$_meta" ]; then
-        echo "PR #$PR_NUMBER could not be fetched from $TARGET_REPO" >&2
+        ux_error "PR #$PR_NUMBER could not be fetched from $TARGET_REPO"
         return 1
     fi
     state=$(printf '%s' "$_meta" | sed -n 's/.*"state":"\([^"]*\)".*/\1/p')
@@ -1467,7 +1522,7 @@ EOF
     # reach it too (issue #1294 — see the helper's own comment).
     local PROMPT_FILE BODY_FILE AI_OUT AI_STDERR_FILE PROMPT_BYTES
     PROMPT_FILE=$(_gh_pr_review_mktemp_prompt "$ai" "$PR_NUMBER") || {
-        echo "Could not create prompt temp file under /tmp" >&2
+        ux_error "Could not create prompt temp file under /tmp"
         return 1
     }
     # Issue #1286 — interrupt cleanup. Without a trap, Ctrl-C during the
@@ -1524,13 +1579,13 @@ EOF
     trap 'rm -f "$PROMPT_FILE" "$AI_OUT" "$BODY_FILE" "$AI_STDERR_FILE" 2>/dev/null; _gh_pr_review_disarm_trap; return 130' INT TERM
 
     AI_OUT=$(_gh_pr_review_mktemp_safe "/tmp/gh-pr-review-out.XXXXXX") || {
-        echo "Could not create AI output temp file under /tmp" >&2
+        ux_error "Could not create AI output temp file under /tmp"
         _gh_pr_review_disarm_trap
         rm -f "$PROMPT_FILE"
         return 1
     }
     BODY_FILE=$(_gh_pr_review_mktemp_safe "/tmp/gh-pr-review-body.XXXXXX") || {
-        echo "Could not create comment body temp file under /tmp" >&2
+        ux_error "Could not create comment body temp file under /tmp"
         _gh_pr_review_disarm_trap
         rm -f "$PROMPT_FILE" "$AI_OUT"
         return 1
@@ -1569,7 +1624,7 @@ EOF
     # (issue #1294). Allocation failure is fatal for the same reason it is
     # inside the helper: without it a CLI failure has no diagnosable cause.
     AI_STDERR_FILE=$(_gh_pr_review_mktemp_safe "/tmp/gh-pr-review-stderr.$ai.XXXXXX") || {
-        echo "Could not create stderr temp file under /tmp" >&2
+        ux_error "Could not create stderr temp file under /tmp"
         _gh_pr_review_disarm_trap
         rm -f "$PROMPT_FILE" "$AI_OUT" "$BODY_FILE"
         return 1
@@ -1606,13 +1661,35 @@ EOF
     # post a marker-only comment that review-all's aggregation and the
     # duplicate-review guard read as "this head sha is already reviewed".
     # Every --ai lane, not just agy — an empty review is never worth posting.
+    # Issue #2248: non-empty is not enough either. Every preset shares
+    # _gh_pr_review_common_prefix, which makes the `판정:` / `Verdict:` line
+    # mandatory; output without one (hermes once exited 0 on a single
+    # "Let me check ..." sentence) is an unfinished run, not a review.
+    # Deliberately looser than devx_pr_review_all_verdict (key anywhere in a
+    # line, `—`/`–`/` - ` accepted): this gate drops the whole review, so a
+    # variant like "Final verdict: LGTM" must pass here and read as `unknown`
+    # there. A stray "verdict:" in prose passing is the accepted cost.
     # AI_STDERR_FILE is kept, as on the failure branch above: with an empty
-    # stdout it is the only clue to why the CLI produced nothing.
+    # or unfinished stdout it is the only clue to what the CLI did. A
+    # verdict-less stdout is kept too — it may hold real findings cut off
+    # before the last line.
+    local _reject=""
     if ! grep -q '[^[:space:]]' "$AI_OUT" 2>/dev/null; then
-        echo "External AI CLI '$ai' returned an empty review — no comment posted" >&2
+        _reject="returned an empty review"
+    elif ! sed -e 's/：/:/g' -e 's/[*`_#>]//g' "$AI_OUT" 2>/dev/null |
+        grep -iqE '(판정|verdict)[[:space:]]*(:|—|–|-[[:space:]])'; then
+        _reject="returned no verdict line (판정:/Verdict:) — unfinished review"
+    fi
+    if [ -n "$_reject" ]; then
+        ux_error "External AI CLI '$ai' $_reject — no comment posted"
         echo "  full stderr saved to: $AI_STDERR_FILE" >&2
         _gh_pr_review_disarm_trap
-        rm -f "$PROMPT_FILE" "$AI_OUT" "$BODY_FILE"
+        rm -f "$PROMPT_FILE" "$BODY_FILE"
+        if grep -q '[^[:space:]]' "$AI_OUT" 2>/dev/null; then
+            echo "  full stdout saved to: $AI_OUT" >&2
+        else
+            rm -f "$AI_OUT"
+        fi
         return 1
     fi
 
@@ -1646,8 +1723,7 @@ EOF
 # ~/.local/bin/gh-pr-review) sources this file and calls _gh_pr_review_main; this thin
 # wrapper keeps the `gh_pr_review` / `gh-pr-review` names in interactive shells.
 gh_pr_review() {
-    local _exe="${SHELL_COMMON:-${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common}"/tools/custom/gh_pr_review.sh
-    "$_exe" "$@"
+    "${SHELL_COMMON:-${DOTFILES_ROOT:-$HOME/dotfiles}/shell-common}"/tools/custom/gh_pr_review.sh "$@"
 }
 
 alias gh-pr-review='gh_pr_review'

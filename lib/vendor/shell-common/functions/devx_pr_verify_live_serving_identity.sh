@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/functions/devx_pr_verify_live_serving_identity.sh
-# Synced 2026-10-05T02:45Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-11-10T06:55Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 # shell-common/functions/devx_pr_verify_live_serving_identity.sh
@@ -28,9 +28,30 @@ case $- in *i*) ;; *) [ -n "${DOTFILES_FORCE_INIT-}" ] || return 0 ;; esac
 #                       not a git checkout
 # return  0 for every verdict (a verdict is data); 2 on bad input.
 
+_devx_pr_verify_live_serving_identity_help() {
+    # Vendored into skill repos without ux_lib: degrade to plain text, never to silence.
+    if ! command -v ux_usage >/dev/null 2>&1; then
+        printf '%s\n' "Usage: devx-pr-verify-live-serving-identity [<serving-root> [--content-url <url> --symbol <s> [--symbol <s>]]]" \
+            "stdin: gh pr view N --json state,mergeCommit,headRefOid" \
+            "stdout: TARGET_SHA=<sha> (...); with <serving-root> also SERVING_IDENTITY=verified|mismatch|unverified" \
+            "return: 0 for every verdict, 2 on bad input"
+        return 0
+    fi
+    ux_usage "devx-pr-verify-live-serving-identity" \
+        "[<serving-root> [--content-url <url> --symbol <s> [--symbol <s>]]]" \
+        "Is the PR's target commit (mergeCommit.oid // headRefOid) in the serving checkout?"
+    ux_bullet "stdin: gh pr view N --json state,mergeCommit,headRefOid"
+    ux_bullet "stdout: TARGET_SHA=<sha> (...); with <serving-root> also SERVING_IDENTITY=verified|mismatch|unverified"
+    ux_bullet "--content-url/--symbol: served source that must contain every symbol when the SHA is not an ancestor"
+    ux_bullet "return: 0 for every verdict, 2 on bad input"
+}
+
 devx_pr_verify_live_serving_identity() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local line sha src state root url syms top head n behind body found missing s
+
+    # Before stdin is read (#2265): help is the one exception to the stdout contract.
+    case "${1:-}" in -h | --help) _devx_pr_verify_live_serving_identity_help; return 0 ;; esac
 
     line=$(jq -r '
         (if (.mergeCommit.oid // "") != "" then "mergeCommit" else "headRefOid" end) as $src

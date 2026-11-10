@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/lib/herdr_agent_name.sh
-# Synced 2026-10-26T08:35Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-11-10T06:55Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/lib/herdr_agent_name.sh
 # NOTE: This file intentionally has NO interactive guard: pure function
 # definitions with no output at file scope, sourced non-interactively by
@@ -182,4 +182,66 @@ herdr_agent_name() {
 
     printf '%s' "${_han_name}"
     unset _han_prefix _han_suffix _han_name_slug _han_name
+}
+
+# herdr_agent_parse_name <name> — the inverse of herdr_agent_name (#2320):
+# print `<kind><TAB><repo-slug><TAB><number>` for a name this file composes.
+#
+#   iw-<repo>-issue-<N>   ->  iw  <repo>  <N>
+#   mv-<repo>-pr-<N>      ->  mv  <repo>  <N>
+#   mt-<repo>             ->  mt  <repo>  (empty)
+#
+# The repo slug may itself contain `-issue-` / `-pr-`: the number is cut at the
+# LAST such marker, the only reading herdr_agent_name can have produced.
+#
+# Returns 1 with no output for anything else — a hand-made `issue-<N>` or
+# `pr-<N>` tab label, `null`, a bare number, a name with a malformed repo
+# segment (one herdr_agent_repo_slug can never emit) or a non-numeric number.
+# avatar-tab-teardown treats that as "not ours, leave it", so the predicate is
+# deliberately exact rather than lenient.
+herdr_agent_parse_name() {
+    _hap_name="${1-}"
+    _hap_kind=""
+    _hap_repo=""
+    _hap_num=""
+
+    case "${_hap_name}" in
+    [!a-z]* | *[!a-z0-9_-]* | *-) ;;
+    iw-*-issue-*)
+        _hap_kind="iw"
+        _hap_repo="${_hap_name#iw-}"
+        _hap_num="${_hap_repo##*-issue-}"
+        _hap_repo="${_hap_repo%-issue-*}"
+        ;;
+    mv-*-pr-*)
+        _hap_kind="mv"
+        _hap_repo="${_hap_name#mv-}"
+        _hap_num="${_hap_repo##*-pr-}"
+        _hap_repo="${_hap_repo%-pr-*}"
+        ;;
+    mt-*)
+        _hap_kind="mt"
+        _hap_repo="${_hap_name#mt-}"
+        ;;
+    esac
+
+    # Repo segment: what herdr_agent_repo_slug can emit — non-empty, at most 16
+    # characters, no leading/trailing `-`, no `--` run.
+    case "${_hap_repo}" in
+    '' | -* | *- | *--*) _hap_kind="" ;;
+    esac
+    [ "${#_hap_repo}" -le 16 ] || _hap_kind=""
+    # Number: required (and all digits) for iw/mv, absent for mt.
+    case "${_hap_kind}:${_hap_num}" in
+    mt:) ;;
+    iw: | mv: | iw:*[!0-9]* | mv:*[!0-9]*) _hap_kind="" ;;
+    esac
+    [ "${#_hap_name}" -le 32 ] || _hap_kind=""
+
+    if [ -z "${_hap_kind}" ]; then
+        unset _hap_name _hap_kind _hap_repo _hap_num
+        return 1
+    fi
+    printf '%s\t%s\t%s' "${_hap_kind}" "${_hap_repo}" "${_hap_num}"
+    unset _hap_name _hap_kind _hap_repo _hap_num
 }

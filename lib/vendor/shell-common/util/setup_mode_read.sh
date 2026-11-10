@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/util/setup_mode_read.sh
-# Synced 2026-10-17T01:33Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-11-10T06:55Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shell-common/util/setup_mode_read.sh
 # SSOT for reading ~/.dotfiles-setup-mode (issue #1810).
 #
@@ -92,4 +92,15 @@ _dotfiles_setup_mode_ca() {
         public|external) echo "system" ;;
         *)               echo "none" ;;
     esac
+}
+
+# _dotfiles_company_active <plugin-dir> — true when the private company/
+# manifest repo under <plugin-dir> (claude/plugin) is in scope: mode internal
+# AND <plugin-dir>/company/.git exists (#2251). An unreadable/missing mode or
+# an empty <plugin-dir> is inactive. `-e` (not `-d`) is worktree-safe: a linked
+# worktree records `.git` as a FILE. Not `git -C ... rev-parse --git-dir`: that
+# walks UP into the parent dotfiles repo when company/ is an empty
+# (not-yet-cloned) dir and false-positives.
+_dotfiles_company_active() {
+    [ -n "${1-}" ] && [ -e "$1/company/.git" ] && _dotfiles_setup_mode_is internal
 }
