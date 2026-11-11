@@ -11,7 +11,10 @@ permissions:
 
 jobs:
   bats:
-    runs-on: ubuntu-latest
+    # One file, two hosts: the GHES mirror has no ubuntu-latest pool, so its
+    # repo variable CI_RUNNER selects the self-hosted label set there;
+    # upstream github.com leaves it unset and gets the ubuntu-latest fallback.
+    runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-latest"') }}
     steps:
       - uses: actions/checkout@v4
       - name: Install bats-core + libs (pinned, same versions as dEitY719/dotfiles tests/bats/lib)
