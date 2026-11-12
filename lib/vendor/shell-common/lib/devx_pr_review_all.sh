@@ -1,7 +1,7 @@
 #!/bin/sh
 # VENDORED — do not edit here.
 # SSOT: dEitY719/dotfiles shell-common/lib/devx_pr_review_all.sh
-# Synced 2026-11-10T06:55Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
+# Synced 2026-11-12T03:50Z by dEitY719/harness-skills scripts/sync-shell-common-vendor.sh — re-run that script to update.
 # shellcheck shell=bash
 # shell-common/lib/devx_pr_review_all.sh
 # Pure arg parser for the devx:pr-review-all skill. Mirrors the
@@ -46,6 +46,12 @@ else
         "$_drg_helper" >&2
 fi
 unset _drg_self _drg_helper
+
+# Lane fan-out core (#2381): loaded now, not inside the fanout, so a caller
+# that later repoints SHELL_COMMON (the fanout bats' stub tree) still has it.
+# shellcheck disable=SC1091
+[ -r "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/ai_fanout.sh" ] &&
+    . "${SHELL_COMMON:-$HOME/dotfiles/shell-common}/lib/ai_fanout.sh"
 
 devx_pr_review_all_parse() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
@@ -253,7 +259,7 @@ devx_pr_review_all_parse() {
 # Runs `gh_pr_review --ai <ai> --review <preset> <pr> <remote>` for every
 # `<ai>:<preset>` lane at once, each in a fresh `bash` that sources
 # gh_pr_review.sh (bash, not sh: it needs `set -o pipefail`, which dash
-# rejects — #2072), bounded by _gh_pr_review_timeout at the same cap as the
+# rejects — #2072), bounded by _ai_cli_timeout at the same cap as the
 # opencode / hermes CLIs (GH_PR_REVIEW_SLOW_CLI_TIMEOUT_SEC, default 540s) —
 # so a hung codex / agy / claude cannot outlive the caller's 600s Bash budget.
 # Once every lane has exited, prints one line per lane, in <lanes> order:
@@ -265,15 +271,16 @@ devx_pr_review_all_parse() {
 # skip and fail are one state on purpose (gh-verify-skills#77 D-5): the
 # caller feeds only ok lanes to the verdict harvest, whose fail-closed rules
 # (#1639) stay as they are. Each lane's stdout / stderr / rc goes to its own
-# `<ai>.<preset>.*` file under one private mktemp dir, never a shared fixed
-# path (#1276). Returns 0; 2 on an argument error (usage on stderr); 1 only
-# when the temp dir cannot be created.
+# private file (#1276). Returns 0; 2 on an argument error (usage on stderr); 1
+# only when the temp dir cannot be created.
+#
+# Since #2381 the lane loop, timeout, temp files and result lines live in
+# lib/ai_fanout.sh (ai_fanout_run); this function validates, builds the
+# per-lane entry command and delegates. Lanes run in the caller's cwd.
 devx_pr_review_all_fanout() {
     [ -n "${ZSH_VERSION-}" ] && emulate -L sh
     local pr="${1-}" remote="${2-}" lanes="${3-}"
     local _src="${SHELL_COMMON:-$HOME/dotfiles/shell-common}/functions/gh_pr_review.sh"
-    local _sec="${GH_PR_REVIEW_SLOW_CLI_TIMEOUT_SEC:-540}"
-    local _dir="" _rest="" _lane="" _f="" _order="" _pids="" _pid="" _rc="" _why=""
 
     # Lane shape and PR# validation is the parser's; reuse it, don't copy it.
     if [ "$#" -ne 3 ] || [ -z "$remote" ] ||
@@ -281,65 +288,29 @@ devx_pr_review_all_fanout() {
         echo "usage: <pr> <remote> <ai>:<preset>[,<ai>:<preset>...]" >&2
         return 2
     fi
-    case "$_sec" in "" | *[!0-9]*) _sec=540 ;; esac
-    if ! command -v _gh_pr_review_timeout >/dev/null 2>&1 && [ -r "$_src" ]; then
+    if ! command -v _ai_cli_timeout >/dev/null 2>&1 && [ -r "$_src" ]; then
         # shellcheck disable=SC1090
         DOTFILES_FORCE_INIT=1 . "$_src"
     fi
-    _dir=$(mktemp -d "${TMPDIR:-/tmp}/devx-pr-review-all-fanout.$pr.XXXXXX") || {
-        echo "Could not create fanout run directory under ${TMPDIR:-/tmp}" >&2
+    if ! command -v ai_fanout_run >/dev/null 2>&1; then
+        echo "devx_pr_review_all_fanout: lib/ai_fanout.sh is not loaded (#2381)" >&2
         return 1
-    }
-
-    _rest="$lanes"
-    while [ -n "$_rest" ]; do
-        _lane="${_rest%%,*}"
-        case "$_rest" in *,*) _rest="${_rest#*,}" ;; *) _rest="" ;; esac
-        _order="$_order $_lane"
-        _f="$_dir/${_lane%%:*}.${_lane#*:}"
-        (
-            # gh_pr_review.sh returns early in a non-interactive shell.
-            export DOTFILES_FORCE_INIT=1
-            # Lane stderr becomes the skip <why> line, so it must stay plain
-            # text (#2257): NO_COLOR keeps ux_lib's ANSI out, and the plain
-            # ux_error defined before the source stops gh_pr_review.sh from
-            # loading ux_lib, whose error glyph would prefix every reason.
-            export NO_COLOR=1
-            # In-process _gh_pr_review_main when the sourced file has it (#2195:
-            # gh_pr_review is a wrapper over tools/custom/, absent from vendored copies).
-            # shellcheck disable=SC2016  # $1/$@ belong to the inner bash
-            _gh_pr_review_timeout "$_sec" bash -c 'ux_error() { printf "%s\n" "$1" >&2; }; . "$1" || exit 1; shift; if command -v _gh_pr_review_main >/dev/null 2>&1; then _gh_pr_review_main "$@"; else gh_pr_review "$@"; fi' \
-                devx-pr-review-all-fanout "$_src" \
-                --ai "${_lane%%:*}" --review "${_lane#*:}" "$pr" "$remote" \
-                </dev/null >"$_f.out" 2>"$_f.err"
-            echo "$?" >"$_f.rc"
-        ) &
-        _pids="$_pids $!"
-    done
-    # Our own PIDs only — a bare `wait` would also block on the caller's jobs.
-    for _pid in $_pids; do
-        wait "$_pid"
-    done
-
-    # Parser-validated lanes are [A-Za-z0-9_-] tokens, safe to word-split.
-    for _lane in $_order; do
-        _f="$_dir/${_lane%%:*}.${_lane#*:}"
-        _rc=$(cat "$_f.rc" 2>/dev/null)
-        if [ "$_rc" = 0 ]; then
-            printf '%s:ok\n' "$_lane"
-            continue
-        fi
-        if [ "$_rc" = 124 ]; then
-            _why="timeout ${_sec}s"
-        else
-            _why=$(tr '\t\r' '  ' <"$_f.err" 2>/dev/null |
-                sed -n '/[^[:space:]]/{s/[[:space:]][[:space:]]*/ /g;s/^ //;s/ $//;p;q;}')
-            [ -n "$_why" ] || _why="exit ${_rc:-unknown}"
-        fi
-        printf '%s:skip\t%s\n' "$_lane" "$_why"
-    done
-    rm -rf "$_dir"
-    return 0
+    fi
+    # Per lane: a fresh `bash` (not sh: gh_pr_review needs `set -o pipefail`,
+    # which dash rejects — #2072) that sources gh_pr_review.sh. The core
+    # appends the lane as the last argument ($4 inside).
+    # DOTFILES_FORCE_INIT: gh_pr_review.sh returns early in a non-interactive
+    # shell. Lane stderr becomes the skip <why> line, so it must stay plain
+    # text (#2257): NO_COLOR keeps ux_lib's ANSI out, and the plain ux_error
+    # defined before the source stops gh_pr_review.sh from loading ux_lib,
+    # whose error glyph would prefix every reason. In-process
+    # _gh_pr_review_main when the sourced file has it (#2195: gh_pr_review is
+    # a wrapper over tools/custom/, absent from vendored copies).
+    # shellcheck disable=SC2016  # $1..$4 belong to the inner bash
+    ai_fanout_run "" "${GH_PR_REVIEW_SLOW_CLI_TIMEOUT_SEC:-540}" "$lanes" \
+        env DOTFILES_FORCE_INIT=1 NO_COLOR=1 \
+        bash -c 'ux_error() { printf "%s\n" "$1" >&2; }; . "$1" || exit 1; set -- --ai "${4%%:*}" --review "${4#*:}" "$2" "$3"; if command -v _gh_pr_review_main >/dev/null 2>&1; then _gh_pr_review_main "$@"; else gh_pr_review "$@"; fi' \
+        devx-pr-review-all-fanout "$_src" "$pr" "$remote"
 }
 
 # ── Review verdict -> merge-gate label (issue #1527, fixed in #1562) ──
